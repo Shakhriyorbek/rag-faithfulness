@@ -1,0 +1,23 @@
+# ============================================================
+# SSH config for SZTE RGAI server access
+# Place this file at:  C:\Users\ShakhriyorbekBoltaba\.ssh\config
+# (no file extension — just "config")
+# ============================================================
+
+# Hop / entry instance (jump host)
+Host szte-hop
+    HostName 193.225.250.29
+    User sboltabaev
+    IdentityFile ~/.ssh/id_ed25519
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+
+# GPU server (reached THROUGH the hop instance)
+# After setup, you connect with a single command:  ssh szte-gpu
+Host szte-gpu
+    HostName gpu1
+    User sboltabaev
+    IdentityFile ~/.ssh/id_ed25519
+    ProxyJump szte-hop
+    ServerAliveInterval 60
+    ServerAliveCountMax 3

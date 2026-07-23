@@ -1,0 +1,30 @@
+# Core
+torch>=2.0
+numpy
+pandas
+scipy
+tqdm
+
+# Embeddings & retrieval
+sentence-transformers>=2.3.0
+faiss-gpu
+transformers>=4.40.0
+einops                 # required by jina-embeddings-v3
+
+# Generation
+openai>=1.0
+accelerate
+bitsandbytes           # 8-bit Llama-3 on 16GB V100
+
+# Faithfulness metrics
+alignscore
+
+# Retrieval metrics
+ranx
+
+# Datasets
+datasets>=2.14.0
+
+# Visualization (for figures)
+matplotlib
+seaborn

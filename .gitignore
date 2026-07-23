@@ -1,0 +1,21 @@
+# Runtime artifacts
+checkpoints/
+outputs/
+hf_cache/
+*.pkl
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+ragfaith_env/
+
+# Secrets — never commit API keys
+.env
+*.key
+
+# OS
+.DS_Store
+Thumbs.db

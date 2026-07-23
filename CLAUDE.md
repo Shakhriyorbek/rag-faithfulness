@@ -1,0 +1,147 @@
+# RAG Faithfulness Research — Project Context
+
+> This file is read automatically by Claude Code at the start of every session.
+> It carries the full context of a long prior conversation so work can resume cold.
+
+---
+
+## 1. What this project is
+
+**Paper title:** *Beyond Retrieval Quality: How Embedding Architecture Affects Faithfulness in RAG Systems*
+
+**Author:** Shakhriyorbek Boltabaev (Aiden), MSc Computer Science, University of Szeged (SZTE)
+**Supervisor:** Dr. Gábor Berend (SZTE NLP group / RGAI) — actively engaged, has reviewed two drafts
+
+**Core research question:** Do embedding models with near-identical retrieval quality scores (NDCG@5, Recall@5) produce different *faithfulness* rates in downstream RAG generation? If so, why?
+
+**Key contributions:**
+1. **RFG** (Retrieval-Faithfulness Gap) metric — Eq. (2)
+2. **nRFG** normalized variant — Eq. (3), added to fix a design flaw the supervisor found
+3. **ESA** (Entailment-Similarity Alignment) geometric analysis — Eq. (4)
+4. Faithfulness-aware **re-ranking** strategy — Eq. (5)
+
+**Experimental scale:** 7 embedding models × 3 QA datasets × 2 generators × 1000 queries = **42,000 triples**
+
+---
+
+## 2. Current status
+
+| Area | Status |
+|------|--------|
+| Paper draft (IEEE format) | ✅ Complete, all supervisor feedback addressed |
+| References verified | ✅ 5 wrong author attributions fixed (see §6) |
+| Notebook pipeline | ⚠️ Works, but **missing** Jina model + nRFG + robustness code |
+| Server access | ✅ Granted by Berend, SSH key installed |
+| Experiments | ❌ **Not started** — all results in the paper are still simulated |
+| Venue | ⚠️ EMNLP 2026 May 25 ARR deadline **has passed**. Target July ARR cycle or COLING 2026. |
+
+**The single biggest gap:** every number, table, and figure in the paper is placeholder/simulated data. Real experiments have never been run.
+
+---
+
+## 3. Server access (SZTE)
+
+```
+laptop ──ssh──> hop (193.225.250.29) ──ssh gpu1──> gpu1 (NVIDIA V100)
+                user: sboltabaev                    alias pre-configured by Berend
+```
+
+- SSH config at `server/ssh_config` → copy to `~/.ssh/config`, then `ssh szte-gpu` connects in one hop
+- **UNKNOWN: whether the V100 is 16GB or 32GB.** This decides if Llama-3-8B needs 8-bit quantization. Run `server/first_login_checks.sh` on gpu1 to find out.
+- **UNKNOWN: whether gpu1 has direct internet.** Some university GPU nodes are firewalled; if so, HuggingFace models must be downloaded via the hop and copied over.
+- Server maintenance outage was expected during the first week of access (early July 2026).
+
+**Always use `tmux` for long jobs** — SSH dies when the laptop sleeps and would kill a multi-hour run.
+
+---
+
+## 4. Supervisor feedback — all 7 points and their resolution
+
+Berend's review (received ~June 2026). All are addressed **in the paper**; items 3 and 6 also require **code that does not exist yet**.
+
+| # | His comment | Resolution | Code needed? |
+|---|-------------|------------|--------------|
+| 1 | Improve notation precision; don't overclaim | Removed all causal language ("causally"→removed from title), dropped "first to"/"most comprehensive to date"/"core novel"/"pioneered"; every equation now defines variables + domains | No |
+| 2 | Add Jina embeddings | Added `jina-embeddings-v3` as 7th model, paradigm "distilled"; counts updated to 7 models / 42,000 triples; ref [8] | **Yes** — in `config.py` ✅ done |
+| 3 | RFG may be volatile across measurement choices — test it | New §5.3: 3 retrieval metrics × 3 faithfulness metrics = 9 RFG variants, Spearman correlation of induced rankings, 9×9 matrix | **Yes** — in `metrics.py` ✅ done |
+| 4 | RFG can't distinguish both-high from both-low | Acknowledged in §3.2; introduced **nRFG = (RQ − F)/RQ** as primary metric. Verified: his example (0.9,0.85) vs (0.3,0.25) gives identical RFG=0.05 but nRFG 0.056 vs 0.167 | **Yes** — in `metrics.py` ✅ done |
+| 5 | Is faithfulness vs generated answer or gold answer? | §3.1 now explicit: **generated answer**, with rationale — measuring vs gold would collapse faithfulness into retrieval quality | No |
+| 6 | Re-ranking not justified by the analysis; hesitant to call it "mechanistic" | §4.5 renamed **"Geometric Analysis"**; §4.6 re-ranking now justified *independently*; §4.5.1 commits to also computing correlation with **NLI(d, q)** — the signal actually available at re-rank time | **Yes** — not yet implemented |
+| 7 | ESA doesn't extend Zhu et al. | Claim removed; Zhu reference deleted, slot [8] reused for Jina | No |
+
+**Critical nuance on #6:** the ESA analysis measures `corr(cos(q,d), NLI(d, gold_answer))`, but re-ranking uses `NLI(d, q)` because no answer exists yet at retrieval time. The paper now promises to compute *both* correlations. **This experiment must actually be run** or the paper's logic remains open.
+
+---
+
+## 5. Key design decisions (don't accidentally reverse these)
+
+- **Faithfulness is measured between retrieved context and the GENERATED answer**, never the gold answer. Gold answers are used only for retrieval-quality evaluation (qrels). Reversing this breaks the paper's central argument.
+- **ESA deliberately uses the gold answer** (unlike F) because it measures a static property of the embedding space, independent of any generator. This asymmetry is intentional and is explained in §4.5.1.
+- **nRFG is the primary metric**; raw RFG is a secondary diagnostic and must always be reported alongside absolute faithfulness so the both-low case stays visible.
+- **Never call §4.5 "mechanistic analysis"** — it is correlational/geometric. True mechanistic analysis (à la ReDeEP) probes attention heads and FFNs; this does not.
+- **Avoid overclaiming language** in any new text: no "causally", "first to", "novel", "comprehensive", "pioneered", "state-of-the-art". Supervisor explicitly flagged this and recommended Nicholas Carlini's writing guide.
+
+---
+
+## 6. Reference corrections already made — DO NOT REINTRODUCE
+
+Five references in the original draft had fabricated or wrong author attributions. All were verified against real sources and fixed:
+
+| Ref | Was (WRONG) | Is (CORRECT) |
+|-----|-------------|--------------|
+| [5] Semantic Illusion | "Zhang, T. et al." | **Sinha, D.** — arXiv:2512.15068 |
+| [6] ReDeEP | "Wu, Z. et al." | **Sun, Z. et al.** — ICLR 2025 |
+| [7] Each to Their Own | "Chen, J.", arXiv:2507.xxxxx | **Chen, S.** — arXiv:**2507.17442** |
+| [9] FaithJudge | "Es, S. et al." | **Tamber, M. S. et al.** — EMNLP 2025 Industry Track |
+| [13] CTRL-RAG | "Luo, X.", arXiv:2602.xxxxx, "contrastive likelihood training" | **Tan, Z. et al.** — arXiv:**2603.04406**, "Contrastive Likelihood **Reward Based Reinforcement Learning**" |
+
+In-text mentions were updated too (Zhang→Sinha, Wu→Sun, Es→Tamber, Luo→Tan).
+
+---
+
+## 7. Known bugs already fixed in the dataset loaders
+
+The HuggingFace dataset APIs do not match the naive assumptions the original code made. All three loaders were rewritten:
+
+- **Natural Questions** — `annotations.short_answers[i]` has `text`, `start_token`, `end_token` as **lists**, not scalars. Original code did `tokens[start_token:end_token]` and crashed with `TypeError: slice indices must be integers`. Fix: use `sa["text"][0]` directly. Also filter out HTML tokens via `tokens["is_html"]`.
+- **HotpotQA** — `supporting_facts` is a dict of parallel lists (`title`, `sent_id`); `sent_id` is an index into `context.sentences[i]`, not a sentence. Must look up `(title, sent_id)` pairs against the context.
+- **QASPER** — `paper["qas"]` is a **dict of lists** (columnar), not a list of dicts. Index with `qas["question"][i]`, `qas["answers"][i]`. Handle both `free_form_answer` and `extractive_spans`. Needs `trust_remote_code=True` on newer `datasets` versions.
+
+---
+
+## 8. What still needs to be built
+
+Priority order. Items 1–2 are blockers for everything else.
+
+1. **`src/datasets_loader.py`** — port the 3 fixed loaders out of the notebook
+2. **`src/embed_index.py`** — Phase A: encode + FAISS index, 7 models × 3 datasets, one model loaded at a time
+3. **`src/generate.py`** — GPT-4o-mini via API (~$5–6 for 42k queries) + Llama-3-8B on the V100 (auto 8-bit if 16GB)
+4. **`src/faithfulness.py`** — DeBERTa-v3-large NLI + AlignScore scoring
+5. **`src/esa_analysis.py`** — ESA with **both** `NLI(d, gold_a)` and `NLI(d, q)` (closes supervisor point 6)
+6. **`src/rerank.py`** — Eq. (5) re-ranking ablation
+7. **`src/run_pipeline.py`** — orchestrator with `--smoke-test` (N=50) and `--full` (N=1000) modes, resumable checkpoints
+8. **`src/figures.py`** — regenerate Fig. 1–3 from real results
+9. **Paper update** — replace every simulated number with real results; rewrite §6 from "Expected Results" (hypotheses H1–H5) into actual Results + Discussion, reporting honestly which hypotheses failed
+
+---
+
+## 9. Hypotheses under test
+
+- **H1** Instruction-tuned models show lower RFG than contrastive-only
+- **H2** RFG is largest on HotpotQA (multi-hop)
+- **H3** Model ranking by RFG is consistent across GPT-4o-mini and Llama-3
+- **H4** ESA is higher for instruction-tuned models
+- **H5** Faithfulness-aware re-ranking cuts the worst model's RFG by ≥15% relative
+
+Report failures honestly — the supervisor values this over inflated claims.
+
+---
+
+## 10. Conventions
+
+- Checkpoint everything to `checkpoints/` as pickle; every phase must be resumable
+- Cost-track all OpenAI API calls; print a running total
+- Chunking: 256 tokens, 32 overlap. Retrieval: top-k=5. Temperature: 0.
+- Bootstrap significance: paired, n=10,000
+- Random seed: 42
+- Never hardcode API keys — read `OPENAI_API_KEY` and `HF_TOKEN` from env
