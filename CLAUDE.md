@@ -29,13 +29,25 @@
 | Area | Status |
 |------|--------|
 | Paper draft (IEEE format) | ✅ Complete, all supervisor feedback addressed |
-| References verified | ✅ 5 wrong author attributions fixed (see §6) |
-| Notebook pipeline | ⚠️ Works, but **missing** Jina model + nRFG + robustness code |
+| References verified | ⚠️ 5 wrong attributions fixed (see §6), but ref **[8] cites a non-existent "jina-embeddings-v5-text"** — must become jina-embeddings-v3 (arXiv:2409.10173) in the next paper pass |
+| Pipeline code | ✅ **All of §8 built in `src/`** (2026-07-23); notebook is now a reference artifact only |
+| Notebook | ✅ Patched: title/"Mechanistic"/eq numbers fixed, `SIMULATED_RESULTS` removed, NLI index resolved from config |
 | Server access | ✅ Granted by Berend, SSH key installed |
 | Experiments | ❌ **Not started** — all results in the paper are still simulated |
 | Venue | ⚠️ EMNLP 2026 May 25 ARR deadline **has passed**. Target July ARR cycle or COLING 2026. |
 
 **The single biggest gap:** every number, table, and figure in the paper is placeholder/simulated data. Real experiments have never been run.
+
+**Critical bug found & fixed during the 2026-07-23 audit (do not regress):**
+the notebook hardcoded `probs[2]` as the NLI "entailment" probability, but
+`cross-encoder/nli-deberta-v3-large` uses label order
+`{0: contradiction, 1: entailment, 2: neutral}` (verified against the HF
+config) — index 2 is **neutral**. All NLI code must resolve the index from
+`model.config.label2id` (`src/nli.py` does this). Also fixed: qrels matched
+by lossy chunk-string equality (now stable chunk IDs), NQ corpus had no
+distractors (now pooled), NLI premise truncation ignored chunks 3–5 (now
+per-chunk scoring), `intfloat/e5-large-instruct` does not exist (now
+`intfloat/multilingual-e5-large-instruct`).
 
 ---
 
@@ -109,19 +121,21 @@ The HuggingFace dataset APIs do not match the naive assumptions the original cod
 
 ---
 
-## 8. What still needs to be built
+## 8. Build status (all code items ✅ as of 2026-07-23)
 
-Priority order. Items 1–2 are blockers for everything else.
+1. ✅ **`src/datasets_loader.py`** — 3 loaders with §7 fixes; corpus docs carry gold-provenance; NQ pools contexts so distractors exist
+2. ✅ **`src/embed_index.py`** — offset-based chunking (original text preserved), stable chunk IDs, FAISS-or-numpy exact index, per-family encoder handling (Instructor pairs, jina trust_remote_code, E5-instruct template, OpenAI cost-tracked), Phase A retrieves top-20 pool
+3. ✅ **`src/generate.py`** — GPT-4o-mini (resumable, budget-capped) + Llama-3-8B (VRAM-probed 8-bit, chat template, greedy, token-sliced)
+4. ✅ **`src/faithfulness.py`** — per-chunk NLI (max/mean/concat) + optional AlignScore, both generators
+5. ✅ **`src/esa_analysis.py`** — both `NLI(d, gold_a)` and `NLI(d, q)` (closes supervisor point 6)
+6. ✅ **`src/rerank.py`** — Eq. (5) ablation: re-rank top-20 → regenerate → re-score; λ sweep helper
+7. ✅ **`src/run_pipeline.py`** — `--smoke-test` (N=50, 3 models, NQ) / `--full`; per-phase selection; asserts NDCG@5 > 0 (B3 guard)
+8. ✅ **`src/figures.py`** + **`src/results.py`** — Fig. 1–4 (incl. 9-variant robustness heatmap), nRFG-primary assembly, bootstrap H1–H5 summary
+   - supporting: `src/utils.py` (checkpoints, seeding, unified cost tracker), `src/nli.py` (config-resolved entailment index)
 
-1. **`src/datasets_loader.py`** — port the 3 fixed loaders out of the notebook
-2. **`src/embed_index.py`** — Phase A: encode + FAISS index, 7 models × 3 datasets, one model loaded at a time
-3. **`src/generate.py`** — GPT-4o-mini via API (~$5–6 for 42k queries) + Llama-3-8B on the V100 (auto 8-bit if 16GB)
-4. **`src/faithfulness.py`** — DeBERTa-v3-large NLI + AlignScore scoring
-5. **`src/esa_analysis.py`** — ESA with **both** `NLI(d, gold_a)` and `NLI(d, q)` (closes supervisor point 6)
-6. **`src/rerank.py`** — Eq. (5) re-ranking ablation
-7. **`src/run_pipeline.py`** — orchestrator with `--smoke-test` (N=50) and `--full` (N=1000) modes, resumable checkpoints
-8. **`src/figures.py`** — regenerate Fig. 1–3 from real results
-9. **Paper update** — replace every simulated number with real results; rewrite §6 from "Expected Results" (hypotheses H1–H5) into actual Results + Discussion, reporting honestly which hypotheses failed
+**Still open:**
+9. ❌ **Run the experiments** (smoke test → reduced 3×NQ → full 7×3×2)
+10. ❌ **Paper update** — replace every simulated number with real results; rewrite §6 from "Expected Results" (H1–H5) into actual Results + Discussion, reporting honestly which hypotheses failed; fix ref [8] (jina v3, see §2); resolve §4.5.2 "cross-attention" wording (Llama-3 is decoder-only — self-attention over context tokens, and no code implements this analysis yet)
 
 ---
 

@@ -21,10 +21,20 @@ SEED = 42
 # ── Experiment scale ──
 N_QUERIES     = 1000     # Full run. Set to 50 for a quick smoke test.
 TOP_K         = 5
+RERANK_POOL   = 20       # Candidates retrieved per query; top-5 feed generation,
+                         # all 20 form the re-ranking pool (Eq. 5 ablation).
 CHUNK_SIZE    = 256
 CHUNK_OVERLAP = 32
 LAMBDA_RERANK = 0.6      # Re-ranking mix weight (Eq. 5)
+RERANK_LAMBDAS = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]  # λ sensitivity sweep
 LLAMA_SUBSET  = 300      # Llama-3 validation queries per dataset
+ESA_N_SAMPLES = 200      # Queries per model×dataset for the ESA correlation
+
+# ── NLI model (faithfulness, ESA, re-ranking) ──
+# Label order is resolved from model config at load time (src/nli.py).
+# NEVER hardcode a class index: for this checkpoint id2label is
+# {0: contradiction, 1: entailment, 2: neutral} — index 2 is NOT entailment.
+NLI_MODEL = 'cross-encoder/nli-deberta-v3-large'
 
 # ── V100 memory handling ──
 # 16GB V100: Llama-3-8B needs 8-bit. 32GB V100: fp16 is fine.
@@ -58,15 +68,26 @@ EMBEDDING_MODELS = [
          paradigm='contrastive',        dim=1024, instruction=None),
     dict(name='BGE-M3',                 hf_id='BAAI/bge-m3',
          paradigm='multilingual',       dim=1024, instruction=None),
-    dict(name='E5-large-instruct',      hf_id='intfloat/e5-large-instruct',
+    # NOTE: 'intfloat/e5-large-instruct' does not exist on the Hub (verified
+    # via HF API 2026-07-23). The instruction-tuned E5 checkpoint is
+    # multilingual-e5-large-instruct, which uses the "Instruct: ...\nQuery: "
+    # template on queries and raw text on passages.
+    dict(name='E5-large-instruct',      hf_id='intfloat/multilingual-e5-large-instruct',
          paradigm='instruction-tuned',  dim=1024,
-         instruction='Represent this sentence for searching relevant passages: '),
+         instruction=('Instruct: Given a web search query, retrieve relevant '
+                      'passages that answer the query\nQuery: ')),
+    # Instructor models take [instruction, text] PAIRS, not prefixed strings —
+    # handled by the instructor branch in embed_index.EmbeddingModelWrapper.
     dict(name='Instructor-XL',          hf_id='hkunlp/instructor-xl',
          paradigm='instruction-tuned',  dim=768,
-         instruction='Represent the question for retrieving relevant documents: '),
+         instruction='Represent the question for retrieving supporting documents: ',
+         doc_instruction='Represent the document for retrieval: '),
     dict(name='text-embedding-3-small', hf_id='openai',
          paradigm='contrastive',        dim=1536, instruction=None),
-    # ── NEW: Jina v3 (distillation-based multilingual) ──
+    # ── Jina v3 (distillation-based multilingual, Berend point 2) ──
+    # Requires trust_remote_code=True. Paper ref [8] currently cites a
+    # non-existent "jina-embeddings-v5-text" — must be corrected to v3
+    # (arXiv:2409.10173) in the next paper pass.
     dict(name='jina-embeddings-v3',     hf_id='jinaai/jina-embeddings-v3',
          paradigm='distilled',          dim=1024, instruction=None),
 ]

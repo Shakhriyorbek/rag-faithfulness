@@ -1,15 +1,19 @@
 # Core
 torch>=2.0
-numpy
+numpy<2               # faiss / older torch wheels are not numpy-2 safe
 pandas
 scipy
 tqdm
 
 # Embeddings & retrieval
 sentence-transformers>=2.3.0
-faiss-gpu
-transformers>=4.40.0
+# FAISS: pip 'faiss-gpu' is unmaintained; on gpu1 install via conda
+# (conda install -c pytorch faiss-gpu) or fall back to faiss-cpu.
+# The pipeline runs without FAISS at all (exact numpy search fallback
+# in src/embed_index.py), so faiss is an optimization, not a blocker.
+faiss-cpu; platform_system != "Linux"
 einops                 # required by jina-embeddings-v3
+InstructorEmbedding    # Instructor-XL ([instruction, text] pair encoding)
 
 # Generation
 openai>=1.0
@@ -17,10 +21,15 @@ accelerate
 bitsandbytes           # 8-bit Llama-3 on 16GB V100
 
 # Faithfulness metrics
-alignscore
+# AlignScore is NOT on PyPI under this name — install from source:
+#   pip install git+https://github.com/yuh-zha/AlignScore.git
+# and download its checkpoint per the repo README. Phase E skips cleanly
+# when it is absent.
 
 # Retrieval metrics
-ranx
+# ranx is optional: src/retrieval_eval.py has an internal NDCG/Recall/MRR
+# implementation and only uses ranx as a cross-check when installed.
+ranx; python_version < "3.13"
 
 # Datasets
 datasets>=2.14.0
