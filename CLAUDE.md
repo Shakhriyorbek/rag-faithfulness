@@ -74,7 +74,17 @@ laptop ──ssh──> hop (193.225.250.29) ──ssh gpu1──> gpu1 (NVIDIA 
 | **Internet from gpu1** | **YES** — `huggingface.co` and `pypi.org` both return HTTP/2 200. Models download directly; no staging via the hop |
 | CPU / RAM / disk | 16 cores / 62 GB / 284 GB free on `/` |
 | Python | 3.10.12 at `/usr/bin/python3`, **no conda**, **torch not installed** |
-| tmux / git | both present |
+| tmux / git / rsync | all present on gpu1 (laptop has `scp` but no `rsync`) |
+| `python3 -m venv` | ❌ **broken** — `ensurepip` missing, `python3.10-venv` needs sudo. Use `pip install --user` |
+
+**⚠️ torch on this GPU — `torch.cuda.is_available()` is NOT a sufficient check.**
+The V100 is **Volta, compute capability 7.0**; the default PyPI wheel ships
+kernels for **sm_75 and up only**. It imports fine, reports
+`cuda: True`, and then dies on the first real kernel launch with
+`CUDA error: no kernel image is available for execution on the device`.
+Always verify with a real matmul and confirm `torch.cuda.get_arch_list()`
+contains `sm_70`. Reinstalling needs `--force-reinstall` — pip treats
+`2.13.0+cu130` and `2.13.0+cu126` as the same version and silently skips.
 
 **Gotchas learned the hard way:**
 - **ICMP is blocked** — `ping` always fails, this says nothing about reachability. Test with TCP 22 instead.
@@ -105,6 +115,10 @@ Berend's review (received ~June 2026). All are addressed **in the paper**; items
 
 ## 5. Key design decisions (don't accidentally reverse these)
 
+- **The generator is Claude (`claude-haiku-4-5`), not GPT-4o-mini** (changed 2026-07-26). Haiku 4.5 was chosen as the closest analog in capability tier and cost, preserving the design intent of a small, widely-deployed closed-source model — a frontier model would likely be more faithful across the board and could compress the very RFG differences the paper measures. **Paper §4.4 and §5.2 still say GPT-4o-mini and must be updated; tell Berend.** Estimated cost for the full 21,000-query grid: ~$38 (vs ~$5–6 for GPT-4o-mini); `--smoke-test` prints a measured projection before you commit.
+- **An OpenAI key is still required and is NOT interchangeable with the Anthropic one.** `text-embedding-3-small` is one of the 7 *embedding models under study*, and Anthropic has no embeddings API. Dropping it means 6 models and new paper counts.
+- **`claude-haiku-4-5` API specifics:** `temperature=0` IS accepted (sampling params are only removed on Opus 4.7+/Opus 5/Sonnet 5/Fable 5), so the paper's temperature-0 protocol is unchanged. `output_config.effort` **errors** on this model — never pass it. `thinking` is omitted deliberately (no thinking): the experiment measures grounding, not reasoning depth, and it keeps prompt parity with Llama-3.
+- **Both generators get a byte-identical prompt** (one user turn with the full template). The instruction is deliberately NOT hoisted into Claude's `system` parameter, idiomatic though that would be — H3 compares rankings across generators, so a prompt difference would confound it.
 - **Faithfulness is measured between retrieved context and the GENERATED answer**, never the gold answer. Gold answers are used only for retrieval-quality evaluation (qrels). Reversing this breaks the paper's central argument.
 - **ESA deliberately uses the gold answer** (unlike F) because it measures a static property of the embedding space, independent of any generator. This asymmetry is intentional and is explained in §4.5.1.
 - **nRFG is the primary metric**; raw RFG is a secondary diagnostic and must always be reported alongside absolute faithfulness so the both-low case stays visible.

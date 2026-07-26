@@ -45,13 +45,13 @@ def run_rerank_experiment(model: str, datasets: Dict,
     re-rank -> regenerate (GPT-4o-mini) -> NLI-score. Each stage checkpoints.
     Downstream comparison happens in results assembly (baseline vs reranked).
     """
-    from generate import Gpt4oMiniGenerator
+    from generate import ClaudeGenerator
     from nli import NLIScorer
     nli = NLIScorer()
-    gen = Gpt4oMiniGenerator()
+    gen = ClaudeGenerator()
 
     for ds_name in datasets:
-        ck_out = f'reranked_gpt4o_{model}_{ds_name}_lam{lam}'
+        ck_out = f'reranked_claude_{model}_{ds_name}_lam{lam}'
         if checkpoint_exists(ck_out):
             print(f'  [skip] {ck_out}')
             continue

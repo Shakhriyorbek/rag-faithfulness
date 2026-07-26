@@ -54,8 +54,29 @@ os.environ.setdefault('HF_HOME', str(HF_CACHE))
 os.environ.setdefault('TRANSFORMERS_CACHE', str(HF_CACHE))
 
 # ── API keys (set as env vars, never hardcode) ──
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
-HF_TOKEN       = os.getenv('HF_TOKEN', '')
+# ANTHROPIC_API_KEY — Claude, the closed-source generator (phase C).
+# OPENAI_API_KEY    — still required: text-embedding-3-small is one of the 7
+#                     embedding models under study. Anthropic has no
+#                     embeddings API, so this is NOT interchangeable.
+# HF_TOKEN          — Llama-3-8B is a gated model.
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
+OPENAI_API_KEY    = os.getenv('OPENAI_API_KEY', '')
+HF_TOKEN          = os.getenv('HF_TOKEN', '')
+
+# ── Generator (paper §4.4) ──
+# Claude replaces GPT-4o-mini as the closed-source generator (decided
+# 2026-07-26). Haiku 4.5 is the closest analog to GPT-4o-mini in capability
+# tier and cost, so the paper's design intent — a small, widely-deployed
+# closed-source model — is preserved. Paper §4.4 and §5.2 must be updated.
+#
+# Model-specific API notes for claude-haiku-4-5:
+#   - `temperature=0` IS accepted (sampling params are only removed on
+#     Opus 4.7+ / Opus 5 / Sonnet 5 / Fable 5), so the paper's
+#     temperature-0 protocol carries over unchanged.
+#   - `output_config.effort` ERRORS on Haiku 4.5 — never pass it.
+#   - Omitting `thinking` means no thinking, which is what we want: this
+#     measures grounding in retrieved context, not reasoning depth.
+CLAUDE_MODEL = 'claude-haiku-4-5'
 
 # ── Datasets ──
 DATASETS = ['NQ', 'HotpotQA', 'QASPER']

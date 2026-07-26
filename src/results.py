@@ -21,7 +21,7 @@ from metrics import (compute_rfg_variants, nrfg, rfg,
                      robustness_correlation_matrix, summarize_robustness)
 from utils import checkpoint_exists, load_checkpoint, save_checkpoint
 
-GENERATORS = ['gpt4o', 'llama3']
+GENERATORS = ['claude', 'llama3']
 
 
 def bootstrap_significance(scores_a: List[float], scores_b: List[float],
@@ -117,7 +117,7 @@ def robustness_analysis(df: pd.DataFrame) -> str:
     Spearman correlation of the model rankings they induce. Reuses
     metrics.py. Uses GPT-4o-mini rows (full 7-model coverage).
     """
-    sub = df[df['generator'] == 'gpt4o']
+    sub = df[df['generator'] == 'claude']
     per_model = {}
     for model, g in sub.groupby('model'):
         per_model[model] = {
@@ -145,11 +145,11 @@ def robustness_analysis(df: pd.DataFrame) -> str:
 def hypothesis_summary(df: pd.DataFrame) -> pd.DataFrame:
     """H1–H5 against real data. Failures are reported as failures."""
     out = []
-    gpt = df[df['generator'] == 'gpt4o']
+    claude_rows = df[df['generator'] == 'claude']
 
     # H1: instruction-tuned < contrastive (nRFG)
-    inst = gpt[gpt['paradigm'] == 'instruction-tuned']['nRFG'].tolist()
-    cont = gpt[gpt['paradigm'] == 'contrastive']['nRFG'].tolist()
+    inst = claude_rows[claude_rows['paradigm'] == 'instruction-tuned']['nRFG'].tolist()
+    cont = claude_rows[claude_rows['paradigm'] == 'contrastive']['nRFG'].tolist()
     if inst and cont:
         n = min(len(inst), len(cont))
         h1 = bootstrap_significance(cont[:n], inst[:n])
@@ -160,7 +160,7 @@ def hypothesis_summary(df: pd.DataFrame) -> pd.DataFrame:
         })
 
     # H2: HotpotQA has the highest nRFG
-    by_ds = gpt.groupby('dataset')['nRFG'].mean()
+    by_ds = claude_rows.groupby('dataset')['nRFG'].mean()
     if len(by_ds) > 1:
         out.append({
             'hypothesis': 'H2 HotpotQA highest nRFG (multi-hop)',
@@ -171,10 +171,10 @@ def hypothesis_summary(df: pd.DataFrame) -> pd.DataFrame:
 
     # H3: model ranking by nRFG consistent across generators
     llama = df[df['generator'] == 'llama3']
-    shared = sorted(set(gpt['model']) & set(llama['model']))
+    shared = sorted(set(claude_rows['model']) & set(llama['model']))
     if len(shared) >= 3:
         from scipy.stats import spearmanr
-        r_g = gpt[gpt['model'].isin(shared)].groupby('model')['nRFG'].mean()
+        r_g = claude_rows[claude_rows['model'].isin(shared)].groupby('model')['nRFG'].mean()
         r_l = llama[llama['model'].isin(shared)].groupby('model')['nRFG'].mean()
         rho, p = spearmanr(r_g[shared], r_l[shared])
         out.append({
@@ -204,12 +204,12 @@ def hypothesis_summary(df: pd.DataFrame) -> pd.DataFrame:
             })
 
     # H5: re-ranking cuts worst model's RFG by >= 15% relative
-    worst = gpt.groupby('model')['nRFG'].mean().idxmax()
-    base = gpt[gpt['model'] == worst]
+    worst = claude_rows.groupby('model')['nRFG'].mean().idxmax()
+    base = claude_rows[claude_rows['model'] == worst]
     deltas = []
     for ds_name in base['dataset'].unique():
         rr = load_checkpoint(
-            f'reranked_gpt4o_{worst}_{ds_name}_lam{config.LAMBDA_RERANK}')
+            f'reranked_claude_{worst}_{ds_name}_lam{config.LAMBDA_RERANK}')
         if not rr:
             continue
         row = base[base['dataset'] == ds_name].iloc[0]

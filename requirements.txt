@@ -16,9 +16,20 @@ einops                 # required by jina-embeddings-v3
 InstructorEmbedding    # Instructor-XL ([instruction, text] pair encoding)
 
 # Generation
-openai>=1.0
+anthropic>=0.40        # Claude — the closed-source generator (phase C)
+openai>=1.0            # NOT the generator; only text-embedding-3-small,
+                       # which is one of the 7 embedding models under study
 accelerate
-bitsandbytes           # 8-bit Llama-3 on 16GB V100
+# bitsandbytes is NOT needed: the SZTE V100 is 32 GB, so Llama-3-8B runs in
+# fp16. Install it only if you move to a 16 GB card.
+# bitsandbytes
+
+# ── torch on the SZTE V100 (Volta, compute capability 7.0) ──
+# The default PyPI wheel ships kernels for sm_75+ ONLY. On the V100 it
+# imports fine and torch.cuda.is_available() returns True, then every
+# kernel launch dies with "no kernel image is available for execution on
+# the device". Install a build whose torch.cuda.get_arch_list() contains
+# 'sm_70', and verify with a real matmul — not with is_available().
 
 # Faithfulness metrics
 # AlignScore is NOT on PyPI under this name — install from source:

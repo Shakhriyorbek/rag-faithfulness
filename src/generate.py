@@ -1,11 +1,21 @@
 """
 generate.py — Phase C: answer generation.
 
-Generators:
-  - GPT-4o-mini via the OpenAI API (all 7 models × 3 datasets), cost-tracked,
+Generators (paper §4.4):
+  - Claude (config.CLAUDE_MODEL) via the Anthropic API — the closed-source
+    generator, all 7 embedding models × 3 datasets. Cost-tracked,
     incremental checkpoints every 100 queries, resumable mid-dataset.
-  - Llama-3-8B-Instruct on the V100 (validation subset). VRAM is probed at
-    load: <20 GB -> 8-bit quantization (config.LLAMA_FORCE_8BIT overrides).
+  - Llama-3-8B-Instruct on the V100 (validation subset) — the open-source
+    generator. VRAM is probed at load: <20 GB -> 8-bit quantization
+    (config.LLAMA_FORCE_8BIT overrides).
+
+Claude replaced GPT-4o-mini on 2026-07-26; paper §4.4/§5.2 need updating.
+
+Both generators receive the BYTE-IDENTICAL prompt — one user turn carrying
+the full template. That is deliberate: H3 compares faithfulness rankings
+across generators, so any prompt difference would confound the comparison.
+It is why the instruction is not hoisted into Claude's `system` parameter,
+which would otherwise be the idiomatic choice.
 
 Audit fixes:
   C13 — greedy decoding is do_sample=False with NO temperature argument
@@ -38,43 +48,76 @@ def build_prompt(question: str, chunks: List[str]) -> str:
     return RAG_PROMPT_TEMPLATE.format(context=context, question=question)
 
 
-# ── GPT-4o-mini ───────────────────────────────────────────────────
-class Gpt4oMiniGenerator:
-    def __init__(self, model: str = 'gpt-4o-mini'):
-        from openai import OpenAI
-        self.client = OpenAI()  # OPENAI_API_KEY from env, never hardcoded
-        self.model = model
+# ── Claude ────────────────────────────────────────────────────────
+class ClaudeGenerator:
+    """
+    Anthropic Messages API generator.
 
-    def generate(self, question: str, chunks: List[str],
-                 max_retries: int = 3) -> str:
+    Model-specific notes for claude-haiku-4-5:
+      - `temperature=0` is accepted (sampling params are only removed on
+        Opus 4.7+ / Opus 5 / Sonnet 5 / Fable 5), so the paper's
+        temperature-0 protocol carries over unchanged.
+      - `output_config.effort` ERRORS on Haiku 4.5 — never pass it.
+      - `thinking` is omitted, which on this model means no thinking. That
+        is what we want: the experiment measures grounding in retrieved
+        context, not reasoning depth, and it keeps parity with Llama-3.
+    """
+
+    def __init__(self, model: str = None, max_retries: int = 5):
+        import anthropic
+        # Credentials resolve from the environment (ANTHROPIC_API_KEY, or an
+        # `ant auth login` profile). Never hardcoded.
+        self.client = anthropic.Anthropic(max_retries=max_retries)
+        self.model = model or config.CLAUDE_MODEL
+        self._anthropic = anthropic
+
+    def generate(self, question: str, chunks: List[str]) -> str:
+        import anthropic
         prompt = build_prompt(question, chunks)
-        for attempt in range(max_retries):
-            try:
-                resp = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[{'role': 'user', 'content': prompt}],
-                    temperature=0,
-                    max_tokens=256,
-                )
-                cost_tracker.log_chat(resp.usage)
-                return resp.choices[0].message.content.strip()
-            except Exception as e:
-                cost_tracker.log_error()
-                if attempt == max_retries - 1:
-                    return f'[ERROR: {e}]'
-                time.sleep(2 ** attempt)
+        try:
+            resp = self.client.messages.create(
+                model=self.model,
+                max_tokens=256,
+                temperature=0,
+                messages=[{'role': 'user', 'content': prompt}],
+            )
+        except anthropic.APIStatusError as e:
+            cost_tracker.log_error()
+            return f'[ERROR: {type(e).__name__} {e.status_code}: {e.message}]'
+        except anthropic.APIConnectionError as e:
+            cost_tracker.log_error()
+            return f'[ERROR: APIConnectionError: {e}]'
+
+        cost_tracker.log_claude(resp.usage)
+
+        # Claude 4+ can decline; content is then empty or partial. Treat it
+        # as a scored-out row rather than letting content[0] raise.
+        if resp.stop_reason == 'refusal':
+            cost_tracker.log_error()
+            return '[ERROR: refusal]'
+
+        text = ''.join(b.text for b in resp.content if b.type == 'text')
+        return text.strip()
 
 
 def run_phase_c(datasets: Dict, model_names: List[str] = None,
-                budget_limit: float = 15.0):
-    """GPT-4o-mini generation for every model × dataset. Resumable."""
-    gen = Gpt4oMiniGenerator()
+                budget_limit: float = 60.0, project_to: int = None):
+    """
+    Claude generation for every model × dataset. Resumable.
+
+    budget_limit — hard stop. Raises rather than draining the account;
+                   partial checkpoints survive, so raising it resumes.
+    project_to   — if set, extrapolate measured cost to this many queries
+                   (the smoke-test cost probe before committing to a full run).
+    """
+    gen = ClaudeGenerator()
     model_list = [c['name'] for c in config.EMBEDDING_MODELS
                   if not model_names or c['name'] in model_names]
+    n_generated = 0
 
     for model in model_list:
         for ds_name in datasets:
-            ck = f'generated_gpt4o_{model}_{ds_name}'
+            ck = f'generated_claude_{model}_{ds_name}'
             if checkpoint_exists(ck):
                 print(f'  [skip] {ck}')
                 continue
@@ -94,8 +137,10 @@ def run_phase_c(datasets: Dict, model_names: List[str] = None,
                 generations.append({
                     **r,
                     'generated_answer': answer,
-                    'generator': 'gpt4o-mini',
+                    'generator': 'claude',
+                    'generator_model': gen.model,
                 })
+                n_generated += 1
                 if (i + 1) % 100 == 0:
                     save_checkpoint(ck + '_partial', generations)
                     print(f'    {i + 1}/{len(retrievals)} | '
@@ -107,6 +152,11 @@ def run_phase_c(datasets: Dict, model_names: List[str] = None,
                             f'checkpoint saved; raise budget_limit to resume.')
             save_checkpoint(ck, generations)
             print(f'  {model}/{ds_name}: {len(generations)} answers')
+
+    print(cost_tracker.summary())
+    if project_to:
+        print(f'  COST PROBE: {cost_tracker.project(n_generated, project_to)}')
+    print('[phase C] complete')
 
     print(cost_tracker.summary())
     print('[phase C] complete')

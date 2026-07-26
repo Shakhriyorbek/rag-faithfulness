@@ -85,7 +85,11 @@ def main():
                     f'(this is the failure mode audit item B3 guards against)')
     if 'c' in phases:
         from generate import run_phase_c
-        run_phase_c(datasets, models)
+        # On a smoke test, extrapolate measured cost to the full grid
+        # (7 models x 3 datasets x N_QUERIES) before committing to it.
+        project_to = (len(config.EMBEDDING_MODELS) * len(config.DATASETS)
+                      * config.N_QUERIES) if args.smoke_test else None
+        run_phase_c(datasets, models, project_to=project_to)
     if 'llama' in phases:
         from generate import run_phase_llama
         run_phase_llama(datasets)
@@ -102,8 +106,8 @@ def main():
         from rerank import run_rerank_experiment
         from results import assemble_results
         df = assemble_results()
-        gpt = df[df['generator'] == 'gpt4o']
-        worst = gpt.groupby('model')['nRFG'].mean().idxmax()
+        claude_rows = df[df['generator'] == 'claude']
+        worst = claude_rows.groupby('model')['nRFG'].mean().idxmax()
         print(f'worst model by nRFG: {worst}')
         run_rerank_experiment(worst, datasets)
     if 'report' in phases:
@@ -111,9 +115,9 @@ def main():
         from results import (assemble_results, hypothesis_summary,
                              robustness_analysis)
         df = assemble_results(force=True)
-        print('\n=== per-model summary (gpt4o) ===')
-        gpt = df[df['generator'] == 'gpt4o']
-        print(gpt.groupby(['model', 'paradigm'])[
+        print('\n=== per-model summary (claude) ===')
+        claude_rows = df[df['generator'] == 'claude']
+        print(claude_rows.groupby(['model', 'paradigm'])[
             ['NDCG@5', 'faithfulness', 'RFG', 'nRFG']].mean().round(3))
         robustness_analysis(df)
         print('\n=== hypotheses ===')

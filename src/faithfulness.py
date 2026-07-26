@@ -12,7 +12,7 @@ Phase E: AlignScore (optional dependency; install from the AlignScore
          GitHub repo — it is not on PyPI).
 
 Both phases score whichever generator checkpoints exist
-(generated_gpt4o_* and generated_llama3_*).
+(generated_claude_* and generated_llama3_*).
 """
 from typing import Dict, List
 
@@ -22,7 +22,7 @@ import config
 from nli import NLIScorer
 from utils import checkpoint_exists, load_checkpoint, save_checkpoint
 
-GENERATORS = ['gpt4o', 'llama3']
+GENERATORS = ['claude', 'llama3']
 
 
 def _generation_checkpoints(model: str, ds_name: str):

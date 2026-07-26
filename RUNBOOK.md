@@ -88,31 +88,57 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install --upgrade pip
 ```
 
-Install torch first (CUDA build), then the rest:
+> **`python3 -m venv` does not work on gpu1** — `ensurepip` is missing and
+> installing `python3.10-venv` needs sudo. Use `pip install --user` (below),
+> or ask Berend for the package.
 
 ```bash
-pip install torch --index-url https://download.pytorch.org/whl/cu121
-pip install -r requirements.txt
+python3 -m pip install --user -r requirements.txt
 ```
 
-Sanity check before anything else:
+### ⚠️ torch on the V100: `is_available()` is NOT a sufficient check
+
+The V100 is **Volta, compute capability 7.0**. The default PyPI torch wheel
+ships kernels for **sm_75 and up only**. On this GPU it imports fine and
+`torch.cuda.is_available()` returns **`True`** — then the first real kernel
+launch dies with:
+
+```
+CUDA error: no kernel image is available for execution on the device
+```
+
+Verify with an actual matmul, and check that `sm_70` is in the arch list:
 
 ```bash
-python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+python3 -c "import torch; print(torch.cuda.get_arch_list()); x=torch.randn(512,512,device='cuda'); torch.cuda.synchronize(); print('OK', float((x@x).sum()))"
 ```
 
-Must print `True` and the V100 name. If `False`, you installed the CPU wheel —
-reinstall torch from the cu121 index.
+`get_arch_list()` **must contain `sm_70`**. If it doesn't, reinstall against an
+older CUDA index (`--force-reinstall` is required — pip treats `2.13.0+cu130`
+and `2.13.0+cu126` as the same version and will otherwise skip the install):
+
+```bash
+python3 -m pip install --user --force-reinstall torch==2.13.0 --index-url https://download.pytorch.org/whl/cu126
+```
+
+If cu126 still lacks `sm_70`, step down (cu121, then an older torch) until the
+matmul passes. Recent PyTorch releases have been dropping Volta.
 
 ### 3.3 Secrets — never commit these
 
 ```bash
-export OPENAI_API_KEY='sk-...'
-export HF_TOKEN='hf_...'          # needed: Llama-3 is a gated model
+export ANTHROPIC_API_KEY='sk-ant-...'   # generator (phase c)
+export OPENAI_API_KEY='sk-...'          # text-embedding-3-small ONLY
+export HF_TOKEN='hf_...'                # Llama-3 is a gated model
 ```
 
 Put them in `~/.bashrc` on gpu1 so tmux panes inherit them. `HF_TOKEN` also
 requires accepting the Llama-3 license once on the HuggingFace website.
+
+**Both API keys are needed, and they are not interchangeable.** Claude is the
+generator; `text-embedding-3-small` is one of the seven *embedding models under
+study* and Anthropic has no embeddings API. Dropping the OpenAI key means
+dropping to six models and changing the paper's counts.
 
 ---
 
@@ -183,14 +209,33 @@ three models.
   Berend before burning days on the full grid. Single-hop NQ is also the least
   likely dataset to show the effect, so HotpotQA is the natural next probe.
 
-### Rung 3 — Full grid, GPT-4o-mini (~12–20 h, ~$5–6)
+### Rung 3 — Full grid, Claude (~12–20 h, **~$38 est.**)
+
+**Read the cost probe from Rung 1 before starting this.** `--smoke-test`
+extrapolates measured cost to the full grid and prints:
+
+```
+COST PROBE: measured $0.00XXXX/query over 150 queries -> $XX.XX projected for 21,000
+```
+
+Trust that number over the estimate — it is measured on your real chunk
+lengths. Then:
 
 ```bash
 python src/run_pipeline.py --full
 ```
-7 models × 3 datasets. Watch the running cost line; the budget cap raises a
-`RuntimeError` at $15 rather than draining the account. Partial checkpoints
-survive it — raise `budget_limit` and rerun to resume.
+
+7 models × 3 datasets. The budget cap raises a `RuntimeError` at $60 rather
+than draining the account; partial checkpoints survive, so raise
+`budget_limit` and rerun to resume.
+
+**Generator note:** Claude (`claude-haiku-4-5`) replaced GPT-4o-mini on
+2026-07-26. Haiku 4.5 was chosen as the closest analog in capability tier and
+cost, preserving the paper's design intent — a small, widely-deployed
+closed-source model. A frontier model would likely be *more* faithful across
+the board and could compress the very RFG differences the paper measures.
+**Paper §4.4 and §5.2 must be updated**, and Berend should hear about the
+change before submission.
 
 ### Rung 4 — The analyses that answer the supervisor (~4–6 h)
 
@@ -235,7 +280,11 @@ Two conventions to hold onto when you write these up:
 | Everything times out at once | SSH rate limit. Wait ~15 min. Use ControlMaster, don't loop |
 | `ping` fails | Normal, ICMP blocked. Meaningless signal |
 | `ssh szte-gpu` hangs at banner exchange | ProxyJump flaking. Two-step: `ssh szte-hop`, then `ssh gpu1` |
-| `torch.cuda.is_available()` is `False` | CPU wheel installed. Reinstall from the cu121 index |
+| `torch.cuda.is_available()` is `False` | CPU wheel installed. Reinstall from a CUDA index |
+| `no kernel image is available for execution on the device` | torch wheel lacks V100 `sm_70` kernels — see §3.2. `is_available()` returning `True` does **not** rule this out |
+| `python3 -m venv` fails on `ensurepip` | `python3.10-venv` not installed (needs sudo). Use `pip install --user` |
+| Anthropic 400 mentioning `effort` | `output_config.effort` errors on Haiku 4.5 — don't pass it |
+| Generation cost climbing faster than projected | Check the probe's assumptions: longer chunks mean more input tokens. Lower `budget_limit` and re-probe |
 | CUDA OOM on Llama-3 | Shouldn't happen at 32 GB. Check for another process with `nvidia-smi`; else set `LLAMA_FORCE_8BIT = True` in `config.py` |
 | Llama-3 download 401/403 | `HF_TOKEN` unset, or the gated license was never accepted |
 | Assertion `NDCG@5 == 0` | The B3 qrels/ID mismatch is back. Do not "fix" by loosening the assert — it exists to catch exactly this |

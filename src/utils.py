@@ -58,28 +58,47 @@ def free_memory():
 # ── API cost tracking ─────────────────────────────────────────────
 class CostTracker:
     """
-    Running total for ALL OpenAI usage — chat AND embeddings.
+    Running total across BOTH vendors:
+      - Anthropic (Claude) for generation, phase C
+      - OpenAI for text-embedding-3-small, one of the 7 embedding models
+
     The original notebook only tracked chat; embedding an entire corpus
     through the API was invisible to the budget (audit item C12).
     """
-    # $/1M tokens (verify against current pricing before a full run)
-    CHAT_INPUT_PER_1M = 0.15    # gpt-4o-mini input
-    CHAT_OUTPUT_PER_1M = 0.60   # gpt-4o-mini output
-    EMBED_PER_1M = 0.02         # text-embedding-3-small
+    # $/1M tokens — verify against current pricing before a full run.
+    # claude-haiku-4-5
+    CHAT_INPUT_PER_1M = 1.00
+    CHAT_OUTPUT_PER_1M = 5.00
+    # Cache writes cost 1.25x input, reads 0.1x. Each RAG query has a unique
+    # retrieved context and the shared prefix is under the cache minimum, so
+    # these should stay at zero — tracked to make it obvious if they don't.
+    CACHE_WRITE_PER_1M = 1.25
+    CACHE_READ_PER_1M = 0.10
+    # text-embedding-3-small
+    EMBED_PER_1M = 0.02
 
     def __init__(self):
         self.chat_input_tokens = 0
         self.chat_output_tokens = 0
+        self.cache_write_tokens = 0
+        self.cache_read_tokens = 0
         self.embed_tokens = 0
         self.requests = 0
         self.errors = 0
 
-    def log_chat(self, usage):
-        self.chat_input_tokens += usage.prompt_tokens
-        self.chat_output_tokens += usage.completion_tokens
+    def log_claude(self, usage):
+        """Log an Anthropic Messages API `usage` object."""
+        self.chat_input_tokens += usage.input_tokens
+        self.chat_output_tokens += usage.output_tokens
+        # These fields exist on the usage object but are often None/absent.
+        self.cache_write_tokens += getattr(
+            usage, 'cache_creation_input_tokens', 0) or 0
+        self.cache_read_tokens += getattr(
+            usage, 'cache_read_input_tokens', 0) or 0
         self.requests += 1
 
     def log_embedding(self, usage):
+        """Log an OpenAI embeddings `usage` object."""
         self.embed_tokens += usage.total_tokens
         self.requests += 1
 
@@ -87,21 +106,43 @@ class CostTracker:
         self.errors += 1
 
     @property
-    def cost(self) -> float:
+    def generation_cost(self) -> float:
         return (
             self.chat_input_tokens / 1e6 * self.CHAT_INPUT_PER_1M
             + self.chat_output_tokens / 1e6 * self.CHAT_OUTPUT_PER_1M
-            + self.embed_tokens / 1e6 * self.EMBED_PER_1M
+            + self.cache_write_tokens / 1e6 * self.CACHE_WRITE_PER_1M
+            + self.cache_read_tokens / 1e6 * self.CACHE_READ_PER_1M
         )
+
+    @property
+    def embedding_cost(self) -> float:
+        return self.embed_tokens / 1e6 * self.EMBED_PER_1M
+
+    @property
+    def cost(self) -> float:
+        return self.generation_cost + self.embedding_cost
+
+    def project(self, done: int, total: int) -> str:
+        """Extrapolate the measured generation cost to a larger run."""
+        if done <= 0:
+            return 'no generations yet — nothing to project'
+        per_query = self.generation_cost / done
+        return (f'measured ${per_query:.6f}/query over {done:,} queries '
+                f'-> ${per_query * total:,.2f} projected for {total:,}')
 
     def summary(self) -> str:
         return (
             f'API cost summary:\n'
-            f'  Requests:          {self.requests:,}\n'
-            f'  Chat in/out toks:  {self.chat_input_tokens:,} / {self.chat_output_tokens:,}\n'
-            f'  Embedding tokens:  {self.embed_tokens:,}\n'
-            f'  Errors:            {self.errors}\n'
-            f'  Total cost:        ${self.cost:.4f}'
+            f'  Requests:            {self.requests:,}\n'
+            f'  Claude in/out toks:  {self.chat_input_tokens:,} / '
+            f'{self.chat_output_tokens:,}\n'
+            f'  Claude cache w/r:    {self.cache_write_tokens:,} / '
+            f'{self.cache_read_tokens:,}\n'
+            f'  Embedding tokens:    {self.embed_tokens:,}\n'
+            f'  Errors:              {self.errors}\n'
+            f'  Generation cost:     ${self.generation_cost:.4f}\n'
+            f'  Embedding cost:      ${self.embedding_cost:.4f}\n'
+            f'  Total cost:          ${self.cost:.4f}'
         )
 
 

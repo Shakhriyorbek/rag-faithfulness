@@ -34,9 +34,9 @@ SHORT_NAMES = {'all-mpnet-base-v2': 'SBERT',
 
 
 def _gpt_rows(df: pd.DataFrame) -> pd.DataFrame:
-    sub = df[df['generator'] == 'gpt4o']
+    sub = df[df['generator'] == 'claude']
     if sub.empty:
-        raise RuntimeError('No gpt4o rows in results — run the pipeline first.')
+        raise RuntimeError('No claude rows in results — run the pipeline first.')
     return sub
 
 
