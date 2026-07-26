@@ -1,40 +1,54 @@
 # ============================================================
 # SSH config for SZTE RGAI server access
-# Place this file at:  C:\Users\ShakhriyorbekBoltaba\.ssh\config
-# (no file extension — just "config")
+# Place at:  Windows  C:\Users\<you>\.ssh\config
+#            Linux/macOS  ~/.ssh/config
 #
-# Verified 2026-07-26: key auth to the hop works, gpu1 reachable
-# behind it (hostnames: hop = "nlp", gpu1 = "nlp-large-1").
+# Then a single command gets you a GPU shell:   ssh szte-gpu
+#
+# Verified 2026-07-26: key auth to the hop works; gpu1 = 192.168.0.206.
 # ============================================================
 
-# ── IMPORTANT: the gateway rate-limits SSH ──
-# Roughly 6 connections in a few minutes got the source IP temporarily
-# blocked (TCP 22 went from open to refused). ControlMaster below keeps
-# ONE real TCP connection open and multiplexes every later ssh/scp over
-# it, so repeated commands cost nothing. Do not script rapid reconnects.
-Host szte-*
-    ControlMaster auto
-    ControlPath ~/.ssh/cm-%r@%h:%p
-    ControlPersist 10m
-    ServerAliveInterval 60
-    ServerAliveCountMax 3
-
-# Hop / entry instance (jump host)
+# ── Hop / entry instance (jump host) ──
+# Berend: "not primarily meant for conducting experiments" — it is an
+# entry point only. Never compute here.
 Host szte-hop
     HostName 193.225.250.29
     User sboltabaev
     IdentityFile ~/.ssh/id_ed25519
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
 
-# GPU server (reached THROUGH the hop instance)
-# After setup, you connect with a single command:  ssh szte-gpu
+# ── GPU server, reached THROUGH the hop:  ssh szte-gpu ──
+#
+# HostName MUST be the private IP, NOT the alias "gpu1".
+#
+# Berend defined the alias only inside the HOP's own ~/.ssh/config:
+#     host gpu1
+#       hostname 192.168.0.206
+# So `ssh gpu1` works once you are already on the hop, because SSH reads
+# that config. But ProxyJump connects with `ssh -W gpu1:22`, which does a
+# literal DNS lookup and ignores Host aliases — giving:
+#     channel 0: open failed: connect failed: Temporary failure in name resolution
+# 192.168.0.206 is private and routable only from the hop, which is
+# precisely why the jump host exists.
 Host szte-gpu
-    HostName gpu1
+    HostName 192.168.0.206
     User sboltabaev
     IdentityFile ~/.ssh/id_ed25519
     ProxyJump szte-hop
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
 
-# NOTE: ProxyJump failed at least once from Windows/Git Bash where the
-# manual two-step below succeeded. If `ssh szte-gpu` hangs at "banner
-# exchange", fall back to:
-#     ssh szte-hop
-#     ssh gpu1
+# ── Connection multiplexing (Linux/macOS ONLY — do NOT use on Windows) ──
+# The gateway rate-limits SSH: roughly 6 connections in a few minutes got
+# the source IP temporarily blocked (TCP 22 went from open to refused).
+# ControlMaster keeps ONE real TCP connection and multiplexes the rest, so
+# repeated ssh/scp calls cost nothing.
+#
+# It needs Unix domain sockets and is NOT supported by Windows OpenSSH —
+# enabling it there makes every connection fail. Uncomment on Linux/macOS:
+#
+# Host szte-*
+#     ControlMaster auto
+#     ControlPath ~/.ssh/cm-%r@%h:%p
+#     ControlPersist 10m
