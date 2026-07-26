@@ -2,15 +2,28 @@
 # SSH config for SZTE RGAI server access
 # Place this file at:  C:\Users\ShakhriyorbekBoltaba\.ssh\config
 # (no file extension — just "config")
+#
+# Verified 2026-07-26: key auth to the hop works, gpu1 reachable
+# behind it (hostnames: hop = "nlp", gpu1 = "nlp-large-1").
 # ============================================================
+
+# ── IMPORTANT: the gateway rate-limits SSH ──
+# Roughly 6 connections in a few minutes got the source IP temporarily
+# blocked (TCP 22 went from open to refused). ControlMaster below keeps
+# ONE real TCP connection open and multiplexes every later ssh/scp over
+# it, so repeated commands cost nothing. Do not script rapid reconnects.
+Host szte-*
+    ControlMaster auto
+    ControlPath ~/.ssh/cm-%r@%h:%p
+    ControlPersist 10m
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
 
 # Hop / entry instance (jump host)
 Host szte-hop
     HostName 193.225.250.29
     User sboltabaev
     IdentityFile ~/.ssh/id_ed25519
-    ServerAliveInterval 60
-    ServerAliveCountMax 3
 
 # GPU server (reached THROUGH the hop instance)
 # After setup, you connect with a single command:  ssh szte-gpu
@@ -19,5 +32,9 @@ Host szte-gpu
     User sboltabaev
     IdentityFile ~/.ssh/id_ed25519
     ProxyJump szte-hop
-    ServerAliveInterval 60
-    ServerAliveCountMax 3
+
+# NOTE: ProxyJump failed at least once from Windows/Git Bash where the
+# manual two-step below succeeded. If `ssh szte-gpu` hangs at "banner
+# exchange", fall back to:
+#     ssh szte-hop
+#     ssh gpu1

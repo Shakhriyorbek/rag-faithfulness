@@ -59,11 +59,29 @@ laptop ──ssh──> hop (193.225.250.29) ──ssh gpu1──> gpu1 (NVIDIA 
 ```
 
 - SSH config at `server/ssh_config` → copy to `~/.ssh/config`, then `ssh szte-gpu` connects in one hop
-- **UNKNOWN: whether the V100 is 16GB or 32GB.** This decides if Llama-3-8B needs 8-bit quantization. Run `server/first_login_checks.sh` on gpu1 to find out.
-- **UNKNOWN: whether gpu1 has direct internet.** Some university GPU nodes are firewalled; if so, HuggingFace models must be downloaded via the hop and copied over.
 - Server maintenance outage was expected during the first week of access (early July 2026).
 
 **Always use `tmux` for long jobs** — SSH dies when the laptop sleeps and would kill a multi-hour run.
+
+### Verified server inventory (2026-07-26) — both former UNKNOWNs resolved
+
+| Fact | Value |
+|------|-------|
+| hop hostname | `nlp` (193.225.250.29), key auth with `~/.ssh/id_ed25519` works |
+| gpu1 hostname | `nlp-large-1` |
+| **GPU** | **`GRID V100DX-32C`, 32768 MiB (~30.5 GB free), driver 580.167.08** |
+| **→ Llama-3-8B** | **fp16 fits — 8-bit NOT needed.** `bitsandbytes` is now an optional dep |
+| **Internet from gpu1** | **YES** — `huggingface.co` and `pypi.org` both return HTTP/2 200. Models download directly; no staging via the hop |
+| CPU / RAM / disk | 16 cores / 62 GB / 284 GB free on `/` |
+| Python | 3.10.12 at `/usr/bin/python3`, **no conda**, **torch not installed** |
+| tmux / git | both present |
+
+**Gotchas learned the hard way:**
+- **ICMP is blocked** — `ping` always fails, this says nothing about reachability. Test with TCP 22 instead.
+- **The gateway rate-limits SSH.** ~6 connections in a few minutes got the IP temporarily blocked (TCP 22 went from open to refused). Use **one** long-lived session plus `ControlMaster` multiplexing (already in `server/ssh_config`); never script rapid reconnects.
+- `-J`/ProxyJump from this Windows box failed at least once where nested `ssh hop → ssh gpu1` succeeded. If `ssh szte-gpu` misbehaves, fall back to two hops.
+- Local Git Bash has `scp` but **no `rsync`**.
+- UNVERIFIED (rate-limited before testing): whether `$HOME` is shared between hop and gpu1. If it is, `scp` to the hop is enough. Check with `ssh hop 'touch ~/x' && ssh gpu1 'ls ~/x'`.
 
 ---
 
