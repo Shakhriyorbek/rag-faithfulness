@@ -114,6 +114,14 @@ def run_phase_c(datasets: Dict, model_names: List[str] = None,
     model_list = [c['name'] for c in config.EMBEDDING_MODELS
                   if not model_names or c['name'] in model_names]
     n_generated = 0
+    # Fail-fast state. A bad API key produces an error on EVERY call; without
+    # this the phase "succeeds" with 100% errors, $0.00 cost and a saved
+    # checkpoint full of '[ERROR: ...]' strings — which then makes a rerun
+    # skip the work entirely. At full scale that is 21,000 silent failures.
+    consecutive_errors = 0
+    first_error = None
+    MAX_CONSECUTIVE_ERRORS = 5
+    MAX_ERROR_RATE = 0.20
 
     for model in model_list:
         for ds_name in datasets:
@@ -141,6 +149,23 @@ def run_phase_c(datasets: Dict, model_names: List[str] = None,
                     'generator_model': gen.model,
                 })
                 n_generated += 1
+
+                if answer.startswith('[ERROR'):
+                    consecutive_errors += 1
+                    if first_error is None:
+                        first_error = answer
+                        print(f'    !! first API error: {answer[:300]}')
+                    if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                        raise RuntimeError(
+                            f'{consecutive_errors} consecutive API failures — '
+                            f'aborting before burning the full run.\n'
+                            f'First error: {first_error}\n'
+                            f'Check ANTHROPIC_API_KEY (a valid key is ~100-110 '
+                            f'chars; a 401 usually means it is wrong, truncated '
+                            f'or has stray characters).')
+                else:
+                    consecutive_errors = 0
+
                 if (i + 1) % 100 == 0:
                     save_checkpoint(ck + '_partial', generations)
                     print(f'    {i + 1}/{len(retrievals)} | '
@@ -150,15 +175,27 @@ def run_phase_c(datasets: Dict, model_names: List[str] = None,
                             f'Cost ${cost_tracker.cost:.2f} exceeded the '
                             f'${budget_limit} budget — stopping. Partial '
                             f'checkpoint saved; raise budget_limit to resume.')
+            # Never persist a checkpoint that is mostly errors: its existence
+            # makes every future run skip this model/dataset silently.
+            n_err = sum(1 for g in generations
+                        if g['generated_answer'].startswith('[ERROR'))
+            rate = n_err / max(1, len(generations))
+            if rate > MAX_ERROR_RATE:
+                raise RuntimeError(
+                    f'{model}/{ds_name}: {n_err}/{len(generations)} generations '
+                    f'failed ({rate:.0%}) — refusing to save a poisoned '
+                    f'checkpoint.\nFirst error: {first_error}')
             save_checkpoint(ck, generations)
-            print(f'  {model}/{ds_name}: {len(generations)} answers')
+            print(f'  {model}/{ds_name}: {len(generations)} answers'
+                  + (f' ({n_err} errors)' if n_err else ''))
 
     print(cost_tracker.summary())
     if project_to:
         print(f'  COST PROBE: {cost_tracker.project(n_generated, project_to)}')
-    print('[phase C] complete')
-
-    print(cost_tracker.summary())
+    if cost_tracker.requests == 0 and n_generated > 0:
+        raise RuntimeError(
+            'Phase C made ZERO successful API requests. Nothing was generated; '
+            'the cost probe above is meaningless. Check ANTHROPIC_API_KEY.')
     print('[phase C] complete')
 
 

@@ -192,10 +192,36 @@ B3  [NQ] all-mpnet-base-v2 : NDCG@5 0.9483  Recall@5 0.9400  MRR@5 0.980
 - The model spread (0.908–0.956) is small — which *is* the paper's premise
   (near-identical retrieval quality), but it is not yet meaningful at N=50.
 
+### First end-to-end RFG — 2026-07-26 (smoke, N=50, NQ, Claude Haiku 4.5)
+
+Phases C+D ran clean: **150 requests, 0 errors, $0.2782**.
+**Cost probe: $0.001855/query → $38.95 projected for the full 21,000.**
+(Measured 1,465 input tok/query vs the 1,400 assumed — the ~$38 budget holds.)
+
+| Model | Paradigm | NDCG@5 | Faith (nli_max) | RFG | nRFG |
+|---|---|---|---|---|---|
+| BGE-M3 | multilingual | 0.9076 | 0.7810 | 0.1266 | **0.1395** |
+| all-mpnet-base-v2 | contrastive | 0.9483 | 0.7324 | 0.2159 | **0.2277** |
+| E5-large-instruct | instruction-tuned | 0.9564 | 0.6906 | 0.2658 | **0.2779** |
+
+**Retrieval and faithfulness rankings are INVERTED** — the best retriever is
+the least faithful. That is the paper's central premise showing up in real
+data for the first time.
+
+⚠️ **NOT EVIDENCE YET.** n=50, one dataset, one generator, no error bars, no
+significance test, and a trivially easy 152-chunk corpus. Do not show these
+to Berend as a finding. The next real gate is Rung 2 (3 models × NQ, N=1000,
+~$5.60, ~2-4 h).
+
+⚠️ **H1 is currently contradicted.** H1 predicts instruction-tuned < contrastive
+in RFG; here E5-large-instruct (instruction-tuned, nRFG 0.2779) is *worse*
+than all-mpnet-base-v2 (contrastive, 0.2277). If this survives to N=1000 with
+significance, **report H1 as failed** — §9 says Berend values that over an
+inflated claim.
+
 **Still open:**
-9. ❌ **Run the experiments** — phases A+B done at smoke scale; C (Claude
-   generation, needs `ANTHROPIC_API_KEY`), D (NLI faithfulness), ESA,
-   rerank, and the full 7×3 grid all remain
+9. ❌ **Run the experiments** — smoke test passes end to end; Rung 2 (3×NQ at
+   N=1000), then ESA, rerank, Llama-3, AlignScore, and the full 7×3 grid
 10. ❌ **Paper update** — replace every simulated number with real results; rewrite §6 from "Expected Results" (H1–H5) into actual Results + Discussion, reporting honestly which hypotheses failed; fix ref [8] (jina v3, see §2); resolve §4.5.2 "cross-attention" wording (Llama-3 is decoder-only — self-attention over context tokens, and no code implements this analysis yet)
 
 ---
