@@ -167,8 +167,33 @@ The HuggingFace dataset APIs do not match the naive assumptions the original cod
 8. ✅ **`src/figures.py`** + **`src/results.py`** — Fig. 1–4 (incl. 9-variant robustness heatmap), nRFG-primary assembly, bootstrap H1–H5 summary
    - supporting: `src/utils.py` (checkpoints, seeding, unified cost tracker), `src/nli.py` (config-resolved entailment index)
 
+### First real run on gpu1 — 2026-07-26 (smoke test, N=50, NQ, 3 models)
+
+**Phases A+B PASSED in 1m51s.** B1 and B3 both verified on real hardware:
+
+```
+B1  labels: {0: contradiction, 1: entailment, 2: neutral} -> index 1
+    entail 0.9970 / contra 0.0000
+
+B3  [NQ] all-mpnet-base-v2 : NDCG@5 0.9483  Recall@5 0.9400  MRR@5 0.980
+    [NQ] BGE-M3            : NDCG@5 0.9076  Recall@5 0.8950  MRR@5 0.984
+    [NQ] E5-large-instruct : NDCG@5 0.9564  Recall@5 0.9667  MRR@5 0.970
+```
+
+**Read these numbers with two caveats:**
+- At N=50 the NQ corpus is only 50 docs / 152 chunks, so retrieval is easy
+  and NDCG is inflated. **Expect it to drop at N=1000** (1000 docs). That is
+  correct behaviour, not a regression.
+- The B4 fix is confirmed working: each query now competes against 49
+  distractor documents. Before the fix the index held only the query's own
+  gold context, which would have made retrieval trivially perfect.
+- The model spread (0.908–0.956) is small — which *is* the paper's premise
+  (near-identical retrieval quality), but it is not yet meaningful at N=50.
+
 **Still open:**
-9. ❌ **Run the experiments** (smoke test → reduced 3×NQ → full 7×3×2)
+9. ❌ **Run the experiments** — phases A+B done at smoke scale; C (Claude
+   generation, needs `ANTHROPIC_API_KEY`), D (NLI faithfulness), ESA,
+   rerank, and the full 7×3 grid all remain
 10. ❌ **Paper update** — replace every simulated number with real results; rewrite §6 from "Expected Results" (H1–H5) into actual Results + Discussion, reporting honestly which hypotheses failed; fix ref [8] (jina v3, see §2); resolve §4.5.2 "cross-attention" wording (Llama-3 is decoder-only — self-attention over context tokens, and no code implements this analysis yet)
 
 ---
