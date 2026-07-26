@@ -12,9 +12,19 @@ __pycache__/
 venv/
 ragfaith_env/
 
-# Secrets — never commit API keys
+# Secrets — never commit API keys.
+# Deliberately broad: a key pasted into an ad-hoc filename is the common
+# accident, and `.env` + `*.key` alone did not cover key.txt.
 .env
+.env.*
 *.key
+*.pem
+key*.txt
+*key.txt
+*secret*
+*token*
+.rag_env
+credentials*
 
 # OS
 .DS_Store
