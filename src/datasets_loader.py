@@ -24,10 +24,35 @@ import config
 from utils import load_checkpoint, save_checkpoint
 
 
+# Canonical namespaced repo ids. Bare ids like 'natural_questions' only
+# resolve via a 307 redirect, and huggingface_hub >= the 2026 releases
+# validates the URI shape BEFORE following it:
+#   HfUriError: Repository id must be 'namespace/name', got 'natural_questions'
+# The bare id is kept as a fallback for older `datasets` installs.
+HF_REPO_IDS = {
+    'NQ': ['google-research-datasets/natural_questions', 'natural_questions'],
+    'HotpotQA': ['hotpotqa/hotpot_qa', 'hotpot_qa'],
+    'QASPER': ['allenai/qasper'],
+}
+
+
 def _load_dataset(*args, **kwargs):
     """Lazy import so the dataclasses stay usable without `datasets`."""
     from datasets import load_dataset
     return load_dataset(*args, **kwargs)
+
+
+def _load_first_available(candidates, *args, **kwargs):
+    """Try each repo id in turn; raise the last error if all fail."""
+    last = None
+    for repo_id in candidates:
+        try:
+            return _load_dataset(repo_id, *args, **kwargs)
+        except Exception as e:  # noqa: BLE001 - report the final failure
+            print(f'  [{repo_id}] failed: {type(e).__name__}: {e}')
+            last = e
+    raise RuntimeError(
+        f'none of {candidates} could be loaded; last error: {last}')
 
 
 @dataclass
@@ -65,7 +90,8 @@ def load_nq(n: int) -> LoadedDataset:
         return cached
 
     print('Loading Natural Questions...')
-    ds = _load_dataset('natural_questions', split='validation', streaming=True)
+    ds = _load_first_available(HF_REPO_IDS['NQ'], split='validation',
+                               streaming=True)
     samples, documents = [], []
     for item in ds:
         if len(samples) >= n:
@@ -112,8 +138,8 @@ def load_hotpotqa(n: int) -> LoadedDataset:
         return cached
 
     print('Loading HotpotQA...')
-    ds = _load_dataset('hotpot_qa', 'distractor', split='validation',
-                      streaming=True)
+    ds = _load_first_available(HF_REPO_IDS['HotpotQA'], 'distractor',
+                               split='validation', streaming=True)
     samples, documents = [], []
     for item in ds:
         if len(samples) >= n:

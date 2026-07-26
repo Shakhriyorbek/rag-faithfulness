@@ -59,7 +59,9 @@ laptop ──ssh──> hop (193.225.250.29) ──ssh gpu1──> gpu1 (NVIDIA 
 ```
 
 - SSH config at `server/ssh_config` → copy to `~/.ssh/config`, then `ssh szte-gpu` connects in one hop
-- Server maintenance outage was expected during the first week of access (early July 2026).
+- **Access granted by Berend on 2026-07-02.** His maintenance-outage window ("during the next week", ~Jul 2–9) **has passed** — it is no longer a blocker. The hop reported 12 days uptime on 2026-07-26, i.e. stable since ~Jul 14.
+- Berend's instruction: the hop is an **entry point only**, "not primarily meant for conducting experiments". Never compute there — jump straight to gpu1.
+- The authorized key is `ssh-ed25519 AAAAC3...t/T0 shakhriyorbekboltabaev@gmail.com`, which matches the local `~/.ssh/id_ed25519` (verified 2026-07-26).
 
 **Always use `tmux` for long jobs** — SSH dies when the laptop sleeps and would kill a multi-hour run.
 
