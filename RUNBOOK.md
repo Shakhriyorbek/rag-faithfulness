@@ -300,7 +300,60 @@ python tests/test_local_smoke.py
 
 ---
 
-## 8. Still open after the experiments run
+## 8. Moving to a new machine
+
+### ⚠️ The one thing you cannot regenerate: your SSH private key
+
+`~/.ssh/id_ed25519` is the key **Berend authorized by hand** on the hop
+(`ssh-ed25519 AAAAC3...t/T0`). It is deliberately not in git. Lose it and you
+lose all server access until he authorizes a replacement — which means waiting
+on a busy person.
+
+Copy **`~/.ssh/id_ed25519`** and **`~/.ssh/id_ed25519.pub`** to the new machine
+by hand (encrypted USB, password manager, or a secure transfer). Then:
+
+```bash
+chmod 600 ~/.ssh/id_ed25519
+```
+
+Windows: the file must not be world-readable, or SSH refuses it. If it
+complains, fix inheritance via *Properties → Security → Advanced → Disable
+inheritance*, leaving only your own account.
+
+### Getting the repo
+
+Two copies exist. Either works:
+
+```bash
+# From the bundle you carried across
+git clone rag-faithfulness-2026-07-26.bundle rag-faithfulness
+
+# Or straight from gpu1 (needs the SSH key first)
+ssh szte-hop
+git clone ~/rag-faithfulness.git       # on the hop, or scp it down
+```
+
+A bare repo also lives at `gpu1:~/rag-faithfulness.git` and can serve as a
+real `git remote` once your laptop key is authorized on gpu1 (see §4).
+
+### Then
+
+```bash
+cp server/ssh_config ~/.ssh/config     # edit per §3.1 — Windows must NOT use ControlMaster
+ssh szte-gpu-shell                     # verify access
+```
+
+### What you do NOT need to move
+
+- **`checkpoints/`** — all live on gpu1 under `~/rag_faithfulness/`, along with
+  the installed Python environment. Nothing is recomputed.
+- **`key.txt` / your API key** — rotate it instead. Any key that has been in a
+  chat window, a shell history, or a plaintext file on shared infrastructure
+  should be considered public.
+
+---
+
+## 9. Still open after the experiments run
 
 1. **Paper §6** — rewrite "Expected Results / H1–H5" into real Results +
    Discussion.
