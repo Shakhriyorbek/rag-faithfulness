@@ -36,10 +36,27 @@ HF_REPO_IDS = {
 }
 
 
+# Bump whenever the corpus, gold provenance or relevance definition changes.
+# It is part of every dataset/chunk/qrels checkpoint name, so a change cannot
+# silently reuse a cache built under the old semantics — which would be an
+# invisible correctness bug, not a stale-file annoyance.
+#   v1  original loaders
+#   v2  B6: NQ context centred on the answer span; NQ relevance is
+#       answer-bearing rather than document-level (2026-08-13)
+CORPUS_VERSION = 'v2'
+
+
 def _load_dataset(*args, **kwargs):
     """Lazy import so the dataclasses stay usable without `datasets`."""
     from datasets import load_dataset
     return load_dataset(*args, **kwargs)
+
+
+def _norm_contains(haystack: str, needle: str) -> bool:
+    """Whitespace-normalized, case-insensitive substring test."""
+    h = ' '.join((haystack or '').split()).lower()
+    ne = ' '.join((needle or '').split()).lower()
+    return bool(ne) and ne in h
 
 
 def _load_first_available(candidates, *args, **kwargs):
@@ -91,9 +108,34 @@ class LoadedDataset:
     documents: List[Document]
 
 
+NQ_CONTEXT_TOKENS = 500
+
+
 def load_nq(n: int) -> LoadedDataset:
-    """Natural Questions — single-hop factoid QA."""
-    cached = load_checkpoint(f'dataset_nq_{n}')
+    """
+    Natural Questions — single-hop factoid QA.
+
+    ⚠️ B6 fix (2026-08-13, measured on the pilot). This loader used to keep the
+    FIRST 500 non-HTML tokens of the document. On the 50-query pilot the short
+    answer fell outside that window for **17 of 50 queries (34%)** — the answer
+    was not in the corpus at all, so no retriever could ever surface it. Yet
+    the qrels still marked chunks of that document relevant, so NDCG@5 reported
+    ~0.95 and the generator, correctly, answered "I cannot answer based on the
+    provided context".
+
+    That combination is poison for this paper specifically: it manufactures
+    "retrieval succeeded but the answer was wrong" rows, which is the exact
+    cell the central claim rests on. It would have looked like overwhelming
+    evidence that good retrieval is not sufficient, and it would have been an
+    artifact of the loader.
+
+    The window is now CENTRED on the annotated answer span, so a sampled
+    document contains its own answer by construction. NQ gives start_token and
+    end_token indices into the FULL token list, so they have to be remapped
+    through the HTML filter before use.
+    """
+    ck = f'dataset_nq_{n}_{CORPUS_VERSION}'
+    cached = load_checkpoint(ck)
     if cached:
         return cached
 
@@ -101,22 +143,36 @@ def load_nq(n: int) -> LoadedDataset:
     ds = _load_first_available(HF_REPO_IDS['NQ'], split='validation',
                                streaming=True)
     samples, documents = [], []
+    n_recentred = 0
     for item in ds:
         if len(samples) >= n:
             break
         # §7 fix: short_answers fields are lists, take text[0] directly
-        answer_text = None
+        answer_text, ans_start = None, None
         for sa in item['annotations']['short_answers']:
             if sa['text']:
                 answer_text = sa['text'][0]
+                ans_start = sa['start_token'][0] if sa.get('start_token') else None
                 break
         if not answer_text:
             continue
-        # §7 fix: drop HTML tokens
+
+        # §7 fix: drop HTML tokens, but keep each survivor's ORIGINAL index so
+        # the answer's start_token can be located in the filtered sequence.
         tokens = item['document']['tokens']
-        text_tokens = [t for t, h in zip(tokens['token'], tokens['is_html'])
-                       if not h]
-        context = ' '.join(text_tokens[:500])
+        kept = [(i, t) for i, (t, h)
+                in enumerate(zip(tokens['token'], tokens['is_html'])) if not h]
+        text_tokens = [t for _, t in kept]
+
+        # B6: centre the window on the answer instead of taking the head.
+        start = 0
+        if ans_start is not None:
+            pos = next((j for j, (orig, _) in enumerate(kept)
+                        if orig >= ans_start), None)
+            if pos is not None and pos >= NQ_CONTEXT_TOKENS:
+                start = max(0, pos - NQ_CONTEXT_TOKENS // 2)
+                n_recentred += 1
+        context = ' '.join(text_tokens[start:start + NQ_CONTEXT_TOKENS])
 
         qid = f'nq_{len(samples)}'
         samples.append(QASample(
@@ -127,21 +183,34 @@ def load_nq(n: int) -> LoadedDataset:
             dataset='NQ',
         ))
         # B4 fix: every sampled context joins one shared corpus, so each
-        # query retrieves against 999 distractor documents, not zero.
+        # query retrieves against n-1 distractor documents, not zero.
+        # B6: relevance is answer-bearing, matching how HotpotQA already works
+        # (gold_sentences) — a chunk of the gold document counts as relevant
+        # only if it actually carries the answer. Without this, `hit` in the
+        # necessary/sufficient grid means "right document" rather than "the
+        # model was shown the answer", and the grid measures the wrong thing.
         documents.append(Document(
             doc_id=f'{qid}_doc',
             text=context,
             gold_for={qid},
+            gold_sentences={qid: [answer_text]},
         ))
+    n_missing = sum(1 for s in samples
+                    if _norm_contains(s.gold_context, s.answer) is False)
     print(f'  loaded {len(samples)} NQ samples, {len(documents)} corpus docs')
+    print(f'  {n_recentred} contexts re-centred on the answer span (B6)')
+    if n_missing:
+        print(f'  [!] {n_missing}/{len(samples)} still lack their answer in '
+              f'context — these cannot test retrieval and should be excluded')
     result = LoadedDataset('NQ', samples, documents)
-    save_checkpoint(f'dataset_nq_{n}', result)
+    save_checkpoint(ck, result)
     return result
 
 
 def load_hotpotqa(n: int) -> LoadedDataset:
     """HotpotQA — multi-hop reasoning QA (distractor setting)."""
-    cached = load_checkpoint(f'dataset_hotpot_{n}')
+    ck = f'dataset_hotpot_{n}_{CORPUS_VERSION}'
+    cached = load_checkpoint(ck)
     if cached:
         return cached
 
@@ -189,13 +258,14 @@ def load_hotpotqa(n: int) -> LoadedDataset:
             documents.append(doc)
     print(f'  loaded {len(samples)} HotpotQA samples, {len(documents)} corpus docs')
     result = LoadedDataset('HotpotQA', samples, documents)
-    save_checkpoint(f'dataset_hotpot_{n}', result)
+    save_checkpoint(ck, result)
     return result
 
 
 def load_qasper(n: int) -> LoadedDataset:
     """QASPER — scientific paper QA."""
-    cached = load_checkpoint(f'dataset_qasper_{n}')
+    ck = f'dataset_qasper_{n}_{CORPUS_VERSION}'
+    cached = load_checkpoint(ck)
     if cached:
         return cached
 
@@ -277,7 +347,7 @@ def load_qasper(n: int) -> LoadedDataset:
               f'({n_fallback / len(samples):.0%}) — excluded from the strict '
               f'C2 oracle')
     result = LoadedDataset('QASPER', samples, documents)
-    save_checkpoint(f'dataset_qasper_{n}', result)
+    save_checkpoint(ck, result)
     return result
 
 

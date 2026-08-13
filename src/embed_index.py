@@ -76,7 +76,8 @@ def chunk_document(doc_id: str, text: str,
 
 def build_chunks(loaded: LoadedDataset) -> List[Chunk]:
     """Chunk every corpus document. Cached per dataset — model-independent."""
-    ck = f'chunks_{loaded.name}_{len(loaded.samples)}'
+    from datasets_loader import CORPUS_VERSION
+    ck = f'chunks_{loaded.name}_{len(loaded.samples)}_{CORPUS_VERSION}'
     cached = load_checkpoint(ck)
     if cached:
         return cached

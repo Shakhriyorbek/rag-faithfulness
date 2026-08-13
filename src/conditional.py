@@ -245,13 +245,22 @@ def necessity_sufficiency(df: pd.DataFrame,
                 verdict = 'retrieval NOT NECESSARY'
             else:
                 verdict = 'as the premise expects'
+            # Abstentions are counted as incorrect for accuracy — that is right
+            # — but their faithfulness must be reported separately. See
+            # conditional_faithfulness(): pooling them inverts the sign of the
+            # gap this table exists to expose.
+            answered = cell[~cell['abstained'].fillna(False).astype(bool)]
             rows.append({
                 'retrieval': 'hit' if hit else 'miss',
                 'answer': 'correct' if correct else 'incorrect',
                 'verdict': verdict,
                 'n': len(cell),
                 'share': round(len(cell) / len(sub), 4),
-                'mean_faithfulness': (round(float(cell['faithfulness'].mean()), 4)
+                'n_abstained': int(cell['abstained'].fillna(False).sum()),
+                'mean_faith_answered': (round(float(answered['faithfulness'].mean()), 4)
+                                        if answered['faithfulness'].notna().any()
+                                        else np.nan),
+                'mean_faith_pooled': (round(float(cell['faithfulness'].mean()), 4)
                                       if cell['faithfulness'].notna().any()
                                       else np.nan),
             })
@@ -263,29 +272,61 @@ def necessity_sufficiency(df: pd.DataFrame,
 def conditional_faithfulness(df: pd.DataFrame,
                              generator: str = 'claude') -> pd.DataFrame:
     """
-    Per model: faithfulness pooled, then split by whether the answer is right.
+    Per model: faithfulness split by whether the answer is right — and, within
+    the wrong answers, by whether the model actually attempted one.
 
-    `faith_gap` = faithfulness(incorrect) - faithfulness(correct). A positive
-    gap means the model is MORE grounded when it is wrong, which is the
-    strongest possible statement of Berend's objection to pooled faithfulness.
+    ⚠️ ABSTENTIONS MUST BE SEPARATED. This is not a refinement; it inverts the
+    result. Measured on the 2026-07-26 pilot (2026-08-13):
+
+        model              faith(correct)  faith(wrong, pooled)  faith(wrong, answered)
+        all-mpnet-base-v2      0.823             0.608                  0.982
+        BGE-M3                 0.896             0.622                  0.986
+        E5-large-instruct      0.815             0.545                  0.832
+
+    "I cannot answer based on the provided context" is, correctly, NOT entailed
+    by the context — abstentions score ~0.28-0.38 NLI. They are ~30% of answers
+    and all land in the 'incorrect' bucket, dragging its mean far below the
+    correct bucket. Pooled, `faith_gap` comes out NEGATIVE (-0.21 to -0.27) and
+    the paper would conclude that faithfulness tracks correctness.
+
+    Excluding abstentions the sign FLIPS to +0.02 .. +0.16: when the model
+    actually commits to a wrong answer, it is as grounded as when it is right,
+    or more so. That is the paper's sharpest claim, and the naive split hides it
+    completely.
+
+    `faith_gap` is therefore defined over ANSWERED rows only.
+    `faith_gap_pooled` keeps the naive version so the difference stays visible.
     """
     sub = df[(df['condition'] == 'rag') & (df['generator'] == generator)]
     sub = sub[sub['correct'].notna()]
     rows = []
     for (model, paradigm), g in sub.groupby(['model', 'paradigm']):
+        abstained = g['abstained'].fillna(False).astype(bool)
         corr = g[g['correct']]['faithfulness']
-        inco = g[~g['correct']]['faithfulness']
-        f_c = float(corr.mean()) if corr.notna().any() else np.nan
-        f_i = float(inco.mean()) if inco.notna().any() else np.nan
+        inco_all = g[~g['correct']]['faithfulness']
+        inco_ans = g[~g['correct'] & ~abstained]['faithfulness']
+        abst = g[abstained]['faithfulness']
+
+        def _m(s):
+            return float(s.mean()) if s.notna().any() else np.nan
+
+        f_c, f_ia, f_ians, f_ab = _m(corr), _m(inco_all), _m(inco_ans), _m(abst)
         rows.append({
             'model': model, 'paradigm': paradigm,
             'n': len(g),
             'accuracy': round(float(g['correct'].mean()), 4),
-            'faith_pooled': round(float(g['faithfulness'].mean()), 4),
+            'abstention': round(float(abstained.mean()), 4),
             'faith_correct': round(f_c, 4) if f_c == f_c else np.nan,
-            'faith_incorrect': round(f_i, 4) if f_i == f_i else np.nan,
-            'faith_gap': (round(f_i - f_c, 4)
-                          if f_c == f_c and f_i == f_i else np.nan),
+            'faith_wrong_answered': round(f_ians, 4) if f_ians == f_ians else np.nan,
+            'n_wrong_answered': int((~g['correct'] & ~abstained).sum()),
+            'faith_abstained': round(f_ab, 4) if f_ab == f_ab else np.nan,
+            # The number to report. Positive => more grounded when wrong.
+            'faith_gap': (round(f_ians - f_c, 4)
+                          if f_c == f_c and f_ians == f_ians else np.nan),
+            # The number NOT to report on its own — kept only so the
+            # abstention artifact stays auditable.
+            'faith_gap_pooled': (round(f_ia - f_c, 4)
+                                 if f_c == f_c and f_ia == f_ia else np.nan),
         })
     out = pd.DataFrame(rows).sort_values('accuracy', ascending=False)
     save_checkpoint(f'conditional_faithfulness_{generator}', out)
@@ -365,8 +406,13 @@ def main():
     print(cf.to_string(index=False) if not cf.empty else '  (no gradable rows)')
     if not cf.empty and (cf['faith_gap'] > 0).any():
         worse = cf[cf['faith_gap'] > 0]['model'].tolist()
-        print(f'  [!] more faithful when WRONG: {", ".join(worse)} — report '
-              f'this rather than the pooled column.')
+        print(f'  [!] more faithful when WRONG (abstentions excluded): '
+              f'{", ".join(worse)}')
+        flipped = cf[(cf['faith_gap'] > 0) & (cf['faith_gap_pooled'] < 0)]
+        if not flipped.empty:
+            print(f'  [!] for {len(flipped)} model(s) the pooled gap has the '
+                  f'OPPOSITE sign — abstentions were masking the effect. '
+                  f'Report faith_gap, never faith_gap_pooled alone.')
 
     print(f'\n=== anchors: floor -> embedders -> ceiling [{args.generator}] ===')
     at = anchor_table(df, args.generator)

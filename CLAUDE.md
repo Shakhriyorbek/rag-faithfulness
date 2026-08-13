@@ -300,6 +300,45 @@ Also fixed in the same pass, beyond patches 0001/0002:
   annotated evidence was a figure/table. Now flagged as
   `QASample.gold_is_fallback` and excluded from C2.
 
+### ⚠️ Two measurement bugs found by running the FREE analysis on the pilot (2026-08-13)
+
+Both would have manufactured a false positive for the paper's headline claim.
+Found for $0, before the paid run. **Do not regress either.**
+
+**B6 — NQ's answer was outside its own context 34% of the time.**
+`load_nq` kept the first 500 non-HTML tokens; the annotated short answer fell
+outside that window for **17/50 pilot queries**. The answer was therefore not in
+the corpus at all — no retriever could surface it — yet qrels marked chunks of
+that document relevant, so **NDCG@5 reported ~0.95** while the generator
+correctly said "I cannot answer based on the provided context". That fabricates
+*hit × incorrect* rows, the exact cell N1 rests on.
+Fixed: the window is **centred on the answer span** (`start_token` remapped
+through the HTML filter), and **NQ relevance is now answer-bearing** via
+`gold_sentences`, matching how HotpotQA already worked. `hit` now means "the
+model was shown the answer", not "the right document was retrieved".
+`CORPUS_VERSION` (`datasets_loader.py`) is in every dataset/chunks/qrels
+checkpoint key so old caches cannot be silently reused — **bump it whenever
+corpus or relevance semantics change**.
+
+**B7 — EM/token-F1 measured verbosity, not correctness.**
+Pilot accuracy read **2%**; the model was actually right on **58%**. The RAG
+prompt yields "Based on the provided context, **Wilhelm Conrad Röntgen** of
+Germany received…" against gold "Wilhelm Conrad Röntgen, of Germany" — correct,
+but EM=0 and F1=0.28 because precision dies on every extra token.
+Fixed: `correctness.py` gains `contains_answer()` and `CORRECT_MODE='contains'`.
+EM is the **lower** bound, containment the **upper** — report both, never
+containment alone as "accuracy".
+
+**⚠️ Abstentions invert the paper's headline statistic.** ~30% of answers are
+"I cannot answer based on the provided context", which is correctly NOT entailed
+by the context (NLI ≈ 0.28–0.41). Pooled into "incorrect", they drag its mean
+down and `faith_gap` comes out **negative** (−0.21…−0.27) — the paper would
+conclude faithfulness tracks correctness. **Excluding abstentions the sign
+flips to +0.02…+0.16**: committed wrong answers are as grounded as right ones
+or more (0.83–0.99 vs 0.82–0.90). `conditional.py` reports `faith_gap` over
+answered rows only; `faith_gap_pooled` is kept solely to keep the artifact
+auditable. **Never report the pooled column alone.**
+
 **Still open:**
 9. ❌ **Run the experiments** — smoke test passes end to end; Rung 2 (3×NQ at
    N=1000), then Rung 5 (the Berend conditions, ~$15), ESA, rerank, Llama-3,

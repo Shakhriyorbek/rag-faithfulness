@@ -47,6 +47,12 @@ from utils import load_checkpoint, save_checkpoint
 # said the right thing". Report EM alongside so the choice stays visible.
 CORRECT_F1_THRESHOLD = 0.6
 
+# Which signal `correct` is derived from. Default changed from 'f1' to
+# 'contains' on 2026-08-13 after the pilot showed EM/F1 scoring the model at 2%
+# accuracy where it was actually right 58% of the time — see contains_answer().
+CORRECT_MODES = ('contains', 'f1', 'em')
+CORRECT_MODE = 'contains'
+
 _ARTICLES = re.compile(r'\b(a|an|the)\b', re.UNICODE)
 _PUNCT_TABLE = str.maketrans('', '', string.punctuation)
 
@@ -85,6 +91,36 @@ def token_f1(pred: str, gold: str) -> float:
 def best_f1(pred: str, golds: Sequence[str]) -> float:
     vals = [token_f1(pred, g) for g in golds if g is not None]
     return max(vals) if vals else 0.0
+
+
+def contains_answer(pred: str, golds: Sequence[str]) -> bool:
+    """
+    True when a normalized gold answer appears verbatim inside the prediction.
+
+    WHY THIS EXISTS (measured on the 2026-07-26 pilot, 2026-08-13)
+        EM and token-F1 assume the prediction is roughly the length of the gold
+        span. These generations are not: the RAG prompt produces
+        "Based on the provided context, **Wilhelm Conrad Rontgen** of Germany
+        received the first Nobel Prize in Physics in 1901. He received 150,782
+        SEK for his discovery..." against a gold answer of
+        "Wilhelm Conrad Rontgen, of Germany".
+
+        That answer is RIGHT. EM scores it 0 and token-F1 scores it 0.28,
+        because precision is destroyed by every extra token. Across the pilot,
+        EM/F1-threshold accuracy was 2% while the model was actually correct on
+        58% of queries. The metric was measuring verbosity, not correctness.
+
+    HOW TO REPORT IT
+        Containment is an UPPER bound: a long answer can mention the gold
+        string incidentally while asserting something else. EM is a LOWER
+        bound. Report both and state that the true value lies between them —
+        do not quietly present containment alone as "accuracy".
+    """
+    p = normalize_answer(pred)
+    if not p:
+        return False
+    return any(normalize_answer(g) and normalize_answer(g) in p
+               for g in golds if g is not None)
 
 
 def _gold_answers(record: Dict) -> List[str]:
@@ -152,8 +188,23 @@ def is_ungradable(record: Dict) -> bool:
 
 
 def score_records(records: Iterable[Dict],
-                  threshold: float = CORRECT_F1_THRESHOLD) -> List[Dict]:
-    """Return records with correctness fields added. Pure; does not mutate input."""
+                  threshold: float = CORRECT_F1_THRESHOLD,
+                  mode: str = CORRECT_MODE) -> List[Dict]:
+    """
+    Return records with correctness fields added. Pure; does not mutate input.
+
+    Always writes all three signals — `correct_em`, `correct_f1`,
+    `correct_contains` — so the choice stays visible and reversible. `mode`
+    only decides which one `correct` is derived from:
+
+        'contains'  gold appears in the prediction        (default; see
+                    contains_answer() for why, and for the upper-bound caveat)
+        'f1'        EM, or token-F1 >= threshold          (SQuAD convention;
+                    valid only for short-form output)
+        'em'        exact match after normalization       (strictest)
+    """
+    if mode not in CORRECT_MODES:
+        raise ValueError(f'mode must be one of {CORRECT_MODES}, got {mode!r}')
     out = []
     for r in records:
         rec = dict(r)
@@ -166,13 +217,19 @@ def score_records(records: Iterable[Dict],
             # 'incorrect' cell and bias every conditional mean computed over it.
             rec['correct_em'] = None
             rec['correct_f1'] = None
+            rec['correct_contains'] = None
             rec['correct'] = None
         else:
             em = exact_match(pred, golds)
             f1 = best_f1(pred, golds)
+            con = contains_answer(pred, golds)
             rec['correct_em'] = bool(em)
             rec['correct_f1'] = round(float(f1), 4)
-            rec['correct'] = bool(em or f1 >= threshold)
+            rec['correct_contains'] = bool(con)
+            rec['correct'] = bool({'contains': con or em,
+                                   'f1': em or f1 >= threshold,
+                                   'em': em}[mode])
+        rec['correct_mode'] = mode
         out.append(rec)
     return out
 
@@ -202,7 +259,8 @@ def _generation_checkpoint_names() -> List[str]:
 
 
 def run_phase_correctness(dry_run: bool = False,
-                          threshold: float = CORRECT_F1_THRESHOLD) -> Dict[str, Dict]:
+                          threshold: float = CORRECT_F1_THRESHOLD,
+                          mode: str = CORRECT_MODE) -> Dict[str, Dict]:
     """
     Score every generation checkpoint; write `<name>_scored`.
 
@@ -219,7 +277,7 @@ def run_phase_correctness(dry_run: bool = False,
         records = load_checkpoint(name)
         if not records:
             continue
-        scored = score_records(records, threshold=threshold)
+        scored = score_records(records, threshold=threshold, mode=mode)
         graded = [r for r in scored if r['correct'] is not None]
         n_ok = sum(1 for r in graded if r['correct'])
         n_g = len(graded)
@@ -227,8 +285,11 @@ def run_phase_correctness(dry_run: bool = False,
             'n': len(scored),
             'n_scored': n_g,
             'n_ungradable': len(scored) - n_g,
+            'mode': mode,
             'em_rate': (sum(1 for r in graded if r['correct_em']) / n_g) if n_g else None,
             'f1_mean': (sum(r['correct_f1'] for r in graded) / n_g) if n_g else None,
+            'contains_rate': (sum(1 for r in graded if r['correct_contains']) / n_g)
+                             if n_g else None,
             'correct_rate': (n_ok / n_g) if n_g else None,
             # Abstention is measured over graded rows only, so an API outage
             # cannot masquerade as the model declining to answer.
@@ -238,9 +299,14 @@ def run_phase_correctness(dry_run: bool = False,
         summary[name] = stats
 
         if n_g:
+            # EM is the lower bound, containment the upper. Printing them
+            # together keeps the gap visible instead of letting one number
+            # stand in for "accuracy".
             line = (f'  {name}: n={stats["n"]:>5}  '
-                    f'correct={stats["correct_rate"]:.3f}  '
-                    f'EM={stats["em_rate"]:.3f}  F1={stats["f1_mean"]:.3f}  '
+                    f'correct[{mode}]={stats["correct_rate"]:.3f}  '
+                    f'(EM={stats["em_rate"]:.3f} .. contains='
+                    f'{stats["contains_rate"]:.3f})  '
+                    f'F1={stats["f1_mean"]:.3f}  '
                     f'abstain={stats["abstention_rate"]:.3f}')
         else:
             line = f'  {name}: n={stats["n"]:>5}  correct=n/a (nothing gradable)'
@@ -263,9 +329,14 @@ def main():
                     help='report coverage without writing *_scored checkpoints')
     ap.add_argument('--threshold', type=float, default=CORRECT_F1_THRESHOLD,
                     help=f'token-F1 threshold for `correct` (default {CORRECT_F1_THRESHOLD})')
+    ap.add_argument('--mode', choices=list(CORRECT_MODES), default=CORRECT_MODE,
+                    help=f'signal `correct` derives from (default {CORRECT_MODE}; '
+                         f"'f1' is the SQuAD convention and only valid for "
+                         f'short-form output)')
     args = ap.parse_args()
-    print('=== phase: correctness scoring (no API cost) ===')
-    run_phase_correctness(dry_run=args.dry_run, threshold=args.threshold)
+    print(f'=== phase: correctness scoring, mode={args.mode} (no API cost) ===')
+    run_phase_correctness(dry_run=args.dry_run, threshold=args.threshold,
+                          mode=args.mode)
 
 
 if __name__ == '__main__':

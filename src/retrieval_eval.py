@@ -31,7 +31,8 @@ def _norm(s: str) -> str:
 
 def build_qrels(loaded: LoadedDataset) -> Dict[str, Dict[str, int]]:
     """{query_id: {chunk_id: 1}} from document provenance. Cached."""
-    ck = f'qrels_{loaded.name}_{len(loaded.samples)}'
+    from datasets_loader import CORPUS_VERSION
+    ck = f'qrels_{loaded.name}_{len(loaded.samples)}_{CORPUS_VERSION}'
     cached = load_checkpoint(ck)
     if cached:
         return cached
