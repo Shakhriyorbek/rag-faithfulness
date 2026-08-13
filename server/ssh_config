@@ -6,6 +6,19 @@
 # Then a single command gets you a GPU shell:   ssh szte-gpu
 #
 # Verified 2026-07-26: key auth to the hop works; gpu1 = 192.168.0.206.
+#
+# 2026-08-13 — `ssh szte-gpu` now works DIRECTLY, including scp and git.
+# Berend authorized the laptop key on the HOP only, so until this date the
+# ProxyJump alias failed with `Permission denied (publickey)` and every file
+# transfer had to be piped through the hop. Appending the laptop public key to
+# gpu1:~/.ssh/authorized_keys fixed it. If it ever regresses, that file is
+# where to look first.
+#
+# Also settled 2026-08-13: $HOME is NOT shared between hop and gpu1. Copying
+# to the hop does nothing for gpu1 — do not rely on it.
+#
+# Deploy loop:  git push gpu1 main   (remote gpu1 -> szte-gpu:rag-faithfulness.git)
+#               then `cd ~/rag-faithfulness && git pull` on gpu1.
 # ============================================================
 
 # ── Hop / entry instance (jump host) ──
