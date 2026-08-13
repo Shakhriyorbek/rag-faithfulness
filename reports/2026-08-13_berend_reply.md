@@ -135,11 +135,18 @@ retrieval quality. Every table can be recomputed on the filtered subset. The
 retained fraction is worth reporting in its own right, since a low one is a
 statement about benchmark contamination rather than about my sampling.
 
-On scale: with the conditions above, one full pass is roughly 33,000 generation
-requests at about $53. I would rather spend the budget on the controlled
-conditions at n=1000 than on more instances of the uncontrolled comparison, but
-if you think a reviewer would weigh raw n more heavily, tell me and I will
-reverse that.
+On scale: I have the budget and compute to run this properly, so rather than
+defend n=1000 I intend to raise it to 3,000 per dataset. The reason is
+statistical rather than presentational — the conditional analysis splits each
+model's queries into four cells, so per-cell n is what matters, not the total.
+At n=1000 the *hit × incorrect* cell would hold only a couple of hundred
+queries per model, which is thin for a faithfulness mean with a confidence
+interval.
+
+I also want to add a third generator (GPT-4o-mini alongside Claude Haiku 4.5 and
+Llama-3-8B). Two generators is the minimum that can be called a comparison, and
+it restores comparability with the literature, which was the one real cost of
+the generator change I described in July.
 
 ## One thing I want your view on
 
