@@ -67,6 +67,58 @@ def run_phase_d(datasets: Dict, model_names: List[str] = None):
     print('[phase D] complete')
 
 
+def run_phase_d_conditions(patterns=('oracle_*', 'ctx_*', 'util_*')):
+    """
+    NLI-score the controlled conditions, not just the embedder grid.
+
+    The oracle ceiling and the context ablations produce answers against a
+    context, so faithfulness is defined for them and the comparison against the
+    RAG rows is only meaningful if it is measured the same way. Phase D proper
+    globs `generated_*` and would skip all of these.
+
+    C1 is deliberately absent: it has no context, so faithfulness is undefined
+    there rather than zero.
+    """
+    from pathlib import Path
+    nli = NLIScorer()
+    names = []
+    for pattern in patterns:
+        for p in sorted(Path(config.CHECKPOINT_DIR).glob(f'{pattern}.pkl')):
+            if p.stem.endswith('_partial') or p.stem.endswith('_scored'):
+                continue
+            names.append(p.stem)
+
+    for name in sorted(set(names)):
+        ck_out = f'nli_scores_{name}'
+        if checkpoint_exists(ck_out):
+            print(f'  [skip] {ck_out}')
+            continue
+        records = load_checkpoint(name)
+        if not records:
+            continue
+        scores = []
+        for r in records:
+            answer = r.get('generated_answer')
+            contexts = r.get('retrieved_texts') or []
+            # None answers (oracle_missing), API errors and empty contexts are
+            # skipped rather than scored as 0.0 — same reasoning as the
+            # ungradable rule in correctness.py.
+            if not answer or answer.startswith('[ERROR') or not contexts:
+                continue
+            cs = nli.score_chunks(contexts[:config.TOP_K], answer)
+            scores.append({
+                'query_id': r['query_id'],
+                'nli_max': cs['nli_max'],
+                'nli_mean': cs['nli_mean'],
+                'nli_concat': cs['nli_concat'],
+            })
+        save_checkpoint(ck_out, scores)
+        mean_max = np.mean([s['nli_max'] for s in scores]) if scores else float('nan')
+        print(f'  {name}: {len(scores)}/{len(records)} scored, '
+              f'mean nli_max = {mean_max:.4f}')
+    print('[phase D-conditions] complete')
+
+
 def run_phase_e(datasets: Dict, model_names: List[str] = None,
                 batch_size: int = 32):
     """AlignScore faithfulness (GPU strongly recommended)."""

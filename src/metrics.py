@@ -5,7 +5,22 @@ Implements Eq. (2) RFG, Eq. (3) nRFG, and the 9-variant robustness matrix.
 import numpy as np
 from itertools import product
 from scipy.stats import spearmanr
+import math
 
+
+# Below this retrieval quality, nRFG's denominator is meaningless and the
+# metric is reported as NaN rather than as a large number.
+NRFG_MIN_RQ = 1e-6
+
+
+def _is_missing(x) -> bool:
+    """True for None or NaN. Guards audit item S1-1."""
+    if x is None:
+        return True
+    try:
+        return math.isnan(float(x))
+    except (TypeError, ValueError):
+        return True
 
 def rfg(retrieval_quality: float, faithfulness: float) -> float:
     """
@@ -13,6 +28,11 @@ def rfg(retrieval_quality: float, faithfulness: float) -> float:
     RFG(E) = RetrievalQuality(E) - Faithfulness(E)
     Both terms assumed normalized to [0, 1].
     """
+    # NaN must PROPAGATE, not be clamped. max(0.0, nan) returns 0.0 because
+    # `nan > 0.0` is False, which would silently turn a missing measurement
+    # into a real zero and drag the mean down invisibly (audit S1-1).
+    if _is_missing(retrieval_quality) or _is_missing(faithfulness):
+        return float('nan')
     return round(max(0.0, retrieval_quality) - max(0.0, faithfulness), 4)
 
 
@@ -22,7 +42,17 @@ def nrfg(retrieval_quality: float, faithfulness: float) -> float:
     nRFG(E) = (RetrievalQuality - Faithfulness) / RetrievalQuality
     Distinguishes (0.9, 0.85) -> 0.056 from (0.3, 0.25) -> 0.167.
     """
-    rq = max(1e-9, retrieval_quality)  # avoid div-by-zero
+    if _is_missing(retrieval_quality) or _is_missing(faithfulness):
+        return float('nan')
+    # Zero retrieval quality makes nRFG UNDEFINED, not enormous. The previous
+    # `rq = max(1e-9, retrieval_quality)` guard turned RQ=0 into a division by
+    # 1e-9: nRFG(0.0, 0.78) came out as -7.8e8, which then poisoned any mean it
+    # entered. RQ=0 never occurs in the aggregate NDCG@5 numbers, but it occurs
+    # constantly PER QUERY — every query whose top-5 misses all gold chunks —
+    # and the correctness-conditioned analysis works per query.
+    if retrieval_quality <= NRFG_MIN_RQ:
+        return float('nan')
+    rq = float(retrieval_quality)
     return round((rq - max(0.0, faithfulness)) / rq, 4)
 
 

@@ -74,6 +74,14 @@ class QASample:
     answer: str
     gold_context: str          # gold evidence text (qrels + ESA only, never F)
     dataset: str = ''
+    # True when gold_context is a STAND-IN, not annotated evidence. QASPER
+    # free-form answers sometimes cite a figure or table rather than a body
+    # paragraph; the loader then falls back to the paper's first three
+    # paragraphs so the query keeps a retrieval target. That fallback is
+    # acceptable for qrels but NOT for the C2 oracle condition, which claims
+    # to feed the generator ground-truth evidence. Read it with
+    # getattr(s, 'gold_is_fallback', False) — older pickles predate the field.
+    gold_is_fallback: bool = False
 
 
 @dataclass
@@ -234,14 +242,6 @@ def load_qasper(n: int) -> LoadedDataset:
                 continue
 
             qid = f'qasper_{len(samples)}'
-            gold_ctx = ' '.join(evidence) if evidence else ' '.join(paragraphs[:3])
-            samples.append(QASample(
-                query_id=qid,
-                question=question,
-                answer=answer,
-                gold_context=gold_ctx,
-                dataset='QASPER',
-            ))
             # Evidence strings come from full_text, so exact match against
             # paragraph text identifies the gold documents.
             evidence_set = {e.strip() for e in evidence if e.strip()}
@@ -256,8 +256,26 @@ def load_qasper(n: int) -> LoadedDataset:
                 # paragraphs so the query keeps a gold target.
                 for doc in para_docs[:3]:
                     doc.gold_for.add(qid)
+            # Flag the stand-in so the oracle condition can exclude it. Without
+            # this, C2 would feed "the first three paragraphs of the paper" to
+            # the generator and report the result as an oracle CEILING.
+            is_fallback = (not evidence) or (not marked)
+            gold_ctx = ' '.join(evidence) if evidence else ' '.join(paragraphs[:3])
+            samples.append(QASample(
+                query_id=qid,
+                question=question,
+                answer=answer,
+                gold_context=gold_ctx,
+                dataset='QASPER',
+                gold_is_fallback=is_fallback,
+            ))
         documents.extend(para_docs)
+    n_fallback = sum(1 for s in samples if s.gold_is_fallback)
     print(f'  loaded {len(samples)} QASPER samples, {len(documents)} corpus docs')
+    if n_fallback:
+        print(f'  [!] {n_fallback}/{len(samples)} use a stand-in gold context '
+              f'({n_fallback / len(samples):.0%}) — excluded from the strict '
+              f'C2 oracle')
     result = LoadedDataset('QASPER', samples, documents)
     save_checkpoint(f'dataset_qasper_{n}', result)
     return result

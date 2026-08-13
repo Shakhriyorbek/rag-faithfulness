@@ -117,6 +117,50 @@ Berend's review (received ~June 2026). All are addressed **in the paper**; items
 
 ---
 
+## 4b. Berend's second letter — 2026-08-11 (the reframing)
+
+He restates the paper's target claim as: **good retrieval quality is necessary
+and sufficient for a high-quality response**, and the paper's job is to show it
+is not. Two separable branches:
+
+- **A — not sufficient.** Good retrieval does not imply a good response.
+- **B — not necessary.** A good response is possible despite imperfect retrieval.
+
+| # | His ask | Where it lives now |
+|---|---------|--------------------|
+| 1 | Zero-retrieval generation (parametric knowledge) | `src/conditions.py` C1 |
+| 2 | Oracle RAG as a glass ceiling | `src/conditions.py` C2 |
+| 3 | Watch for retrieval BEATING the oracle | `conditional.anchor_table` — `pct_of_oracle > 1.0` is surfaced, never clipped |
+| 4 | Subset/ordering of relevant snippets | `src/context_ablation.py` |
+| 5 | Faithfulness only matters when the answer is correct | `src/correctness.py` + `src/conditional.py` |
+| 6 | Shapley-style per-document utility | `src/doc_utility.py` |
+| 7 | Justify n=1000, or scale up | `conditions.py --emit-filter`, applied via `conditional.py --filtered` |
+
+**⚠️ The paper he linked is a positioning problem, not just a citation.**
+DOI `10.1145/3626772.3657957` is **Salemi & Zamani, "Evaluating Retrieval
+Quality in Retrieval-Augmented Generation", SIGIR 2024 (arXiv:2404.13781)** —
+*not* "The Power of Noise", which is the natural wrong guess. Its abstract
+states that query–document relevance labels correlate only weakly with
+downstream RAG performance. **That is this paper's premise, already published.**
+Their eRAG (score each retrieved doc alone, use the downstream result as its
+relevance label) is the singleton term of a Shapley value, which is why points
+5 and 6 of his letter are one idea.
+
+What survives as this paper's own contribution: comparison **across embedding
+architectures at matched retrieval quality**; **faithfulness** specifically,
+conditioned on correctness; and the controlled floor/ceiling/arrangement
+conditions. What does not: "retrieval quality does not predict downstream
+quality" as a headline. Position as confirming and extending them, with a real
+related-work paragraph. Read the full PDF first — only the abstract has been read.
+
+**Open question put to Berend (2026-08-13 reply draft):** whether nRFG stays
+the primary metric. It subtracts a faithfulness score from a ranking metric,
+and only means anything under exactly the reading he questioned. Recommended
+position: demote nRFG to a diagnostic, make the necessary/sufficient 2×2 the
+paper's spine.
+
+---
+
 ## 5. Key design decisions (don't accidentally reverse these)
 
 - **The generator is Claude (`claude-haiku-4-5`), not GPT-4o-mini** (changed 2026-07-26). Haiku 4.5 was chosen as the closest analog in capability tier and cost, preserving the design intent of a small, widely-deployed closed-source model — a frontier model would likely be more faithful across the board and could compress the very RFG differences the paper measures. **Paper §4.4 and §5.2 still say GPT-4o-mini and must be updated; tell Berend.** Estimated cost for the full 21,000-query grid: ~$38 (vs ~$5–6 for GPT-4o-mini); `--smoke-test` prints a measured projection before you commit.
@@ -219,9 +263,47 @@ than all-mpnet-base-v2 (contrastive, 0.2277). If this survives to N=1000 with
 significance, **report H1 as failed** — §9 says Berend values that over an
 inflated claim.
 
+### Modules added for Berend's 2026-08-11 letter (2026-08-13) — all untested against real data
+
+11. ✅ **`src/correctness.py`** — EM + token-F1 re-scoring of existing generation
+    checkpoints; free. **Ungradable ≠ incorrect:** `[ERROR: ...]` rows and
+    `generated_answer=None` (C2 oracle gaps) yield `correct=None`, never False —
+    grading an API 429 as a wrong answer deflates whichever condition hit rate
+    limits, invisibly. Abstentions ("I do not know") are `correct=False` but
+    flagged separately via `abstained`.
+12. ✅ **`src/conditions.py`** — C1 no-RAG floor, C2 oracle ceiling,
+    `--prompt-probe` (isolates the C1 closed-book-prompt confound),
+    `--emit-filter`. **C2 defaults to `--oracle-source qrels`**, not
+    `gold_context`: the latter is strictly easier than perfect retrieval (on
+    HotpotQA it hands over supporting sentences stripped of their paragraphs)
+    and would be a ceiling on something the paper never measures.
+13. ✅ **`src/conditional.py`** — the deliverable. Per-query join of retrieval
+    hit × correctness × faithfulness; the necessary/sufficient 2×2;
+    `faith_gap = faithfulness(incorrect) − faithfulness(correct)`; floor →
+    embedders → ceiling anchors with `pct_of_oracle`.
+14. ✅ **`src/context_ablation.py`** — 8 conditions over the oracle set: order,
+    subset, position-at-constant-length, `noise_only`. Distractors are the
+    reference embedder's own top-20 misses (hard negatives), not random text.
+15. ✅ **`src/doc_utility.py`** — eRAG / leave-one-out / exact Shapley over the
+    top-5. `--mode shapley` enumerates all 2⁵=32 subsets, which *contains* the
+    eRAG and LOO subsets — one run yields all three. Shapley verified against
+    the efficiency, dummy and symmetry axioms in `tests/`.
+16. ✅ **`src/preflight.py`** — free read-only launch gate. ANTHROPIC key fatal;
+    OPENAI/HF non-fatal (a 3-model NQ run needs neither).
+
+Also fixed in the same pass, beyond patches 0001/0002:
+- `metrics.nrfg` returned **−7.8e8** for `nrfg(0.0, 0.78)` — the old
+  `rq = max(1e-9, rq)` guard divided by 1e-9. Now NaN. RQ=0 never happens in
+  aggregate NDCG but happens constantly **per query**, and the conditional
+  analysis is per query.
+- QASPER loader silently substituted the paper's first 3 paragraphs when
+  annotated evidence was a figure/table. Now flagged as
+  `QASample.gold_is_fallback` and excluded from C2.
+
 **Still open:**
 9. ❌ **Run the experiments** — smoke test passes end to end; Rung 2 (3×NQ at
-   N=1000), then ESA, rerank, Llama-3, AlignScore, and the full 7×3 grid
+   N=1000), then Rung 5 (the Berend conditions, ~$15), ESA, rerank, Llama-3,
+   AlignScore, and the full 7×3 grid
 10. ❌ **Paper update** — replace every simulated number with real results; rewrite §6 from "Expected Results" (H1–H5) into actual Results + Discussion, reporting honestly which hypotheses failed; fix ref [8] (jina v3, see §2); resolve §4.5.2 "cross-attention" wording (Llama-3 is decoder-only — self-attention over context tokens, and no code implements this analysis yet)
 
 ---

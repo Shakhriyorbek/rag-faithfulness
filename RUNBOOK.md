@@ -256,6 +256,111 @@ pip install git+https://github.com/yuh-zha/AlignScore.git
 ```
 Phase `e` skips cleanly if it's absent — NLI alone is enough to make progress.
 
+### Rung 5 — Berend's 2026-08-11 letter (~$18 on top of Rung 3)
+
+His letter reframes the target claim as *good retrieval quality is necessary
+and sufficient for a high-quality response*, and asks for controlled conditions
+that test each half separately. Everything below exists to produce that
+evidence. Run in this order — the free steps first, so you see the shape of the
+data before paying for the next thing.
+
+**5a — correctness (free, no API).** Run this against whatever generations
+already exist. Nothing else in Rung 5 means anything without it.
+```bash
+python src/correctness.py
+```
+Read `abstention_rate` beside `correct_rate`: a floor made of "I do not know"
+is a different phenomenon from a floor made of confident wrong answers.
+
+**5b — the anchors (~$7 at N=1000 × 3 datasets).** Both are
+*embedder-independent* — computed once, not once per model.
+```bash
+python src/conditions.py --condition both --dry-run     # inspect cost first
+python src/conditions.py --condition both --yes
+python src/conditions.py --prompt-probe 100 --yes       # ~$0.03, see below
+python src/correctness.py
+python src/conditions.py --emit-filter
+```
+- **C1** is the no-retrieval parametric floor. It *cannot* reuse the RAG
+  prompt — that template says "answer using ONLY the provided context" and
+  offers a refusal string, so with an empty context it would measure
+  willingness to refuse. `--prompt-probe` runs the RAG template with an empty
+  context on 100 queries so the size of that confound is measured rather than
+  argued about. State it in the paper either way.
+- **C2** is the oracle ceiling and defaults to `--oracle-source qrels`: the
+  chunks a perfect retriever would return under the *same* qrels NDCG@5 is
+  scored against. The alternative, `gold_context`, is strictly easier —
+  on HotpotQA it hands over the supporting sentences stripped of their
+  paragraphs, which no retriever could ever return. Running both is
+  informative; reporting only the second would be a ceiling on something the
+  paper never measures.
+- `--emit-filter` writes the sampling justification: keep only queries the
+  model gets **wrong** without retrieval. That is a principled answer to
+  "why 1000 instances", and the retained fraction is itself a finding about
+  benchmark contamination.
+
+**5c — score and read the grid (free).**
+```bash
+python src/run_pipeline.py --full --phases dcond   # NLI for the conditions
+python src/conditional.py                          # the three tables
+python src/conditional.py --filtered               # same, filter applied
+```
+`conditional.py` prints the table the letter is really asking for:
+
+| | answer correct | answer incorrect |
+|---|---|---|
+| **retrieval hit** | as the premise expects | **retrieval NOT SUFFICIENT** |
+| **retrieval miss** | **retrieval NOT NECESSARY** | as the premise expects |
+
+Mean faithfulness inside the *hit × incorrect* cell is the paper's sharpest
+number: grounded in correctly retrieved text, and wrong anyway. `faith_gap` in
+the second table is `faithfulness(incorrect) − faithfulness(correct)`; if it is
+positive, the model is **more** faithful when wrong, and the pooled
+faithfulness column should not be reported on its own again.
+
+**5d — context ablation (~$4.40 for 8 conditions × 300 queries × 1 dataset).**
+His third suggestion: hold relevance perfect, vary only subset and order.
+```bash
+python src/context_ablation.py --datasets NQ --limit 300 --dry-run
+python src/context_ablation.py --datasets NQ --limit 300 --yes
+python src/correctness.py
+python src/context_ablation.py --datasets NQ --report
+```
+Distractors are the reference embedder's own top-20 misses — hard negatives a
+real retriever returns, not random text. Two comparisons carry the argument:
+`gold_reversed − gold_all` (identical information, different order) and the
+spread across `gold1_first / middle / last` (relevance *and* context length
+held constant, only position moves). `noise_only` doubles as a floor measured
+through the real RAG prompt, which is the confound C1 cannot avoid.
+
+**5e — document utility (~$3.40 for 100 queries).** His Shapley suggestion and
+the paper he linked are the same idea at two levels of generality.
+```bash
+python src/doc_utility.py --mode shapley --datasets NQ --limit 100 --dry-run
+python src/doc_utility.py --mode shapley --datasets NQ --limit 100 --yes
+python src/correctness.py
+python src/doc_utility.py --report --datasets NQ
+```
+`--mode shapley` enumerates all 2⁵ = 32 subsets per query, so **eRAG and
+leave-one-out come out of the same 32 generations at no extra cost** — running
+them separately would only waste money. The report correlates each document's
+utility against its qrels relevance label; a weak correlation is
+"good retrieval is not sufficient" stated per document instead of per system.
+Watch the negative-utility count: documents the qrels call relevant that make
+the answer *worse* are the single most quotable observation available here.
+
+**Cost summary for Rung 5**
+
+| Step | Requests | Cost |
+|---|---|---|
+| 5a correctness | 0 | free |
+| 5b C1 + C2 (N=1000 × 3 datasets) | 6,000 | ~$7.00 |
+| 5b prompt probe | 300 | ~$0.03 |
+| 5c conditional tables | 0 | free |
+| 5d context ablation (8 × 300, NQ) | 2,400 | ~$4.40 |
+| 5e Shapley (100 queries, NQ) | 3,200 | ~$3.40 |
+| **total** | **~11,900** | **~$15** |
+
 ---
 
 ## 6. Reading the output
