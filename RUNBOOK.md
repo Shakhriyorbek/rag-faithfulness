@@ -142,31 +142,78 @@ dropping to six models and changing the paper's counts.
 
 ---
 
-## 4. Getting code onto gpu1
+## 4. Getting code onto gpu1 — solved 2026-08-13
 
-gpu1 has `rsync`, but **your laptop does not** — so remote rsync is out. No
-GitHub remote exists yet either. Pick one:
+**This is now one command.** The setup below was done once and does not need
+repeating.
 
-**Option A — GitHub (recommended, gpu1 has internet).** Create a private repo,
-then the loop is `git push` on the laptop, `git pull` on gpu1. Best for
-iterating, and it backs up your work.
+### The sync loop
 
-**Option B — `scp`, no third party.**
 ```bash
-scp -r src tests requirements.txt szte-gpu:~/rag_faithfulness/
+git push gpu1 main
+```
+then on gpu1:
+```bash
+cd ~/rag-faithfulness && git pull
 ```
 
-**Worth checking once** (may make this trivial): if `$HOME` is shared between
-hop and gpu1, copying to either is enough.
-```bash
-ssh szte-hop 'touch ~/sharetest' && ssh szte-gpu 'ls ~/sharetest && rm ~/sharetest'
-```
+### Why it works now, and what had to change
 
-**Never copy `checkpoints/`** — they are large, regenerable, and gitignored.
-Pull *results* back the other way instead:
+Three things were fixed on 2026-08-13:
+
+1. **Your laptop key is now authorized on gpu1**, not just on the hop. Until
+   then `ssh szte-gpu` (ProxyJump) failed with `Permission denied (publickey)`,
+   which is why `scp` straight to gpu1 never worked and every transfer had to
+   be piped through the hop. The key was appended to `gpu1:~/.ssh/authorized_keys`;
+   `ssh szte-gpu` now connects directly in one command.
+
+2. **`$HOME` is NOT shared between hop and gpu1.** This was flagged UNVERIFIED
+   for weeks. It is now tested and answered: `HOME_SHARED=no`. Copying to the
+   hop does *nothing* for gpu1 — do not rely on it.
+
+3. **Code and data are now separate directories.**
+
+   | Path | Holds | Git |
+   |---|---|---|
+   | `~/rag-faithfulness/` | the code — a real clone of the bare repo | yes |
+   | `~/rag_faithfulness/` | `checkpoints/`, `hf_cache/`, `outputs/` | no |
+
+   Note the hyphen/underscore distinction; they are different directories.
+   `config.BASE_DIR` still resolves to `~/rag_faithfulness`, so running
+   `python3 ~/rag-faithfulness/src/...` finds every existing checkpoint. A
+   `git pull` in the code directory cannot touch data, and data cannot pollute
+   `git status`.
+
+   The old loose copies were moved to `~/rag_faithfulness/src.superseded-2026-08-13`
+   and `tests.superseded-2026-08-13`. They were verified to contain nothing the
+   repo lacks before being moved, and nothing was deleted — remove them once
+   you are satisfied.
+
+### Remotes
+
+| Remote | URL | Use |
+|---|---|---|
+| `origin` | `github.com/Shakhriyorbek/rag-faithfulness` (private) | backup, history |
+| `gpu1` | `szte-gpu:rag-faithfulness.git` (bare, on gpu1) | deploying to the server |
+
+gpu1 has internet, so `git pull` from GitHub would also work — but it is a
+private repo and would need a credential on the server. Pushing to the bare
+repo over SSH avoids putting any token there.
+
+**Never copy `checkpoints/`** — large, regenerable, gitignored. Pull *results*
+back instead:
 ```bash
 scp -r szte-gpu:~/rag_faithfulness/outputs ./outputs
 ```
+
+### Verified on gpu1 after the sync
+
+All six new modules import, the offline suite passes 60/60, `BASE_DIR` resolves
+to the data directory with all 13 pilot checkpoints visible, and the dependency
+set is present: torch 2.7.1+cu126 (the sm_70 build), transformers 5.14.1,
+pandas 2.3.3, scipy 1.15.3, numpy 1.26.4, anthropic 0.120.0. `pytest` was
+installed with `pip install --user` (the venv route is broken — `ensurepip` is
+missing and needs sudo).
 
 ---
 

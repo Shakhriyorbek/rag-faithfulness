@@ -95,7 +95,31 @@ contains `sm_70`. Reinstalling needs `--force-reinstall` — pip treats
 - **The gateway rate-limits SSH.** ~6 connections in a few minutes got the IP temporarily blocked (TCP 22 went from open to refused). Use **one** long-lived session plus `ControlMaster` multiplexing (already in `server/ssh_config`); never script rapid reconnects.
 - `-J`/ProxyJump from this Windows box failed at least once where nested `ssh hop → ssh gpu1` succeeded. If `ssh szte-gpu` misbehaves, fall back to two hops.
 - Local Git Bash has `scp` but **no `rsync`**.
-- UNVERIFIED (rate-limited before testing): whether `$HOME` is shared between hop and gpu1. If it is, `scp` to the hop is enough. Check with `ssh hop 'touch ~/x' && ssh gpu1 'ls ~/x'`.
+
+### Code sync — solved 2026-08-13 (was the long-standing blocker)
+
+- **`$HOME` is NOT shared between hop and gpu1** (`HOME_SHARED=no`, tested).
+  This was UNVERIFIED for weeks. Copying to the hop does nothing for gpu1.
+- **The laptop key is now in `gpu1:~/.ssh/authorized_keys`.** Before this,
+  `ssh szte-gpu` failed `Permission denied (publickey)` because Berend
+  authorized the key on the *hop* only — that is why scp to gpu1 never worked.
+  `ssh szte-gpu` now connects directly, and scp/git work over it.
+- **Code and data are separate directories on gpu1** (note hyphen vs underscore):
+
+  | Path | Holds | Git |
+  |---|---|---|
+  | `~/rag-faithfulness/` | code, a clone of the bare repo | yes |
+  | `~/rag_faithfulness/` | `checkpoints/`, `hf_cache/`, `outputs/` | no |
+
+  `config.BASE_DIR` still resolves to `~/rag_faithfulness`, so the code finds
+  every existing checkpoint. Old loose copies are parked at
+  `~/rag_faithfulness/src.superseded-2026-08-13` (verified to contain nothing
+  the repo lacks; nothing deleted).
+- **Sync loop:** `git push gpu1 main` on the laptop, `git pull` on gpu1.
+  Remote `gpu1` → `szte-gpu:rag-faithfulness.git` (bare repo on gpu1). Pushing
+  over SSH avoids putting a GitHub credential on the server.
+- `pytest` installed via `pip install --user` (venv is broken — `ensurepip`
+  missing, needs sudo). Suite passes 60/60 on gpu1.
 
 ---
 
