@@ -135,18 +135,29 @@ retrieval quality. Every table can be recomputed on the filtered subset. The
 retained fraction is worth reporting in its own right, since a low one is a
 statement about benchmark contamination rather than about my sampling.
 
-On scale: I have the budget and compute to run this properly, so rather than
-defend n=1000 I intend to raise it to 3,000 per dataset. The reason is
-statistical rather than presentational — the conditional analysis splits each
-model's queries into four cells, so per-cell n is what matters, not the total.
-At n=1000 the *hit × incorrect* cell would hold only a couple of hundred
-queries per model, which is thin for a faithfulness mean with a confidence
-interval.
+On scale: the whole programme above, including the conditions, comes to about
+$55, which is what I have. I am keeping n=1000 rather than raising it, and I
+want to be straightforward about the consequence. The conditional analysis
+splits each model's queries into four cells, so per-cell n matters more than the
+total; I handle that by pooling the three datasets for the 2×2 (3,000 queries
+per model) and reporting the per-dataset breakdown as secondary. The filter you
+suggested shrinks the set further, so I plan to report the necessity and
+sufficiency shares on the filtered set, where the filter is conceptually
+required, and the cell-level faithfulness means on the pooled unfiltered set,
+where the sample size is needed — clearly labelled as to which is which rather
+than silently mixed.
 
-I also want to add a third generator (GPT-4o-mini alongside Claude Haiku 4.5 and
-Llama-3-8B). Two generators is the minimum that can be called a comparison, and
-it restores comparability with the literature, which was the one real cost of
-the generator change I described in July.
+One more thing I would like to check with you, because I think it is the largest
+hole in the current draft. The paper's premise is that these models have
+near-identical retrieval quality, but nothing in it establishes that: my pilot
+showed NDCG@5 between 0.908 and 0.956, which is a five-point spread. A
+non-significant difference is not evidence of equivalence. I intend to add a
+paired equivalence test (TOST) on per-query NDCG differences with a margin of
+±0.02, which is reachable at n=1000 precisely because every embedder is
+evaluated on identical queries. If no pair of models comes out equivalent, then
+the "matched retrieval quality" framing cannot stand as written and the claim
+becomes correlational — still worth reporting, but a different sentence. Does
+±0.02 seem to you like the right margin?
 
 ## One thing I want your view on
 
