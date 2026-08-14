@@ -98,6 +98,12 @@ class CostTracker:
     # these should stay at zero — tracked to make it obvious if they don't.
     CACHE_WRITE_PER_1M = 1.25
     CACHE_READ_PER_1M = 0.10
+    # gpt-4o-mini, the second closed-source generator (restored 2026-08-14
+    # so the cross-generator comparison in H3 has an OpenAI arm again).
+    # Tracked on SEPARATE counters: mixing vendors into one token count would
+    # price OpenAI tokens at Anthropic rates.
+    OAI_CHAT_INPUT_PER_1M = 0.15
+    OAI_CHAT_OUTPUT_PER_1M = 0.60
     # text-embedding-3-small
     EMBED_PER_1M = 0.02
 
@@ -106,6 +112,8 @@ class CostTracker:
         self.chat_output_tokens = 0
         self.cache_write_tokens = 0
         self.cache_read_tokens = 0
+        self.oai_chat_input_tokens = 0
+        self.oai_chat_output_tokens = 0
         self.embed_tokens = 0
         self.requests = 0
         self.errors = 0
@@ -121,6 +129,12 @@ class CostTracker:
             usage, 'cache_read_input_tokens', 0) or 0
         self.requests += 1
 
+    def log_openai_chat(self, usage):
+        """Log an OpenAI chat.completions `usage` object."""
+        self.oai_chat_input_tokens += usage.prompt_tokens
+        self.oai_chat_output_tokens += usage.completion_tokens
+        self.requests += 1
+
     def log_embedding(self, usage):
         """Log an OpenAI embeddings `usage` object."""
         self.embed_tokens += usage.total_tokens
@@ -130,13 +144,24 @@ class CostTracker:
         self.errors += 1
 
     @property
-    def generation_cost(self) -> float:
+    def claude_cost(self) -> float:
         return (
             self.chat_input_tokens / 1e6 * self.CHAT_INPUT_PER_1M
             + self.chat_output_tokens / 1e6 * self.CHAT_OUTPUT_PER_1M
             + self.cache_write_tokens / 1e6 * self.CACHE_WRITE_PER_1M
             + self.cache_read_tokens / 1e6 * self.CACHE_READ_PER_1M
         )
+
+    @property
+    def openai_chat_cost(self) -> float:
+        return (
+            self.oai_chat_input_tokens / 1e6 * self.OAI_CHAT_INPUT_PER_1M
+            + self.oai_chat_output_tokens / 1e6 * self.OAI_CHAT_OUTPUT_PER_1M
+        )
+
+    @property
+    def generation_cost(self) -> float:
+        return self.claude_cost + self.openai_chat_cost
 
     @property
     def embedding_cost(self) -> float:
@@ -162,9 +187,12 @@ class CostTracker:
             f'{self.chat_output_tokens:,}\n'
             f'  Claude cache w/r:    {self.cache_write_tokens:,} / '
             f'{self.cache_read_tokens:,}\n'
+            f'  GPT in/out toks:     {self.oai_chat_input_tokens:,} / '
+            f'{self.oai_chat_output_tokens:,}\n'
             f'  Embedding tokens:    {self.embed_tokens:,}\n'
             f'  Errors:              {self.errors}\n'
-            f'  Generation cost:     ${self.generation_cost:.4f}\n'
+            f'  Claude cost:         ${self.claude_cost:.4f}\n'
+            f'  GPT cost:            ${self.openai_chat_cost:.4f}\n'
             f'  Embedding cost:      ${self.embedding_cost:.4f}\n'
             f'  Total cost:          ${self.cost:.4f}'
         )

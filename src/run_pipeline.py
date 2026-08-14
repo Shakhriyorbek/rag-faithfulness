@@ -10,6 +10,7 @@ Phases (every phase checkpoints and resumes):
     a        chunk + embed + index + retrieve       (embed_index)
     b        retrieval quality NDCG/Recall/MRR      (retrieval_eval)
     c        Claude generation                      (generate)      [$]
+    cgpt     GPT-4o-mini generation                 (generate)      [$]
     llama    Llama-3 validation subset [GPU]        (generate)
     d        NLI faithfulness                       (faithfulness)
     e        AlignScore faithfulness [GPU]          (faithfulness)
@@ -42,11 +43,11 @@ import config
 from utils import set_scope, set_seed
 
 SMOKE_MODELS = ['all-mpnet-base-v2', 'E5-large-instruct', 'BGE-M3']
-ALL_PHASES = ['a', 'b', 'c', 'llama', 'd', 'e', 'esa', 'rerank', 'report',
-              'correct', 'c1', 'c2', 'dcond', 'cond']
+ALL_PHASES = ['a', 'b', 'c', 'cgpt', 'llama', 'd', 'e', 'esa', 'rerank',
+              'report', 'correct', 'c1', 'c2', 'dcond', 'cond']
 # Phases that call a paid API. Gated behind --yes so a phase list typed from
 # memory cannot start spending.
-PAID_PHASES = {'c', 'c1', 'c2', 'rerank'}
+PAID_PHASES = {'c', 'cgpt', 'c1', 'c2', 'rerank'}
 
 
 def main():
@@ -121,6 +122,11 @@ def main():
         project_to = (len(config.EMBEDDING_MODELS) * len(config.DATASETS)
                       * config.N_QUERIES) if args.smoke_test else None
         run_phase_c(datasets, models, project_to=project_to)
+    if 'cgpt' in phases:
+        from generate import run_phase_c_openai
+        project_to = (len(config.EMBEDDING_MODELS) * len(config.DATASETS)
+                      * config.N_QUERIES) if args.smoke_test else None
+        run_phase_c_openai(datasets, models, project_to=project_to)
     if 'llama' in phases:
         from generate import run_phase_llama
         run_phase_llama(datasets)

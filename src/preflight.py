@@ -58,16 +58,18 @@ def c_optional_keys():
     """
     Non-fatal: which phases these gate depends on what is being run.
 
-    OPENAI_API_KEY is only needed when text-embedding-3-small is among the
-    models under study; HF_TOKEN only for gated Llama-3. A three-model NQ run
-    needs neither, so blocking on them would stop a legitimate launch.
+    OPENAI_API_KEY is needed for the text-embedding-3-small embedder AND,
+    since 2026-08-14, for the GPT-4o-mini generator (phase `cgpt`); HF_TOKEN
+    only for gated Llama-3. A three-model Claude-only NQ run needs neither, so
+    blocking on them would stop a legitimate launch.
     """
     import config
     missing = [k for k in ('OPENAI_API_KEY', 'HF_TOKEN')
                if not getattr(config, k, '')]
     if not missing:
         return True, 'OPENAI_API_KEY + HF_TOKEN present'
-    gated = {'OPENAI_API_KEY': 'text-embedding-3-small (1 of the 7 models)',
+    gated = {'OPENAI_API_KEY': 'text-embedding-3-small embedder + phase cgpt '
+                               '(GPT-4o-mini generator)',
              'HF_TOKEN': 'Llama-3-8B (gated repo)'}
     return False, 'missing ' + '; '.join(f'{k} -> blocks {gated[k]}'
                                          for k in missing)

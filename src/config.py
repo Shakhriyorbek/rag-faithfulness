@@ -118,6 +118,15 @@ HF_TOKEN          = os.getenv('HF_TOKEN', '')
 #     measures grounding in retrieved context, not reasoning depth.
 CLAUDE_MODEL = 'claude-haiku-4-5'
 
+# Second closed-source generator, restored 2026-08-14 at Berend's request.
+# The paper's §4.4, §5.2 and H3 all still name GPT-4o-mini, and running BOTH
+# is strictly better than having swapped one for the other: H3 asks whether
+# the faithfulness ranking of embedders survives a change of generator, and
+# two closed-source arms plus Llama-3 test that far better than one.
+# Same protocol as Claude — temperature 0, max 256 tokens, and the
+# byte-identical single-user-turn prompt from generate.build_prompt.
+GPT_MODEL = 'gpt-4o-mini'
+
 # ── Datasets ──
 DATASETS = ['NQ', 'HotpotQA', 'QASPER']
 

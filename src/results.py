@@ -21,7 +21,9 @@ from metrics import (compute_rfg_variants, nrfg, rfg,
                      robustness_correlation_matrix, summarize_robustness)
 from utils import checkpoint_exists, load_checkpoint, save_checkpoint
 
-GENERATORS = ['claude', 'llama3']
+# Order matters only for display. 'claude' stays the reference arm because it
+# is the one generator run over the full 7-model grid.
+GENERATORS = ['claude', 'gpt4omini', 'llama3']
 
 
 def bootstrap_significance(scores_a: List[float], scores_b: List[float],
@@ -296,18 +298,37 @@ def hypothesis_summary(df: pd.DataFrame) -> pd.DataFrame:
             'supported': by_ds.idxmax() == 'HotpotQA',
         })
 
-    # H3: model ranking by nRFG consistent across generators
-    llama = df[df['generator'] == 'llama3']
-    shared = sorted(set(claude_rows['model']) & set(llama['model']))
-    if len(shared) >= 3:
-        from scipy.stats import spearmanr
-        r_g = claude_rows[claude_rows['model'].isin(shared)].groupby('model')['nRFG'].mean()
-        r_l = llama[llama['model'].isin(shared)].groupby('model')['nRFG'].mean()
-        rho, p = spearmanr(r_g[shared], r_l[shared])
+    # H3: model ranking by nRFG consistent across generators.
+    # Every available generator PAIR is reported, not just claude-vs-llama3:
+    # with GPT-4o-mini restored there are up to three pairs, and H3 is only
+    # supported if the ranking survives across all of them. Reporting the
+    # single most agreeable pair would be cherry-picking.
+    from itertools import combinations
+
+    from scipy.stats import spearmanr
+    present = [g for g in GENERATORS if (df['generator'] == g).any()]
+    rhos = []
+    for g_a, g_b in combinations(present, 2):
+        rows_a = df[df['generator'] == g_a]
+        rows_b = df[df['generator'] == g_b]
+        shared = sorted(set(rows_a['model']) & set(rows_b['model']))
+        if len(shared) < 3:
+            continue
+        r_a = rows_a[rows_a['model'].isin(shared)].groupby('model')['nRFG'].mean()
+        r_b = rows_b[rows_b['model'].isin(shared)].groupby('model')['nRFG'].mean()
+        rho, p = spearmanr(r_a[shared], r_b[shared])
+        rhos.append(float(rho))
         out.append({
-            'hypothesis': 'H3 nRFG ranking consistent across generators',
+            'hypothesis': f'H3 nRFG ranking consistent: {g_a} vs {g_b} '
+                          f'(n={len(shared)} models)',
             'observed': round(float(rho), 4), 'p': round(float(p), 4),
             'supported': bool(rho > 0.7),
+        })
+    if len(rhos) > 1:
+        out.append({
+            'hypothesis': 'H3 OVERALL (weakest generator pair)',
+            'observed': round(min(rhos), 4), 'p': None,
+            'supported': bool(min(rhos) > 0.7),
         })
 
     # H4: ESA higher for instruction-tuned

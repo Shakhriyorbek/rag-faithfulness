@@ -17,8 +17,9 @@ InstructorEmbedding    # Instructor-XL ([instruction, text] pair encoding)
 
 # Generation
 anthropic>=0.40        # Claude — the closed-source generator (phase C)
-openai>=1.0            # NOT the generator; only text-embedding-3-small,
-                       # which is one of the 7 embedding models under study
+openai>=1.0            # BOTH text-embedding-3-small (1 of the 7 embedding
+                       # models under study) AND gpt-4o-mini, the second
+                       # closed-source generator restored 2026-08-14
 accelerate
 # bitsandbytes is NOT needed: the SZTE V100 is 32 GB, so Llama-3-8B runs in
 # fp16. Install it only if you move to a 16 GB card.

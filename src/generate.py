@@ -100,17 +100,106 @@ class ClaudeGenerator:
         return text.strip()
 
 
+# ── GPT-4o-mini ───────────────────────────────────────────────────
+class OpenAIGenerator:
+    """
+    OpenAI chat.completions generator (config.GPT_MODEL).
+
+    Restored 2026-08-14 after being removed in the 2026-07-26 Claude
+    migration. The paper's §4.4, §5.2 and H3 all still name GPT-4o-mini, and
+    running both closed-source generators is strictly better than swapping
+    one for the other: H3 asks whether the faithfulness RANKING of embedders
+    survives a change of generator, and two closed-source arms plus Llama-3
+    tests that far more convincingly than one.
+
+    Prompt parity is the whole point — build_prompt() is shared verbatim with
+    Claude and Llama-3, a single user turn with no system message. Do not
+    "improve" this call with a system prompt, few-shot examples or a JSON
+    schema: any of those would confound the cross-generator comparison.
+
+    `max_tokens` (not `max_completion_tokens`) is used deliberately —
+    gpt-4o-mini accepts it across every openai-python version likely to be
+    installed here, whereas the newer name is not accepted by older clients.
+    """
+
+    def __init__(self, model: str = None, max_retries: int = 5):
+        from openai import OpenAI
+        # Reads OPENAI_API_KEY from the environment. Never hardcoded.
+        self.client = OpenAI(max_retries=max_retries)
+        self.model = model or config.GPT_MODEL
+
+    def generate(self, question: str, chunks: List[str]) -> str:
+        import openai
+        prompt = build_prompt(question, chunks)
+        try:
+            resp = self.client.chat.completions.create(
+                model=self.model,
+                max_tokens=256,
+                temperature=0,
+                messages=[{'role': 'user', 'content': prompt}],
+            )
+        except openai.APIStatusError as e:
+            cost_tracker.log_error()
+            return f'[ERROR: {type(e).__name__} {e.status_code}: {e}]'
+        except openai.APIConnectionError as e:
+            cost_tracker.log_error()
+            return f'[ERROR: APIConnectionError: {e}]'
+
+        if resp.usage is not None:
+            cost_tracker.log_openai_chat(resp.usage)
+
+        choice = resp.choices[0]
+        # A content filter or refusal leaves content None. Mark it as a
+        # scored-out row instead of letting .strip() raise — correctness.py
+        # treats '[ERROR' rows as UNGRADABLE, never as wrong answers.
+        if choice.finish_reason == 'content_filter':
+            cost_tracker.log_error()
+            return '[ERROR: content_filter]'
+        text = choice.message.content
+        if text is None:
+            cost_tracker.log_error()
+            return f'[ERROR: empty content, finish_reason={choice.finish_reason}]'
+        return text.strip()
+
+
 def run_phase_c(datasets: Dict, model_names: List[str] = None,
                 budget_limit: float = 60.0, project_to: int = None):
-    """
-    Claude generation for every model × dataset. Resumable.
+    """Claude generation for every model × dataset. Resumable."""
+    return _run_api_generation(
+        ClaudeGenerator(), 'claude', datasets, model_names,
+        budget_limit=budget_limit, project_to=project_to,
+        key_env='ANTHROPIC_API_KEY')
 
+
+def run_phase_c_openai(datasets: Dict, model_names: List[str] = None,
+                       budget_limit: float = 60.0, project_to: int = None):
+    """GPT-4o-mini generation for every model × dataset. Resumable."""
+    return _run_api_generation(
+        OpenAIGenerator(), 'gpt4omini', datasets, model_names,
+        budget_limit=budget_limit, project_to=project_to,
+        key_env='OPENAI_API_KEY')
+
+
+def _run_api_generation(gen, label: str, datasets: Dict,
+                        model_names: List[str] = None,
+                        budget_limit: float = 60.0, project_to: int = None,
+                        key_env: str = 'ANTHROPIC_API_KEY'):
+    """
+    Shared driver for every API generator. Resumable.
+
+    One implementation on purpose: the fail-fast guards, the budget cap, the
+    mid-dataset resume and the refusal to save a poisoned checkpoint are the
+    parts that actually protect a paid run, and a copy-pasted second copy is
+    exactly the kind of thing that drifts and then only protects one vendor.
+
+    label        — goes into the checkpoint key and the 'generator' field
+                   (`generated_{label}_{model}_{dataset}`). Must match the
+                   GENERATORS lists in faithfulness.py and results.py.
     budget_limit — hard stop. Raises rather than draining the account;
                    partial checkpoints survive, so raising it resumes.
     project_to   — if set, extrapolate measured cost to this many queries
                    (the smoke-test cost probe before committing to a full run).
     """
-    gen = ClaudeGenerator()
     model_list = [c['name'] for c in config.EMBEDDING_MODELS
                   if not model_names or c['name'] in model_names]
     n_generated = 0
@@ -125,7 +214,7 @@ def run_phase_c(datasets: Dict, model_names: List[str] = None,
 
     for model in model_list:
         for ds_name in datasets:
-            ck = f'generated_claude_{model}_{ds_name}'
+            ck = f'generated_{label}_{model}_{ds_name}'
             if checkpoint_exists(ck):
                 print(f'  [skip] {ck}')
                 continue
@@ -145,7 +234,7 @@ def run_phase_c(datasets: Dict, model_names: List[str] = None,
                 generations.append({
                     **r,
                     'generated_answer': answer,
-                    'generator': 'claude',
+                    'generator': label,
                     'generator_model': gen.model,
                 })
                 n_generated += 1
@@ -160,9 +249,9 @@ def run_phase_c(datasets: Dict, model_names: List[str] = None,
                             f'{consecutive_errors} consecutive API failures — '
                             f'aborting before burning the full run.\n'
                             f'First error: {first_error}\n'
-                            f'Check ANTHROPIC_API_KEY (a valid key is ~100-110 '
-                            f'chars; a 401 usually means it is wrong, truncated '
-                            f'or has stray characters).')
+                            f'Check {key_env} (a 401 usually means the key is '
+                            f'wrong, truncated or has stray characters; an '
+                            f'Anthropic key is ~100-110 chars).')
                 else:
                     consecutive_errors = 0
 
@@ -194,9 +283,9 @@ def run_phase_c(datasets: Dict, model_names: List[str] = None,
         print(f'  COST PROBE: {cost_tracker.project(n_generated, project_to)}')
     if cost_tracker.requests == 0 and n_generated > 0:
         raise RuntimeError(
-            'Phase C made ZERO successful API requests. Nothing was generated; '
-            'the cost probe above is meaningless. Check ANTHROPIC_API_KEY.')
-    print('[phase C] complete')
+            f'Phase C ({label}) made ZERO successful API requests. Nothing was '
+            f'generated; the cost probe above is meaningless. Check {key_env}.')
+    print(f'[phase C: {label}] complete')
 
 
 # ── Llama-3-8B-Instruct ───────────────────────────────────────────
