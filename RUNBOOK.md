@@ -224,8 +224,36 @@ before spending time on the next one. Always inside `tmux`:
 
 ```bash
 tmux new -s rag        # detach: Ctrl-B then D    reattach: tmux attach -t rag
-source .venv/bin/activate
 ```
+
+(There is no venv on gpu1 — `ensurepip` is missing and `python3.10-venv`
+needs sudo. Packages are installed with `pip install --user`, so just call
+`python3`.)
+
+### ⚠️ Checkpoints are scoped — check the scope line before you trust a run
+
+Every run prints its checkpoint directory as its **first line**:
+
+```
+  [scope] checkpoints -> /home/sboltabaev/rag_faithfulness/checkpoints/n1000_v3
+```
+
+`n{N}_{CORPUS_VERSION}`. Checkpoint keys are named for their content
+(`retrieval_BGE-M3_NQ`), not for the run, so before this existed the N=50
+pilot and the N=1000 run collided on every key — and since each phase skips
+work whose checkpoint exists, the first real N=1000 attempt printed
+`all datasets done, skipping` for every model and **exited 0 in seconds
+having done nothing** (2026-08-14). If a phase finishes suspiciously fast,
+read that line first.
+
+- `RAG_SCOPE_N=50` — work in another N's scope
+- `RAG_CHECKPOINT_DIR=~/rag_faithfulness/checkpoints` — absolute override.
+  Needed to read the **pre-scope pilot** checkpoints, which still sit flat in
+  `checkpoints/` and are not visible to any scoped run.
+
+Bumping `CORPUS_VERSION` (config.py) therefore forces a clean rebuild of
+phases A and B rather than silently reusing a corpus with different
+semantics. Bump it whenever corpus or relevance semantics change.
 
 ### Rung 1 — Smoke test (~15 min, ~$0.05)
 
@@ -247,6 +275,10 @@ python src/run_pipeline.py --full --datasets NQ \
   --models all-mpnet-base-v2,E5-large-instruct,BGE-M3
 ```
 
+Phases a,b alone are **free** (GPU only) — run them first and read the
+retrieval numbers before authorizing `--phases c,d --yes`, which is where the
+~$5.60 goes.
+
 **Gate — this is the one that matters.** Look at the nRFG spread across the
 three models.
 - **Spread is visible and models rank differently than NDCG@5 does** → the
@@ -255,6 +287,28 @@ three models.
   may not hold on NQ. That is a real finding, not a failure — bring it to
   Berend before burning days on the full grid. Single-hop NQ is also the least
   likely dataset to show the effect, so HotpotQA is the natural next probe.
+
+**Second gate, free, run it as soon as phase b finishes:**
+
+```bash
+python3 -c "import sys; sys.path.insert(0,'src'); import results; print(results.equivalence_table('NQ').to_string())"
+```
+
+The paper claims these embedders reach *matched* retrieval quality. A
+non-significant difference does not show that — it is absence of evidence.
+`equivalence_table` runs a **paired TOST** (margin ±0.02 NDCG@5,
+`results.EQUIV_MARGIN_NDCG`) and marks a pair `matched` only when it is both
+statistically indistinguishable **and** equivalent within the margin. If no
+pair comes out `matched`, the premise sentence has to be rewritten before the
+full grid, not after.
+
+Also read the loader's sampling line — the paper has to state it (Berend
+point 8):
+
+```
+scanned 1120 candidates: 54 had no short answer, 66 had the answer outside
+the retained window (dropped), 408 re-centred on the answer span (B6)
+```
 
 ### Rung 3 — Full grid, Claude (~12–20 h, **~$38 est.**)
 
