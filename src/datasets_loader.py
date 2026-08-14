@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Set
 
 import config
+import textnorm
 from utils import load_checkpoint, save_checkpoint
 
 
@@ -36,14 +37,9 @@ HF_REPO_IDS = {
 }
 
 
-# Bump whenever the corpus, gold provenance or relevance definition changes.
-# It is part of every dataset/chunk/qrels checkpoint name, so a change cannot
-# silently reuse a cache built under the old semantics — which would be an
-# invisible correctness bug, not a stale-file annoyance.
-#   v1  original loaders
-#   v2  B6: NQ context centred on the answer span; NQ relevance is
-#       answer-bearing rather than document-level (2026-08-13)
-CORPUS_VERSION = 'v2'
+# Corpus semantics version. Defined in config (CHECKPOINT_DIR depends on it)
+# and re-exported here, where every reader already expects to find it.
+CORPUS_VERSION = config.CORPUS_VERSION
 
 
 def _load_dataset(*args, **kwargs):
@@ -53,10 +49,13 @@ def _load_dataset(*args, **kwargs):
 
 
 def _norm_contains(haystack: str, needle: str) -> bool:
-    """Whitespace-normalized, case-insensitive substring test."""
-    h = ' '.join((haystack or '').split()).lower()
-    ne = ' '.join((needle or '').split()).lower()
-    return bool(ne) and ne in h
+    """Containment test. Delegates to the shared normalizer.
+
+    This used to be a whitespace-only comparison, which failed on NQ's
+    token-joined text (`Röntgen 's` vs `Röntgen's`) and over-reported
+    missing answers by 3x — see textnorm.py for the measurement.
+    """
+    return textnorm.contains(haystack, needle)
 
 
 def _load_first_available(candidates, *args, **kwargs):
@@ -106,6 +105,12 @@ class LoadedDataset:
     name: str
     samples: List[QASample]
     documents: List[Document]
+    # Provenance of the sample: how many candidates were examined and why any
+    # were discarded. The paper has to state how the n queries were selected
+    # (Berend point 8), and "we drew until we had n usable ones" is only an
+    # honest sentence if the discard count is recorded. Read with
+    # getattr(ds, 'stats', {}) — older pickles predate the field.
+    stats: Dict[str, int] = field(default_factory=dict)
 
 
 NQ_CONTEXT_TOKENS = 500
@@ -143,10 +148,15 @@ def load_nq(n: int) -> LoadedDataset:
     ds = _load_first_available(HF_REPO_IDS['NQ'], split='validation',
                                streaming=True)
     samples, documents = [], []
-    n_recentred = 0
+    n_recentred = n_scanned = n_no_answer = n_absent = 0
+    # Draw until n USABLE queries are collected rather than taking the first
+    # n candidates (B8). The cap only exists so a change upstream cannot turn
+    # this into an unbounded scan of the split.
+    max_scanned = max(200, n * 30)
     for item in ds:
-        if len(samples) >= n:
+        if len(samples) >= n or n_scanned >= max_scanned:
             break
+        n_scanned += 1
         # §7 fix: short_answers fields are lists, take text[0] directly
         answer_text, ans_start = None, None
         for sa in item['annotations']['short_answers']:
@@ -155,6 +165,7 @@ def load_nq(n: int) -> LoadedDataset:
                 ans_start = sa['start_token'][0] if sa.get('start_token') else None
                 break
         if not answer_text:
+            n_no_answer += 1
             continue
 
         # §7 fix: drop HTML tokens, but keep each survivor's ORIGINAL index so
@@ -173,6 +184,19 @@ def load_nq(n: int) -> LoadedDataset:
                 start = max(0, pos - NQ_CONTEXT_TOKENS // 2)
                 n_recentred += 1
         context = ' '.join(text_tokens[start:start + NQ_CONTEXT_TOKENS])
+
+        # B8: discard the query if its answer is STILL not in the retained
+        # window. Re-centring fixes most of these, but not all: when NQ gives
+        # no start_token there is nothing to centre on, and a few annotated
+        # spans sit outside the document text altogether. Keeping them was
+        # actively harmful — qrels marked the document relevant, so NDCG
+        # counted a hit for a context that cannot possibly answer the
+        # question, manufacturing the `hit x incorrect` rows the paper's
+        # central claim rests on. A query whose answer is nowhere in the
+        # corpus tests nothing about retrieval.
+        if not textnorm.contains(context, answer_text):
+            n_absent += 1
+            continue
 
         qid = f'nq_{len(samples)}'
         samples.append(QASample(
@@ -195,14 +219,28 @@ def load_nq(n: int) -> LoadedDataset:
             gold_for={qid},
             gold_sentences={qid: [answer_text]},
         ))
-    n_missing = sum(1 for s in samples
-                    if _norm_contains(s.gold_context, s.answer) is False)
+    stats = {
+        'requested': n,
+        'kept': len(samples),
+        'scanned': n_scanned,
+        'skipped_no_short_answer': n_no_answer,
+        'skipped_answer_absent': n_absent,
+        'recentred_on_answer': n_recentred,
+    }
     print(f'  loaded {len(samples)} NQ samples, {len(documents)} corpus docs')
-    print(f'  {n_recentred} contexts re-centred on the answer span (B6)')
-    if n_missing:
-        print(f'  [!] {n_missing}/{len(samples)} still lack their answer in '
-              f'context — these cannot test retrieval and should be excluded')
-    result = LoadedDataset('NQ', samples, documents)
+    print(f'  scanned {n_scanned} candidates: '
+          f'{n_no_answer} had no short answer, '
+          f'{n_absent} had the answer outside the retained window (dropped), '
+          f'{n_recentred} re-centred on the answer span (B6)')
+    if len(samples) < n:
+        print(f'  [!] only {len(samples)}/{n} usable NQ queries after '
+              f'scanning {n_scanned} — the split ran out')
+    # Invariant, not a warning: after B8 every retained sample contains its
+    # own answer, so `hit` in the necessary/sufficient grid means "the model
+    # was shown the answer".
+    assert all(textnorm.contains(s.gold_context, s.answer) for s in samples), \
+        'B8 invariant violated: a retained NQ sample lacks its own answer'
+    result = LoadedDataset('NQ', samples, documents, stats=stats)
     save_checkpoint(ck, result)
     return result
 

@@ -40,6 +40,7 @@ from typing import Dict, Iterable, List, Optional, Sequence
 sys.path.insert(0, str(Path(__file__).parent))
 
 import config
+import textnorm
 from utils import load_checkpoint, save_checkpoint
 
 # Graded-match threshold. QASPER answers are free-form, so strict EM is far too
@@ -115,12 +116,19 @@ def contains_answer(pred: str, golds: Sequence[str]) -> bool:
         string incidentally while asserting something else. EM is a LOWER
         bound. Report both and state that the true value lies between them —
         do not quietly present containment alone as "accuracy".
+
+    NORMALIZATION (changed 2026-08-14)
+        Containment uses textnorm, not normalize_answer. normalize_answer
+        DELETES punctuation, which glues tokens together: gold "Röntgen's"
+        becomes "röntgens" while the generated "Röntgen 's" becomes
+        "röntgen s", and the substring test fails on an answer that is
+        plainly right. textnorm replaces punctuation with a space instead.
+        normalize_answer stays in use for EM and token-F1, where both sides
+        get the same treatment and the SQuAD-standard behaviour is wanted.
     """
-    p = normalize_answer(pred)
-    if not p:
+    if not pred:
         return False
-    return any(normalize_answer(g) and normalize_answer(g) in p
-               for g in golds if g is not None)
+    return textnorm.contains_any(pred, [g for g in golds if g is not None])
 
 
 def _gold_answers(record: Dict) -> List[str]:

@@ -51,6 +51,133 @@ def bootstrap_significance(scores_a: List[float], scores_b: List[float],
     }
 
 
+# ── Equivalence testing (matched retrieval quality) ───────────────
+# The paper's premise is that these embedders reach NEAR-IDENTICAL retrieval
+# quality yet diverge downstream. A non-significant difference does not
+# establish that: absence of evidence is not evidence of absence, and with
+# n=1000 a t-test can fail to reject while the true gap is large.
+#
+# TOST (two one-sided tests) inverts the burden. The null is
+# "the models DIFFER by at least the margin"; rejecting it at alpha licenses
+# the claim of equivalence. Two one-sided tests are run against +/- margin
+# and the LARGER p-value decides — equivalence needs both tails rejected.
+#
+# The test is PAIRED because every embedder is evaluated on exactly the same
+# queries; pairing removes per-query difficulty, which is by far the largest
+# source of variance here.
+EQUIV_MARGIN_NDCG = 0.02   # what counts as "the same" retrieval quality
+
+
+def tost_equivalence(scores_a, scores_b, margin: float = EQUIV_MARGIN_NDCG,
+                     alpha: float = 0.05) -> dict:
+    """Paired TOST on per-query scores. Equivalent iff p_tost < alpha.
+
+    margin is on the metric's own scale (NDCG@5 points, so 0.02 = 2 points).
+    Choosing it is a judgement call that belongs in the paper, not a default
+    to hide behind — state the margin and why.
+    """
+    from scipy import stats
+
+    a, b = np.asarray(scores_a, float), np.asarray(scores_b, float)
+    assert len(a) == len(b), 'TOST is paired — samples must align'
+    d = a - b
+    n = len(d)
+    mean_d = float(d.mean())
+    # ddof=1 on a single observation is nan (and warns); n<2 is handled by
+    # the zero-variance branch below, which refuses to claim equivalence.
+    sd = float(d.std(ddof=1)) if n >= 2 else 0.0
+    se = sd / np.sqrt(n) if sd > 0 else 0.0
+
+    if se == 0 or not np.isfinite(se):
+        # Every query differs by the same amount (often exactly zero): there
+        # is no sampling uncertainty left, so the comparison is decided by
+        # the offset itself. n=1 lands here too via sd=nan, and must NOT
+        # pass — one query cannot establish anything.
+        equivalent = n >= 2 and abs(mean_d) < margin
+        return {'mean_diff': round(mean_d, 5), 'n': n, 'margin': margin,
+                'p_lower': 0.0 if equivalent else 1.0,
+                'p_upper': 0.0 if equivalent else 1.0,
+                'p_tost': 0.0 if equivalent else 1.0,
+                'equivalent': bool(equivalent),
+                'ci_90': (round(mean_d, 5), round(mean_d, 5)),
+                'note': 'zero variance in paired differences'}
+
+    df = n - 1
+    # H0_lower: diff <= -margin   (reject => diff is above -margin)
+    t_lower = (mean_d + margin) / se
+    p_lower = float(stats.t.sf(t_lower, df))
+    # H0_upper: diff >= +margin   (reject => diff is below +margin)
+    t_upper = (mean_d - margin) / se
+    p_upper = float(stats.t.cdf(t_upper, df))
+    p_tost = max(p_lower, p_upper)
+
+    # The (1-2*alpha) CI is the interval TOST is equivalent to: contained in
+    # +/-margin iff the test rejects. Reported because reviewers read it
+    # faster than a p-value.
+    crit = stats.t.ppf(1 - alpha, df)
+    ci = (mean_d - crit * se, mean_d + crit * se)
+    return {
+        'mean_diff': round(mean_d, 5),
+        'n': n,
+        'margin': margin,
+        'p_lower': round(p_lower, 4),
+        'p_upper': round(p_upper, 4),
+        'p_tost': round(p_tost, 4),
+        'equivalent': bool(p_tost < alpha),
+        'ci_90': (round(ci[0], 5), round(ci[1], 5)),
+    }
+
+
+def equivalence_table(dataset: str = None, metric: str = 'NDCG@5',
+                      margin: float = EQUIV_MARGIN_NDCG) -> pd.DataFrame:
+    """Pairwise paired TOST over every embedder pair, from Phase B output.
+
+    Reads per_query_rq_{model}_{dataset} checkpoints. Also runs the ordinary
+    paired difference test, because the honest sentence is a conjunction:
+    "no detectable difference AND equivalent within +/-margin". A pair that
+    is neither is simply not matched, and the paper must not describe it as
+    such.
+    """
+    from scipy import stats
+
+    ds_list = [dataset] if dataset else config.DATASETS
+    rows = []
+    for ds_name in ds_list:
+        loaded = {}
+        for cfg in config.EMBEDDING_MODELS:
+            pq = load_checkpoint(f"per_query_rq_{cfg['name']}_{ds_name}")
+            if pq:
+                loaded[cfg['name']] = pq
+        names = sorted(loaded)
+        for i, m_a in enumerate(names):
+            for m_b in names[i + 1:]:
+                shared = sorted(set(loaded[m_a]) & set(loaded[m_b]))
+                if len(shared) < 3:
+                    continue
+                a = [loaded[m_a][q][metric] for q in shared]
+                b = [loaded[m_b][q][metric] for q in shared]
+                t = tost_equivalence(a, b, margin=margin)
+                _, p_diff = stats.ttest_rel(a, b)
+                rows.append({
+                    'dataset': ds_name, 'metric': metric,
+                    'model_a': m_a, 'model_b': m_b,
+                    'mean_a': round(float(np.mean(a)), 4),
+                    'mean_b': round(float(np.mean(b)), 4),
+                    'mean_diff': t['mean_diff'],
+                    'n': t['n'],
+                    'p_difference': round(float(p_diff), 4),
+                    'p_tost': t['p_tost'],
+                    'ci_90_low': t['ci_90'][0],
+                    'ci_90_high': t['ci_90'][1],
+                    'equivalent': t['equivalent'],
+                    'matched': bool(t['equivalent'] and p_diff >= 0.05),
+                })
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        save_checkpoint('equivalence_table', df)
+    return df
+
+
 def _mean(scores, key):
     vals = [s[key] for s in scores if key in s]
     return float(np.mean(vals)) if vals else None

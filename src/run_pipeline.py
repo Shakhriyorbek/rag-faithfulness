@@ -39,7 +39,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import config
-from utils import set_seed
+from utils import set_scope, set_seed
 
 SMOKE_MODELS = ['all-mpnet-base-v2', 'E5-large-instruct', 'BGE-M3']
 ALL_PHASES = ['a', 'b', 'c', 'llama', 'd', 'e', 'esa', 'rerank', 'report',
@@ -92,6 +92,9 @@ def main():
                     else config.DATASETS)
 
     set_seed()
+    # Scope the checkpoint directory to (N, CORPUS_VERSION) BEFORE any phase
+    # runs, so a smoke test and a full run cannot reuse each other's work.
+    set_scope(n)
     print(f'=== pipeline: N={n} | models={models or "ALL"} | '
           f'datasets={ds_names} | phases={phases} ===')
 

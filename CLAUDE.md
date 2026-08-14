@@ -363,6 +363,53 @@ or more (0.83–0.99 vs 0.82–0.90). `conditional.py` reports `faith_gap` over
 answered rows only; `faith_gap_pooled` is kept solely to keep the artifact
 auditable. **Never report the pooled column alone.**
 
+### ⚠️ Three defects found on the first real N=1000 attempt (2026-08-14)
+
+**B8a — every checkpoint key was scoped to nothing, so the full run reused
+the pilot.** Keys are named for their content (`retrieval_BGE-M3_NQ`), not
+for the run, so N=50/v1 and N=1000/v2 collided on all of them. Each phase
+skips work whose checkpoint exists, so the first real run printed
+`[phase A] all-mpnet-base-v2: all datasets done, skipping`, loaded the
+pilot's `retrieval_quality_all.pkl`, and **exited 0 in seconds having done
+nothing**. Had it reached the paid phases it would have skipped generation
+too and handed 50 stale rows to the analysis as the full run.
+Fixed by scoping the **directory**, not the keys:
+`checkpoints/n{N}_{CORPUS_VERSION}/`. `utils.set_scope(n)` is called by
+`run_pipeline` before any phase. Overrides: `RAG_SCOPE_N`, or
+`RAG_CHECKPOINT_DIR` for an absolute path — the pre-scope pilot checkpoints
+still sit flat in `checkpoints/`, so reading them needs the latter.
+
+**B8b — 187 of 1000 NQ answers were falsely reported absent from their own
+context.** NQ documents are token lists re-joined with spaces, so the context
+holds `Röntgen 's` and `1,020 - 1,080 kg` while the answer holds
+`Röntgen's` and `1,020–1,080 kg`. A whitespace-only containment test called
+those different. Measured: 248/1000 "missing", of which **187 were this
+artifact and only 61 genuinely absent**. Worse, `build_qrels` used the same
+strict test to choose relevant chunks, found none, and **fell back to marking
+the whole document relevant — re-creating B6 for a quarter of the data**.
+Fixed with `src/textnorm.py`, one canonical containment rule (lowercase,
+punctuation→space, collapse whitespace, unicode-safe) now used by the loader,
+qrels, and `correctness.contains_answer` (which had the same defect: its
+punctuation-*deleting* normalizer glued `Röntgen's`→`röntgens` and failed
+against `röntgen s`). The doc-level fallback still exists for genuinely
+straddling gold sentences but is **counted and printed**, never silent.
+
+**B8c — the 61 genuinely-absent NQ queries were kept.** The loader warned
+and moved on. Those queries cannot test retrieval at all, yet qrels marked
+their document relevant, so they manufacture `hit × incorrect` rows — the
+exact cell the paper's headline rests on. NQ now **draws until n usable
+queries** are collected, discards the rest, records counts in
+`LoadedDataset.stats`, and asserts the invariant that every retained sample
+contains its own answer. `CORPUS_VERSION` → **v3**.
+
+**Added the same day:** `results.tost_equivalence` / `results.equivalence_table`
+— paired TOST on per-query NDCG (margin ±0.02, `EQUIV_MARGIN_NDCG`), backed by
+new `per_query_rq_{model}_{dataset}` checkpoints from Phase B. This closes D8,
+the one reviewer attack nothing covered: "matched retrieval quality" was only
+ever supported by a non-significant difference, which is not evidence of
+equivalence. `matched` requires **both** no detectable difference **and** TOST
+equivalence.
+
 **Still open:**
 9. ❌ **Run the experiments** — smoke test passes end to end; Rung 2 (3×NQ at
    N=1000), then Rung 5 (the Berend conditions, ~$15), ESA, rerank, Llama-3,

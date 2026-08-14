@@ -21,8 +21,32 @@ def set_seed(seed: int = config.SEED):
             config.torch.cuda.manual_seed_all(seed)
 
 
+# ── Checkpoint scope ──────────────────────────────────────────────
+def set_scope(n: int):
+    """Point the checkpoint directory at the (n, CORPUS_VERSION) scope.
+
+    Called by run_pipeline once N is known, so that `--smoke-test` (N=50)
+    and `--full` (N=1000) cannot overwrite or silently reuse each other's
+    checkpoints — see the comment on config.CHECKPOINT_DIR. An explicit
+    RAG_CHECKPOINT_DIR always wins, so a deliberate override is never
+    undone by a later phase.
+    """
+    import os
+    if os.getenv('RAG_CHECKPOINT_DIR'):
+        print(f'  [scope] RAG_CHECKPOINT_DIR set — keeping '
+              f'{config.CHECKPOINT_DIR}')
+        return config.CHECKPOINT_DIR
+    config.CHECKPOINT_DIR = (config.CHECKPOINT_ROOT
+                             / f'n{n}_{config.CORPUS_VERSION}')
+    config.CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+    print(f'  [scope] checkpoints -> {config.CHECKPOINT_DIR}')
+    return config.CHECKPOINT_DIR
+
+
 # ── Checkpoint helpers ────────────────────────────────────────────
 def checkpoint_path(name: str):
+    # Read config.CHECKPOINT_DIR at CALL time, never capture it at import —
+    # set_scope() rebinds it after these modules are already imported.
     return config.CHECKPOINT_DIR / f'{name}.pkl'
 
 

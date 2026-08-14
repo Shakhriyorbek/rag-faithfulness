@@ -41,9 +41,49 @@ NLI_MODEL = 'cross-encoder/nli-deberta-v3-large'
 # Auto-detected at runtime in generate_llama.py
 LLAMA_FORCE_8BIT = None  # None = auto-decide by VRAM; True/False to force
 
+# ── Corpus semantics version ──
+# Bump whenever the corpus, gold provenance or relevance definition changes,
+# so a cache built under the old semantics can never be silently reused.
+# (Lives here rather than in datasets_loader because CHECKPOINT_DIR below
+# depends on it, and datasets_loader imports config.)
+#   v1  original loaders
+#   v2  B6: NQ context centred on the answer span; NQ relevance is
+#       answer-bearing rather than document-level (2026-08-13)
+#   v3  B8: NQ samples whose answer is genuinely absent from the retained
+#       window are dropped and re-drawn, and containment is decided by
+#       textnorm.contains rather than a whitespace-only test (2026-08-14)
+CORPUS_VERSION = 'v3'
+
 # ── Paths (all under home on gpu1) ──
-BASE_DIR       = Path(os.getenv('RAG_BASE', str(Path.home() / 'rag_faithfulness')))
-CHECKPOINT_DIR = BASE_DIR / 'checkpoints'
+BASE_DIR        = Path(os.getenv('RAG_BASE', str(Path.home() / 'rag_faithfulness')))
+CHECKPOINT_ROOT = BASE_DIR / 'checkpoints'
+
+# ⚠️ Checkpoints are scoped by (N, CORPUS_VERSION) — do not flatten this.
+#
+# Every checkpoint key in this project is named for its CONTENT
+# (`retrieval_BGE-M3_NQ`, `generated_claude_BGE-M3_NQ`, ...) and not for the
+# run that produced it. With one flat directory the N=50 pilot and the
+# N=1000 full run collide on every single key, and because each phase skips
+# work whose checkpoint already exists, the full run "succeeds" in seconds
+# by reusing pilot data. That is exactly what happened on 2026-08-14:
+#
+#     [phase A] all-mpnet-base-v2: all datasets done, skipping
+#     [ckpt] loaded retrieval_quality_all.pkl
+#     === pipeline done ===  EXIT=0
+#
+# Phase A skipped all three models, Phase B returned the pilot's numbers,
+# and the process exited 0. Had it reached the paid phases it would have
+# skipped generation too and handed 50 stale rows to the analysis as if they
+# were the full run. Putting the scope in the DIRECTORY rather than in every
+# key keeps all existing key names working and makes collisions impossible.
+#
+# RAG_SCOPE_N       — pick a different N's scope (e.g. 50 for the pilot)
+# RAG_CHECKPOINT_DIR — absolute override, e.g. to read the pre-scope pilot
+#                      checkpoints that still sit flat in checkpoints/
+_SCOPE_N       = int(os.getenv('RAG_SCOPE_N', N_QUERIES))
+CHECKPOINT_DIR = Path(os.getenv(
+    'RAG_CHECKPOINT_DIR',
+    str(CHECKPOINT_ROOT / f'n{_SCOPE_N}_{CORPUS_VERSION}')))
 OUTPUT_DIR     = BASE_DIR / 'outputs'
 HF_CACHE       = BASE_DIR / 'hf_cache'
 for d in (CHECKPOINT_DIR, OUTPUT_DIR, HF_CACHE):

@@ -20,15 +20,15 @@ from math import log2
 from typing import Dict, List
 
 import config
+import textnorm
 from datasets_loader import LoadedDataset
 from embed_index import build_chunks
 from utils import load_checkpoint, save_checkpoint, checkpoint_exists
 
 
-def _norm(s: str) -> str:
-    return ' '.join(s.split())
-
-
+# NOTE: the whitespace-only `_norm` that used to live here is gone on
+# purpose. It decided chunk relevance and matched nothing on 187/1000 NQ
+# queries, sending them all to the doc-level fallback. Use textnorm.
 def build_qrels(loaded: LoadedDataset) -> Dict[str, Dict[str, int]]:
     """{query_id: {chunk_id: 1}} from document provenance. Cached."""
     from datasets_loader import CORPUS_VERSION
@@ -44,6 +44,7 @@ def build_qrels(loaded: LoadedDataset) -> Dict[str, Dict[str, int]]:
         chunks_by_doc[c.doc_id].append(c)
 
     qrels: Dict[str, Dict[str, int]] = defaultdict(dict)
+    n_fallback = 0
     for doc in loaded.documents:
         if not doc.gold_for:
             continue
@@ -51,18 +52,33 @@ def build_qrels(loaded: LoadedDataset) -> Dict[str, Dict[str, int]]:
         for qid in doc.gold_for:
             gold_sents = doc.gold_sentences.get(qid)
             if gold_sents:
-                # HotpotQA: only chunks containing a gold sentence
-                matched = [
-                    c for c in doc_chunks
-                    if any(_norm(s) in _norm(c.text) for s in gold_sents)
-                ]
-                for c in matched or doc_chunks:  # fallback: doc-level
+                # Answer-bearing relevance: a chunk of a gold document counts
+                # only if it actually carries the gold span. textnorm, not a
+                # whitespace-only test — the strict version matched nothing on
+                # 187/1000 NQ queries and sent every one of them down the
+                # doc-level fallback below, which is precisely the B6 bug it
+                # was supposed to have fixed.
+                matched = [c for c in doc_chunks
+                           if textnorm.contains_any(c.text, gold_sents)]
+                if not matched:
+                    # A gold sentence can genuinely straddle a chunk boundary
+                    # (HotpotQA). Falling back to doc-level keeps the query
+                    # evaluable, but it weakens `hit` from "was shown the
+                    # answer" to "got the right document", so it is counted
+                    # and reported rather than applied silently.
+                    n_fallback += 1
+                for c in matched or doc_chunks:
                     qrels[qid][c.chunk_id] = 1
             else:
                 for c in doc_chunks:
                     qrels[qid][c.chunk_id] = 1
 
     qrels = dict(qrels)
+    if n_fallback:
+        pct = n_fallback / max(1, len(loaded.samples))
+        print(f'  [{loaded.name}] {n_fallback} gold docs fell back to '
+              f'doc-level relevance ({pct:.1%} of queries) — no chunk '
+              f'contained the gold span')
     n_empty = sum(1 for s in loaded.samples if qid_missing(qrels, s.query_id))
     if n_empty:
         print(f'  WARNING: {n_empty} queries with empty qrels in {loaded.name}')
@@ -95,6 +111,28 @@ def mrr_at_k(ranked_ids: List[str], relevant: set, k: int) -> float:
         if cid in relevant:
             return 1.0 / (i + 1)
     return 0.0
+
+
+def per_query_metrics(qrels: Dict[str, Dict[str, int]],
+                      run: Dict[str, List[str]],
+                      k: int = config.TOP_K) -> Dict[str, dict]:
+    """{query_id: {NDCG@5, Recall@5, MRR@5}} — the unaggregated scores.
+
+    evaluate_run returns means, which cannot support a PAIRED test. The
+    equivalence test in results.py needs per-query values so that two
+    embedders are compared on the same queries.
+    """
+    out = {}
+    for qid, ranked in run.items():
+        relevant = set(qrels.get(qid, {}))
+        if not relevant:
+            continue
+        out[qid] = {
+            'NDCG@5': ndcg_at_k(ranked, relevant, k),
+            'Recall@5': recall_at_k(ranked, relevant, k),
+            'MRR@5': mrr_at_k(ranked, relevant, k),
+        }
+    return out
 
 
 def evaluate_run(qrels: Dict[str, Dict[str, int]],
@@ -137,15 +175,20 @@ def _crosscheck_with_ranx(qrels, run_scores, ours):
 # ── Phase B ───────────────────────────────────────────────────────
 def run_phase_b(datasets: Dict[str, LoadedDataset],
                 model_names: List[str] = None) -> dict:
-    """{model: {dataset: {metric: value}}} -> checkpoint retrieval_quality_all."""
-    if checkpoint_exists('retrieval_quality_all'):
-        return load_checkpoint('retrieval_quality_all')
+    """{model: {dataset: {metric: value}}} -> checkpoint retrieval_quality_all.
 
+    Recomputed every call. Phase B is seconds of arithmetic over checkpoints
+    that already exist, and the previous blanket
+    `if checkpoint_exists('retrieval_quality_all'): return` meant a later run
+    that ADDED models returned the earlier run's aggregate and reported the
+    new models as missing. Per-model results are merged into the existing
+    aggregate so a 3-model run cannot silently truncate a 7-model one.
+    """
     model_list = [c['name'] for c in config.EMBEDDING_MODELS
                   if not model_names or c['name'] in model_names]
-    results = {}
+    results = load_checkpoint('retrieval_quality_all') or {}
     for model in model_list:
-        results[model] = {}
+        results.setdefault(model, {})
         for ds_name, loaded in datasets.items():
             retrievals = load_checkpoint(f'retrieval_{model}_{ds_name}')
             if not retrievals:
@@ -161,6 +204,11 @@ def run_phase_b(datasets: Dict[str, LoadedDataset],
             }
             _crosscheck_with_ranx(qrels, run_scores, metrics)
             results[model][ds_name] = metrics
+            # Per-query scores feed the paired equivalence test (results.py).
+            # Saved here because it is the only place qrels and the run are
+            # both in hand.
+            save_checkpoint(f'per_query_rq_{model}_{ds_name}',
+                            per_query_metrics(qrels, run))
             print(f'  [{ds_name}] {model}: {metrics}')
 
     save_checkpoint('retrieval_quality_all', results)
