@@ -298,11 +298,28 @@ def hypothesis_summary(df: pd.DataFrame) -> pd.DataFrame:
             'supported': by_ds.idxmax() == 'HotpotQA',
         })
 
-    # H3: model ranking by nRFG consistent across generators.
-    # Every available generator PAIR is reported, not just claude-vs-llama3:
-    # with GPT-4o-mini restored there are up to three pairs, and H3 is only
-    # supported if the ranking survives across all of them. Reporting the
-    # single most agreeable pair would be cherry-picking.
+    # H3: does the model ranking survive a change of generator?
+    #
+    # ⚠️ Tested on FAITHFULNESS, not on nRFG. Ranking by nRFG answers a
+    # different question than it appears to:
+    #
+    #     nRFG = (RQ - F) / RQ = 1 - F/RQ
+    #
+    # and RQ is a property of the retriever alone — every generator sees the
+    # identical retrieval, so the RQ term is *the same numbers* on both sides
+    # of the comparison. Whenever the spread in F is small relative to the
+    # spread in RQ, the nRFG ranking collapses onto the RQ ranking and the
+    # correlation is near 1 by construction, measuring retrieval rather than
+    # anything about the generator.
+    #
+    # That is not hypothetical: on NQ at n=1000 the nRFG ranking reproduced
+    # the NDCG@5 ranking EXACTLY for both Claude and GPT-4o-mini (rho = 1.00),
+    # while the faithfulness ranking between the same two generators had
+    # rho = 0.00. Reporting the nRFG version alone would have recorded H3 as
+    # supported when the quantity H3 is about is uncorrelated.
+    #
+    # Both are emitted, with the nRFG row explicitly flagged when it merely
+    # echoes the retrieval ranking.
     from itertools import combinations
 
     from scipy.stats import spearmanr
@@ -314,19 +331,39 @@ def hypothesis_summary(df: pd.DataFrame) -> pd.DataFrame:
         shared = sorted(set(rows_a['model']) & set(rows_b['model']))
         if len(shared) < 3:
             continue
-        r_a = rows_a[rows_a['model'].isin(shared)].groupby('model')['nRFG'].mean()
-        r_b = rows_b[rows_b['model'].isin(shared)].groupby('model')['nRFG'].mean()
-        rho, p = spearmanr(r_a[shared], r_b[shared])
-        rhos.append(float(rho))
+
+        # The hypothesis as stated: faithfulness ranking across generators.
+        f_a = rows_a[rows_a['model'].isin(shared)].groupby('model')['faithfulness'].mean()
+        f_b = rows_b[rows_b['model'].isin(shared)].groupby('model')['faithfulness'].mean()
+        rho_f, p_f = spearmanr(f_a[shared], f_b[shared])
+        rhos.append(float(rho_f))
         out.append({
-            'hypothesis': f'H3 nRFG ranking consistent: {g_a} vs {g_b} '
+            'hypothesis': f'H3 FAITHFULNESS ranking consistent: {g_a} vs {g_b} '
                           f'(n={len(shared)} models)',
-            'observed': round(float(rho), 4), 'p': round(float(p), 4),
-            'supported': bool(rho > 0.7),
+            'observed': round(float(rho_f), 4), 'p': round(float(p_f), 4),
+            'supported': bool(rho_f > 0.7),
         })
+
+        # The nRFG version, kept as a diagnostic and labelled when it is just
+        # the retrieval ranking wearing a different name.
+        n_a = rows_a[rows_a['model'].isin(shared)].groupby('model')['nRFG'].mean()
+        n_b = rows_b[rows_b['model'].isin(shared)].groupby('model')['nRFG'].mean()
+        rho_n, p_n = spearmanr(n_a[shared], n_b[shared])
+        rq = rows_a[rows_a['model'].isin(shared)].groupby('model')['NDCG@5'].mean()
+        echoes_rq = (list(n_a[shared].rank()) == list(rq[shared].rank())
+                     and list(n_b[shared].rank()) == list(rq[shared].rank()))
+        out.append({
+            'hypothesis': f'H3 nRFG ranking [DIAGNOSTIC] {g_a} vs {g_b}'
+                          + (' — reproduces the NDCG@5 ranking exactly, so it '
+                             'measures retrieval, not the generator'
+                             if echoes_rq else ''),
+            'observed': round(float(rho_n), 4), 'p': round(float(p_n), 4),
+            'supported': None if echoes_rq else bool(rho_n > 0.7),
+        })
+
     if len(rhos) > 1:
         out.append({
-            'hypothesis': 'H3 OVERALL (weakest generator pair)',
+            'hypothesis': 'H3 OVERALL (weakest generator pair, faithfulness)',
             'observed': round(min(rhos), 4), 'p': None,
             'supported': bool(min(rhos) > 0.7),
         })
