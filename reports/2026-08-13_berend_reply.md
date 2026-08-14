@@ -135,6 +135,19 @@ retrieval quality. Every table can be recomputed on the filtered subset. The
 retained fraction is worth reporting in its own right, since a low one is a
 statement about benchmark contamination rather than about my sampling.
 
+I should also state how the sample is built, because it is not simply "the
+first 1000". On Natural Questions I draw until I have 1000 queries whose
+annotated short answer actually appears in the retained context window, and
+discard the rest. Two things forced this. The window used to be the first 500
+non-HTML tokens, so the answer often fell outside it — the query was then
+unanswerable from the corpus, yet the qrels still marked its document
+relevant, which manufactured exactly the "retrieval succeeded, answer wrong"
+rows my central claim rests on. Centring the window on the annotated span
+fixes almost all of it; the residue is discarded. In the current 1000-query
+sample I scanned 1857 candidates, of which 845 had no short answer at all
+(the usual NQ rate) and 12 had their answer outside the window. I will report
+these counts in the paper.
+
 On scale: the whole programme above, including the conditions, comes to about
 $55, which is what I have. I am keeping n=1000 rather than raising it, and I
 want to be straightforward about the consequence. The conditional analysis
