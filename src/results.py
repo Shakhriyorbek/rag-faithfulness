@@ -180,6 +180,64 @@ def equivalence_table(dataset: str = None, metric: str = 'NDCG@5',
     return df
 
 
+def faithfulness_by_model(dataset: str, generator: str = 'claude',
+                          models: List[str] = None,
+                          answered_only: bool = True) -> dict:
+    """
+    Mean faithfulness per embedding model on a COMMON set of queries.
+
+    Two corrections over the naive comparison, both of which change the
+    answer on real data:
+
+    1. ABSTENTIONS ARE EXCLUDED by default. "I cannot answer based on the
+       provided context" is correctly NOT entailed by the context and scores
+       ~0.25-0.32 NLI. Abstention rates differ hugely between embedders on
+       HotpotQA (0.207 for E5-large-instruct vs 0.376 for all-mpnet-base-v2),
+       so a pooled mean hands the abstaining model a lower faithfulness score
+       for free. Pooled, the HotpotQA spread looks like 0.090; answered-only
+       it is 0.013.
+
+    2. THE COMPARISON IS PAIRED ON A COMMON SUBSET. Averaging each model over
+       its own answered rows compares different query sets — and since which
+       queries a model abstains on depends on its own retrieval, those sets
+       are not exchangeable. Restricting to queries every model answered
+       makes the per-model means and the paired test refer to the same thing;
+       otherwise the reported "spread" and the reported p-value are answers
+       to different questions.
+
+    Returns {'means', 'n_common', 'n_total', 'spread', 'best', 'worst'}.
+    """
+    model_list = models or [c['name'] for c in config.EMBEDDING_MODELS]
+    per = {}
+    for m in model_list:
+        nli = load_checkpoint(f'nli_scores_{generator}_{m}_{dataset}')
+        if not nli:
+            continue
+        drop = set()
+        if answered_only:
+            scored = load_checkpoint(
+                f'generated_{generator}_{m}_{dataset}_scored')
+            if scored:
+                drop = {r['query_id'] for r in scored if r.get('abstained')}
+        per[m] = {r['query_id']: r['nli_max'] for r in nli
+                  if r['query_id'] not in drop}
+    if len(per) < 2:
+        return {}
+
+    common = sorted(set.intersection(*(set(v) for v in per.values())))
+    means = {m: float(np.mean([per[m][q] for q in common])) for m in per}
+    order = sorted(means, key=means.get)
+    return {
+        'means': means,
+        'n_common': len(common),
+        'n_total': {m: len(v) for m, v in per.items()},
+        'spread': round(means[order[-1]] - means[order[0]], 4),
+        'worst': order[0],
+        'best': order[-1],
+        'per_query': {m: [per[m][q] for q in common] for m in per},
+    }
+
+
 def _mean(scores, key):
     vals = [s[key] for s in scores if key in s]
     return float(np.mean(vals)) if vals else None
