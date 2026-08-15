@@ -1,15 +1,14 @@
-# Reply to Dr. Berend — 2026-08-13
+# Reply to Dr. Berend — drafted 2026-08-13, rewritten 2026-08-14 with results
 
-Draft. Responds to his letter of 2026-08-11 (necessary/sufficient framing,
-controlled conditions, correctness conditioning, Shapley, sampling).
+Responds to his letter of 2026-08-11 (necessary/sufficient framing, controlled
+conditions, correctness conditioning, Shapley, sampling) — and now carries the
+Rung 2 measurements, which changed what the paper can claim.
 
-**Do not send before reading "Notes for me" at the bottom — there is one issue
-in there that changes what the paper can claim, and it is better raised by me
-than found by a reviewer.**
+**Do not send before reading "Notes for me" at the bottom.**
 
 ---
 
-**Subject:** Re: controlled conditions — implemented, plus one positioning problem
+**Subject:** Re: controlled conditions — results, and a title that no longer matches them
 
 ---
 
@@ -18,187 +17,236 @@ Dear Gábor,
 Thank you — this reframing is more useful than anything else I have had on the
 project. Restating the target claim as *good retrieval quality is necessary and
 sufficient for a high-quality response* makes it falsifiable in a way "there is
-a gap between retrieval and faithfulness" never was, and it tells me what to
-measure. I have implemented all of it. Nothing below has been run at scale yet;
-I wanted the design settled with you first.
+a gap between retrieval and faithfulness" never was, and it told me what to
+measure.
 
-## The two branches, made measurable
+I have now implemented all of it and run it: two datasets, 1000 queries each,
+four embedding models, two generators (Claude Haiku 4.5 and GPT-4o-mini),
+16,000 generations, $13.46 of the $55 budget, no API errors. I am writing
+before rewriting anything, because the results contradict my own title and I
+would rather agree the response with you than present you with a rewrite.
 
-Everything now reduces to one per-query table:
+## The main result: faithfulness does not vary with the embedder
 
-|                     | answer correct        | answer incorrect          |
-|---------------------|-----------------------|---------------------------|
-| **retrieval hit**   | as the premise expects | **not sufficient** (A)    |
-| **retrieval miss**  | **not necessary** (B) | as the premise expects     |
+Your branch A holds, and the mechanism is not the one I proposed.
 
-Both of your branches are cells in it, and each cell also carries its mean
-faithfulness. The *hit × incorrect* cell is the one I expect to matter: if
-faithfulness is high there, the paper has direct evidence that an answer can be
-well grounded in correctly retrieved text and still be wrong. That is a
-narrower claim than the one I started with, and I think a much more defensible
-one.
+I tested equivalence in both directions, using the paired TOST you prompted me
+towards. Every embedder is evaluated on identical queries, so the test is
+paired throughout.
 
-## Controlled conditions
+|                                   | pairs equivalent | margin |
+|-----------------------------------|------------------|--------|
+| **Retrieval quality** (NDCG@5)    | **0 of 6**, each dataset | ±0.02 |
+| **Faithfulness** (NLI entailment) | **22 of 24** across both datasets × both generators | ±0.05 |
 
-**No retrieval (C1).** Implemented, embedder-independent, one pass per dataset.
+On Natural Questions all six pairs are equivalent in faithfulness at
+p_tost = 0.0000 for both generators. Meanwhile the retrieval spread between the
+best and worst embedder is 4.4 NDCG@5 points on NQ and **11.9 points** on
+HotpotQA — nowhere near matched.
 
-One complication worth flagging: C1 cannot reuse the RAG prompt. That template
-says "answer using ONLY the provided context" and supplies a refusal string, so
-with an empty context it measures willingness to refuse rather than parametric
-knowledge — the floor would come out near zero for entirely the wrong reason.
-C1 therefore uses a closed-book prompt, which means C1 and the RAG condition
-differ in two ways at once. Rather than only noting this, I have added two
-mitigations: a 100-query probe that runs the RAG template *with* an empty
-context so the size of the prompt effect is measured, and a `noise_only`
-condition (below) that is a floor measured through the real RAG prompt with a
-real context, so it has no prompt confound at all.
+So the honest sentence is the opposite of my title:
 
-I also record abstentions separately from wrong answers. A floor made of "I do
-not know" means something different from a floor made of confident errors, and
-for the filter you suggested the distinction matters: a query the model
-abstains on is a gap RAG can fill, whereas one it answers confidently and
-wrongly requires RAG to overturn a belief.
+> Embedding models that differ substantially in retrieval quality produce
+> statistically equivalent faithfulness.
 
-**Oracle (C2).** Implemented, and defining it forced a choice I would like to
-confirm with you. There are two notions of gold evidence in my pipeline, and
-they are not the same object. The qrels mark a *chunk* relevant if its source
-document is gold; separately I store the annotated evidence text, which on
-HotpotQA is just the supporting sentences without the surrounding paragraph. An
-oracle built from the second is strictly easier than perfect retrieval — no
-retriever could return sentences stripped of their paragraphs — so it would be
-a ceiling on something the paper never measures. I default to the qrels
-definition so C2 is the ceiling of the task NDCG@5 actually scores, and keep
-the other available; the gap between them is itself interpretable as the cost
-of retrieving paragraphs rather than sentences.
+What the embedder *does* control is whether the model answers at all and
+whether it is right. On HotpotQA, moving from all-mpnet-base-v2 to
+E5-large-instruct is worth **+13.5 points of accuracy** (0.599 → 0.734) and
+**−17 points of abstention** (0.376 → 0.207), while the faithfulness of what is
+actually asserted moves 0.019 and is not significant.
 
-I also found that for a fraction of QASPER questions the loader had been
-substituting the paper's first three paragraphs when the annotated evidence was
-a figure or table. Acceptable for qrels, not acceptable for a ceiling claim, so
-those queries are now flagged and excluded from C2 and the exclusion rate is
-reported.
+I think that is a better paper than the one I proposed, and it is a cleaner
+extension of Salemi and Zamani (below) than "retrieval quality does not predict
+downstream quality" would have been: it separates *which* downstream property
+retrieval quality governs from which it does not.
 
-**Retrieval beating the oracle.** Recorded and surfaced rather than clipped —
-the report prints each embedder as a percentage of the C1→C2 span and calls out
-any cell above 100%.
+## Why I nearly reported the opposite
 
-## Subset and ordering
+This is worth a paragraph because it is the kind of error your letter is
+designed to catch.
 
-Your third suggestion turned out to be the cheapest experiment with the
-sharpest logic, so I built it out fully. Holding relevance perfect and varying
-only the arrangement:
+My first pass pooled all responses and showed HotpotQA faithfulness tracking
+retrieval quality rank for rank:
 
-- **order** — the same gold chunks reversed. Identical information, so any
-  difference is position sensitivity alone.
-- **subset** — the single best chunk versus all of them, which asks whether
-  more relevant context helps or distracts.
-- **position at constant length** — one gold chunk plus four hard negatives,
-  with the gold placed first, in the middle, or last. Relevance *and* context
-  length are held constant and only position moves.
-- **noise only** — five hard negatives, zero gold.
+| | all-mpnet | text-emb-3-small | BGE-M3 | E5-instruct |
+|---|---|---|---|---|
+| NDCG@5 | 0.705 | 0.767 | 0.809 | **0.824** |
+| faithfulness, pooled | 0.548 | 0.599 | 0.628 | **0.638** |
+| faithfulness, answered only | 0.737 | 0.727 | 0.731 | **0.746** |
 
-Distractors are drawn from the reference embedder's own top-20 misses, so they
-are what a real retriever returns and mistakes for relevant rather than random
-text. If the ordering conditions move accuracy at all, then relevance — which
-is the entirety of what NDCG@5 measures — does not determine response quality,
-and that is the paper's thesis argued from the oracle side rather than the
-embedder side.
+A spread of 0.090, perfectly ordered — my hypothesis confirmed on the multi-hop
+dataset, exactly where I predicted it.
 
-## Shapley, and the paper you linked
+It is an artifact of abstention. "I cannot answer based on the provided
+context" is correctly *not* entailed by the context and scores about 0.25–0.32
+NLI. Abstention rate is itself driven by retrieval quality, so the worst
+retriever abstains most and every abstention drags its pooled mean down.
+Restricted to answered responses the spread falls to 0.019, the ordering
+scrambles, and significance disappears. I also had to pair the comparison on a
+common subset: averaging each model over its own answered queries compares
+different query sets, and which queries a model abstains on depends on its own
+retrieval.
 
-These turned out to be the same idea at two levels of generality, which I had
-not seen until I read the paper.
+All faithfulness numbers in the paper will therefore be answered-only and
+paired. I mention it because the pooled version is what a reader would compute
+by default, and it points the wrong way.
 
-The DOI you sent is Salemi and Zamani, *Evaluating Retrieval Quality in
-Retrieval-Augmented Generation* (SIGIR 2024, arXiv:2404.13781). Their eRAG runs
-the LLM on each retrieved document individually and uses the downstream score
-as that document's relevance label — which is precisely the singleton term of a
-Shapley value. Shapley generalizes it by also pricing what a document
-contributes in the presence of the others.
+## Your 2×2, with numbers
 
-I implemented the exact Shapley value over the top-5 retrieved documents. That
-needs all 2⁵ = 32 subsets per query, but eRAG and leave-one-out are both
-already inside that enumeration, so one run yields all three measures — about
-$3.40 for 100 queries. Two value functions come off the same generations:
-whether the answer is correct, and how faithful it is to that subset's own
-context. The analysis then correlates each document's utility against its qrels
-relevance label. A weak correlation there is "good retrieval is not sufficient"
-stated per document rather than per system, and it needs no metric of my own
-invention. I am particularly interested in documents with *negative* utility
-that the qrels call relevant.
+Claude, 4,000 query-rows per dataset:
+
+| | NQ | HotpotQA |
+|---|---|---|
+| hit × correct | 71.8% | 67.2% |
+| **hit × incorrect — not sufficient (A)** | **23.3%** | **30.2%** |
+| miss × correct — not necessary (B) | 0.5% | 0.2% |
+| miss × incorrect | 4.4% | 2.4% |
+
+Branch A is substantial and grows on multi-hop. Branch B is negligible on both
+— 20 and 9 queries respectively. On these two datasets retrieval is very nearly
+necessary and clearly not sufficient, which is a sharper statement than I
+expected to be able to make, and it is asymmetric in a way worth reporting.
+
+`hit` here means the model was shown the answer, not merely the right document:
+relevance is answer-bearing at the chunk level, and on HotpotQA only 2 of 1000
+queries fell back to document-level relevance.
+
+## What failed
+
+- **H1** (instruction-tuned show a smaller gap than contrastive) — **failed**.
+  E5-large-instruct is worse than the contrastive models on NQ.
+- **H3** (ranking survives a change of generator) — **failed**. Spearman of the
+  faithfulness ranking between Claude and GPT-4o-mini is **0.000**.
+- **Matched retrieval quality**, the design premise — **not supported at any
+  defensible margin**. On HotpotQA five of six pairs differ at p < 0.0001.
+
+H3 also came with a trap I want to flag, since it bears on the metric question
+below. Tested on nRFG, H3 came out *supported* at Spearman 1.00. That is an
+artifact: nRFG = 1 − F/RQ, and RQ is a property of the retriever alone, so both
+generators see the identical RQ term. With faithfulness nearly flat, the nRFG
+ranking collapses onto the NDCG ranking — it reproduced the NDCG order exactly
+for both generators. It was measuring agreement about retrieval and reporting
+it as agreement about generators.
+
+## nRFG — you were right, and the data now says so too
+
+I asked in my previous draft whether nRFG should stay the primary metric. The
+measurements answer it.
+
+RFG = NDCG@5 − faithfulness is **negative for every model on NQ** (−0.028 to
+−0.085), because faithfulness (~0.85) exceeds retrieval quality (~0.79). The
+metric assumes generation *loses* fidelity relative to retrieval quality; it
+does not. A "gap" that is reliably negative, whose ranking is driven by the
+retrieval term, and which subtracts an entailment score from a ranking metric,
+is not something I can defend as a headline.
+
+My proposal is the second of the three options I put to you: **demote nRFG to a
+diagnostic and make the necessary/sufficient grid the spine of the paper.** The
+metric work stays, reported honestly including its negative sign, but stops
+carrying weight it cannot bear.
+
+Which leads to the title. *Beyond Retrieval Quality: How Embedding Architecture
+Affects Faithfulness in RAG Systems* is contradicted by my own data. I would
+propose something like **"Retrieval Quality Predicts Correctness, Not
+Faithfulness, in Retrieval-Augmented Generation"**, but I would rather have
+your view than pick one myself.
+
+## The conditions you asked for
+
+All implemented; the ones not yet run are marked.
+
+**No retrieval (C1) — implemented, not yet run.** C1 cannot reuse the RAG
+prompt: that template says "answer using ONLY the provided context" and
+supplies a refusal string, so with an empty context it measures willingness to
+refuse rather than parametric knowledge. C1 uses a closed-book prompt, with two
+mitigations for the resulting two-way difference — a 100-query probe running
+the RAG template *with* an empty context to size the prompt effect, and a
+`noise_only` condition which is a floor measured through the real RAG prompt.
+
+**Oracle (C2) — implemented, not yet run.** Defining it forced a choice I would
+like to confirm. The qrels mark a chunk relevant if its source document is
+gold; separately I store the annotated evidence text, which on HotpotQA is the
+supporting sentences without their paragraph. An oracle built from the second
+is strictly easier than perfect retrieval, so it would be a ceiling on
+something the paper never measures. I default to the qrels definition and keep
+the other available; the gap between them is interpretable as the cost of
+retrieving paragraphs rather than sentences.
+
+**Retrieval beating the oracle** — recorded and surfaced rather than clipped;
+any cell above 100% of the C1→C2 span is called out.
+
+**Subset and ordering — implemented, not yet run.** Holding relevance perfect
+and varying only arrangement: order (gold chunks reversed), subset (best chunk
+versus all), position at constant length (one gold chunk among four hard
+negatives, placed first/middle/last), and noise only. Distractors are the
+reference embedder's own top-20 misses, so they are what a real retriever
+mistakes for relevant rather than random text.
+
+**Shapley — implemented, not yet run.** The DOI you sent is Salemi and Zamani,
+*Evaluating Retrieval Quality in Retrieval-Augmented Generation* (SIGIR 2024,
+arXiv:2404.13781). Their eRAG scores each retrieved document alone and uses the
+downstream result as its relevance label, which is precisely the singleton term
+of a Shapley value. I implemented the exact Shapley value over the top-5, which
+needs all 2⁵ = 32 subsets per query — eRAG and leave-one-out both live inside
+that enumeration, so one run yields all three, about $3.40 per 100 queries. I
+am particularly interested in documents with *negative* utility that the qrels
+call relevant.
+
+I should ask directly: did you intend that link as a positioning warning? Their
+abstract already reports that relevance labels correlate only weakly with
+downstream performance, which is close to my original premise. I now think the
+result above is a genuine extension rather than a restatement — they show the
+correlation is weak, I can show which downstream property moves and which is
+equivalent — but I would like to know if that was your point.
 
 ## Sampling
 
-`--emit-filter` implements your suggestion directly: retain only the queries
-the model answers incorrectly with no retrieval, on the grounds that an
-instance already answered from parametric knowledge cannot inform a study of
-retrieval quality. Every table can be recomputed on the filtered subset. The
-retained fraction is worth reporting in its own right, since a low one is a
-statement about benchmark contamination rather than about my sampling.
+`--emit-filter` implements your suggestion: retain only queries the model
+answers incorrectly with no retrieval, since an instance already answered from
+parametric knowledge cannot inform a study of retrieval quality. It needs C1,
+so it is pending with C1.
 
-I should also state how the sample is built, because it is not simply "the
-first 1000". On Natural Questions I draw until I have 1000 queries whose
-annotated short answer actually appears in the retained context window, and
-discard the rest. Two things forced this. The window used to be the first 500
-non-HTML tokens, so the answer often fell outside it — the query was then
-unanswerable from the corpus, yet the qrels still marked its document
-relevant, which manufactured exactly the "retrieval succeeded, answer wrong"
-rows my central claim rests on. Centring the window on the annotated span
-fixes almost all of it; the residue is discarded. In the current 1000-query
-sample I scanned 1857 candidates, of which 845 had no short answer at all
-(the usual NQ rate) and 12 had their answer outside the window. I will report
-these counts in the paper.
+How the sample is built is worth stating, because it is not "the first 1000".
+On Natural Questions I draw until I have 1000 queries whose annotated short
+answer actually appears in the retained context window. The window used to be
+the first 500 non-HTML tokens, so the answer often fell outside it — the query
+was then unanswerable from the corpus, yet the qrels still marked its document
+relevant, manufacturing exactly the "retrieval succeeded, answer wrong" rows my
+central claim rests on. Centring the window on the annotated span fixes almost
+all of it; the residue is discarded. For the current sample I scanned 1857
+candidates: 845 had no short answer (the usual NQ rate) and 12 had their answer
+outside the window. These counts will be in the paper.
 
-On scale: the whole programme above, including the conditions, comes to about
-$55, which is what I have. I am keeping n=1000 rather than raising it, and I
-want to be straightforward about the consequence. The conditional analysis
-splits each model's queries into four cells, so per-cell n matters more than the
-total; I handle that by pooling the three datasets for the 2×2 (3,000 queries
-per model) and reporting the per-dataset breakdown as secondary. The filter you
-suggested shrinks the set further, so I plan to report the necessity and
-sufficiency shares on the filtered set, where the filter is conceptually
-required, and the cell-level faithfulness means on the pooled unfiltered set,
-where the sample size is needed — clearly labelled as to which is which rather
-than silently mixed.
+## The one measurement I do not yet trust
 
-One more thing I would like to check with you, because I think it is the largest
-hole in the current draft. The paper's premise is that these models have
-near-identical retrieval quality, but nothing in it establishes that: my pilot
-showed NDCG@5 between 0.908 and 0.956, which is a five-point spread. A
-non-significant difference is not evidence of equivalence. I intend to add a
-paired equivalence test (TOST) on per-query NDCG differences with a margin of
-±0.02, which is reachable at n=1000 precisely because every embedder is
-evaluated on identical queries. If no pair of models comes out equivalent, then
-the "matched retrieval quality" framing cannot stand as written and the claim
-becomes correlational — still worth reporting, but a different sentence. Does
-±0.02 seem to you like the right margin?
+Exact match is **0.000 across all 4,000 Claude responses on NQ**. The model
+never emits a bare answer span — it writes "Based on the provided context,
+Wilhelm Conrad Röntgen of Germany received…" — so EM cannot serve as the lower
+bound the design intended, and accuracy currently rests entirely on containment,
+which is an upper bound because a long answer can mention the gold string while
+asserting something else. The honest interval is [0.000, 0.738], which is too
+wide to build on, and HotpotQA adds 59 yes/no answers where containment
+over-matches.
 
-## One thing I want your view on
+So the accuracy figures and the 2×2 shares above should be read as provisional.
+My plan is an LLM judge over the existing generations — no regeneration, so it
+is cheap — before those numbers go in the paper. The faithfulness result is
+unaffected, since it is NLI against the context and does not use the correctness
+label.
 
-Two of your remarks together undercut my own primary metric, and I would rather
-say so now than defend it later.
+## Where that leaves the remaining budget
 
-nRFG is `(NDCG@5 − faithfulness) / NDCG@5`. It subtracts a faithfulness score
-from a ranking metric — two different scales — and the result only carries
-meaning under exactly the reading you questioned, where faithfulness stands in
-for response quality independently of whether the answer is right. Under the
-2×2 above, the quantity that actually matters is retrieval quality against
-answer *correctness*, with faithfulness as a diagnostic conditioned on it.
-
-So I see three options: keep nRFG as the headline and add the conditional
-analysis around it; demote nRFG to a diagnostic and make the necessary/
-sufficient grid the paper's spine; or drop nRFG and reframe the contribution
-entirely around the controlled conditions. My own inclination is the second —
-it keeps the metric work but stops it carrying weight it cannot bear. I would
-value your view before I rewrite §3.
-
-## Status
-
-Implementation is complete for all of the above and the offline test suite
-passes. The only measurements I have are still the 50-query pilot I sent on
-26 July, which I am not treating as evidence. I have API budget from
-10 August and plan to run the reduced version — three models on Natural
-Questions at n=1000, plus C1, C2 and the ablations — before committing to the
-full grid, so that we find out early whether the effect is there at all.
+$41 of the $55 is unspent. In priority order: the LLM judge; C1 and C2, without
+which the 2×2 has no floor or ceiling anchors; then a decision I would like your
+view on. Two of the paper's four stated contributions — the ESA geometric
+analysis and the faithfulness-aware re-ranking — currently have no data at all.
+ESA is free to run and is now more interesting than it was, since it might
+explain *why* faithfulness is invariant to the embedder. Re-ranking is the
+harder case: its motivation was to close a faithfulness gap that, on this
+evidence, does not exist between embedders, and H5 was defined as a percentage
+reduction in an RFG that turns out to be negative. I am inclined to run ESA and
+either drop the re-ranking contribution or restate it as an accuracy
+intervention rather than a faithfulness one.
 
 Best regards,
 Shakhriyorbek
@@ -207,43 +255,47 @@ Shakhriyorbek
 
 ## Notes for me (not for the email)
 
-### The thing to deal with before submission
+### What the contribution now is
 
-**Salemi & Zamani already publish a version of this paper's premise.** Their
-abstract states that query–document relevance labels show only a *small*
-correlation with downstream RAG performance. That is the finding my paper is
-built around, at SIGIR, in 2024. Berend linking it may be a gentle way of
-pointing that out.
+The three things I listed on 2026-08-13 as surviving Salemi & Zamani have
+changed. **"Comparison across embedding architectures at matched retrieval
+quality" is dead** — 0 of 6 pairs matched at ±0.02, and the HotpotQA spread is
+11.9 points. Do not write that sentence anywhere.
 
-This does not kill the paper, but it does move the contribution. What is left
-that is genuinely mine:
+What is actually left, and it is better:
 
-1. The comparison is **across embedding architectures at matched retrieval
-   quality** — eRAG compares retrievers by a new metric, it does not ask
-   whether models with *identical* NDCG diverge downstream. That is still open.
-2. **Faithfulness** specifically, rather than answer quality generally, and
-   conditioned on correctness.
-3. The controlled floor/ceiling/arrangement conditions on three datasets.
+1. **Faithfulness is equivalent across embedders while retrieval quality is
+   not** — an equivalence result, not a failure to reject. 22 of 24 pairs at
+   ±0.05, both generators, both datasets.
+2. **Which downstream property retrieval quality governs**: correctness and
+   abstention yes, faithfulness no. This is the extension of eRAG.
+3. The necessary/sufficient grid with the asymmetry (not sufficient 23–30%,
+   necessary almost always).
+4. The controlled floor/ceiling/arrangement conditions — still unrun.
 
-What is no longer defensible as novel: "retrieval quality does not predict
-downstream quality" as a headline claim. It must be positioned as *confirming
-and extending* Salemi & Zamani, and their paper needs a real paragraph in
-related work — not a citation dropped in a list. Read the full PDF before
-writing it; I have only read the abstract.
+### Presentation notes
 
-Ask Berend directly whether he intended the link as a positioning warning. It
-is better to have that conversation now.
+- Report **the tightest margin at which all pairs are equivalent** rather than
+  defending an arbitrary ±0.05. On NQ it will be very tight and the result is
+  stronger stated that way.
+- Never report pooled faithfulness. `results.faithfulness_by_model()` is
+  answered-only and paired on a common subset by default.
+- The equivalence claim is only as good as its power; state n per cell
+  (538–792 after excluding abstentions) alongside every margin.
 
-### Also outstanding
+### Still outstanding
 
-- Reference **[8]** in the draft still cites a non-existent
-  "jina-embeddings-v5-text". Fixed in `paper/RAG_Faithfulness_IEEE_v4.docx`,
-  not yet in whatever he last read.
-- Add Salemi & Zamani as a new reference.
-- §4.5.2 "cross-attention" wording — Llama-3 is decoder-only. Fixed in v4.
-- Every number in §6 is still simulated.
+- Reference **[8]** still cites a non-existent "jina-embeddings-v5-text" →
+  jina-embeddings-v3, arXiv:2409.10173.
+- Add Salemi & Zamani as a reference with a real related-work paragraph, not a
+  citation in a list. **Read the full PDF — only the abstract has been read.**
+- §4.5.2 "cross-attention" — Llama-3 is decoder-only, and no code implements
+  that analysis. Cut it rather than fix it.
+- Every number in §6 is still simulated; replace with `reports/2026-08-14_rung2_results.md`.
+- QASPER not run. Llama-3 not run (needs HF_TOKEN on gpu1).
 - IEEE → ACL reformatting before any ARR submission.
-- The 2026-07-26 pilot table must never travel without its caveat paragraph.
+- Rotate the API keys once the experiments finish — they have been on a shared
+  university machine.
 
 ### Do not reverse these while rewriting
 
