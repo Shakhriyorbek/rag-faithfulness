@@ -166,6 +166,13 @@ EMBEDDING_MODELS = [
 RETRIEVAL_METRICS    = ['ndcg@5', 'recall@5', 'mrr@5']
 FAITHFULNESS_METRICS = ['alignscore', 'nli', 'mean']   # -> 3x3 = 9 RFG variants
 
+# AlignScore lives in an ISOLATED install (~/align_env) because it pins
+# transformers 4.26 against the 5.x the rest of the pipeline uses. Run its
+# phase with PYTHONPATH=~/align_env; see RUNBOOK. The checkpoint is a separate
+# ~455 MB download and is NOT bundled with the pip package.
+ALIGNSCORE_CKPT = os.getenv(
+    'ALIGNSCORE_CKPT', str(BASE_DIR / 'alignscore' / 'AlignScore-large.ckpt'))
+
 if __name__ == '__main__':
     print(f"Device: {DEVICE}")
     print(f"Base dir: {BASE_DIR}")

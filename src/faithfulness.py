@@ -14,6 +14,7 @@ Phase E: AlignScore (optional dependency; install from the AlignScore
 Both phases score whichever generator checkpoints exist
 (generated_claude_* and generated_llama3_*).
 """
+from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
@@ -129,8 +130,18 @@ def run_phase_e(datasets: Dict, model_names: List[str] = None,
               'https://github.com/yuh-zha/AlignScore, skipping')
         return
 
+    # ckpt_path is REQUIRED by AlignScore's constructor and was missing here;
+    # the omission could not surface until the package was actually installed.
+    ckpt = Path(config.ALIGNSCORE_CKPT)
+    if not ckpt.exists():
+        print(f'[phase E] AlignScore checkpoint not found at {ckpt} — '
+              f'download AlignScore-large.ckpt from huggingface.co/yzha/'
+              f'AlignScore, or set ALIGNSCORE_CKPT. Skipping.')
+        return
+
     scorer = AlignScore(model='roberta-large', batch_size=batch_size,
-                        device=config.DEVICE, evaluation_mode='nli_sp')
+                        device=config.DEVICE, ckpt_path=str(ckpt),
+                        evaluation_mode='nli_sp')
     model_list = [c['name'] for c in config.EMBEDDING_MODELS
                   if not model_names or c['name'] in model_names]
 

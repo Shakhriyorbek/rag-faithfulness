@@ -571,3 +571,56 @@ ssh szte-gpu-shell                     # verify access
 4. **Reformat IEEE → ACL** before any ARR submission.
 5. **Confirm the venue with Berend** — the EMNLP 2026 May deadline has passed;
    July ARR or COLING 2026 are the live options.
+
+---
+
+## AlignScore — isolated install (2026-08-26)
+
+AlignScore pins **transformers 4.26** against the **5.14** the rest of the
+pipeline uses. Installing it normally downgrades transformers and breaks the
+NLI scorer that produced every existing result. It therefore lives in its own
+directory and is put on the path only for its own run.
+
+`python3 -m venv` is broken on gpu1 (`ensurepip` missing, needs sudo), so the
+isolation is `pip --target` plus `PYTHONPATH`, not a virtualenv.
+
+```bash
+mkdir -p ~/align_env
+pip install --target=$HOME/align_env --no-deps "alignscore @ git+https://github.com/yuh-zha/AlignScore.git"
+pip install --target=$HOME/align_env --no-deps "transformers==4.26.1" "pytorch-lightning==1.9.5" "torchmetrics<1.0" nltk
+pip install --target=$HOME/align_env --no-deps "huggingface_hub==0.20.3" "tokenizers==0.13.3"
+pip install --target=$HOME/align_env --no-deps defusedxml "lightning-utilities<0.12"
+pip install --target=$HOME/align_env "spacy<3.8"
+PYTHONPATH=$HOME/align_env python3 -m spacy download en_core_web_sm
+PYTHONPATH=$HOME/align_env python3 -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
+```
+
+`--no-deps` on everything except spacy is deliberate: without it pip pulls its
+own **torch**, which is 2.5 GB and would shadow the working CUDA build.
+
+Each line above fixes a failure the previous one exposed, in order:
+`transformers` → `HfFolder` gone from modern `huggingface_hub` → `spacy`
+missing → `defusedxml` missing (nltk) → `lightning_utilities` missing.
+
+**The checkpoint is a separate ~455 MB download** and is not part of the pip
+package. `AlignScore.__init__` takes `ckpt_path` as a **required** argument:
+
+```bash
+mkdir -p ~/rag_faithfulness/alignscore
+curl -L -o ~/rag_faithfulness/alignscore/AlignScore-large.ckpt \
+  https://huggingface.co/yzha/AlignScore/resolve/main/AlignScore-large.ckpt
+```
+
+Override with `ALIGNSCORE_CKPT` if it lives elsewhere.
+
+### Running it
+
+```bash
+PYTHONPATH=$HOME/align_env python3 -u src/perturbation_check.py --scope-n 1000 --scorer align --limit 200
+```
+
+Verify the isolation held — the main environment must be untouched:
+
+```bash
+python3 -c "import transformers; print(transformers.__version__)"   # expect 5.x
+```
