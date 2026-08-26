@@ -107,6 +107,22 @@ class CostTracker:
     # text-embedding-3-small
     EMBED_PER_1M = 0.02
 
+    # Judge models are priced SEPARATELY and per model. The counters above are
+    # hardcoded to claude-haiku-4-5, the generator; routing an Opus-5 judge
+    # through log_claude() would price $5/$25 tokens at $1/$5 and understate
+    # the spend fivefold — with a budget cap that then fails to fire until
+    # five times the stated limit. Same argument as the vendor split above.
+    MODEL_PRICES = {
+        'claude-opus-5':     (5.00, 25.00),
+        'claude-opus-4-8':   (5.00, 25.00),
+        'claude-opus-4-7':   (5.00, 25.00),
+        'claude-sonnet-5':   (2.00, 10.00),
+        'claude-sonnet-4-6': (3.00, 15.00),
+        'claude-haiku-4-5':  (1.00,  5.00),
+        'gpt-4o-mini':       (0.15,  0.60),
+        'gpt-4o':            (2.50, 10.00),
+    }
+
     def __init__(self):
         self.chat_input_tokens = 0
         self.chat_output_tokens = 0
@@ -115,6 +131,9 @@ class CostTracker:
         self.oai_chat_input_tokens = 0
         self.oai_chat_output_tokens = 0
         self.embed_tokens = 0
+        self.judge_input_tokens = 0
+        self.judge_output_tokens = 0
+        self.judge_cost_accum = 0.0
         self.requests = 0
         self.errors = 0
 
@@ -138,6 +157,31 @@ class CostTracker:
     def log_embedding(self, usage):
         """Log an OpenAI embeddings `usage` object."""
         self.embed_tokens += usage.total_tokens
+        self.requests += 1
+
+    def log_judge(self, usage, model: str):
+        """
+        Log a judge call at THAT MODEL's rates.
+
+        Accepts either vendor's usage object. An unknown model raises rather
+        than defaulting: silently pricing a judge at the wrong rate is how a
+        budget cap stops meaning anything.
+        """
+        if model not in self.MODEL_PRICES:
+            raise KeyError(
+                f'no price for judge model {model!r}; add it to '
+                f'CostTracker.MODEL_PRICES rather than letting the budget '
+                f'cap silently misreport')
+        in_rate, out_rate = self.MODEL_PRICES[model]
+        n_in = getattr(usage, 'input_tokens', None)
+        if n_in is None:                       # OpenAI shape
+            n_in = getattr(usage, 'prompt_tokens', 0) or 0
+            n_out = getattr(usage, 'completion_tokens', 0) or 0
+        else:
+            n_out = getattr(usage, 'output_tokens', 0) or 0
+        self.judge_input_tokens += n_in
+        self.judge_output_tokens += n_out
+        self.judge_cost_accum += n_in / 1e6 * in_rate + n_out / 1e6 * out_rate
         self.requests += 1
 
     def log_error(self):
@@ -168,8 +212,12 @@ class CostTracker:
         return self.embed_tokens / 1e6 * self.EMBED_PER_1M
 
     @property
+    def judge_cost(self) -> float:
+        return self.judge_cost_accum
+
+    @property
     def cost(self) -> float:
-        return self.generation_cost + self.embedding_cost
+        return self.generation_cost + self.embedding_cost + self.judge_cost
 
     def project(self, done: int, total: int) -> str:
         """Extrapolate the measured generation cost to a larger run."""
