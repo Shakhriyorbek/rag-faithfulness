@@ -129,3 +129,92 @@ for claim-level scoring as the fix.
    NLI misses here.
 3. **AlignScore** — a second evaluator; already wired, never run.
 4. Re-derive the TOST margin from §6a rather than asserting ±0.05.
+
+---
+
+# Part 2 — claim-level scoring and AlignScore (2026-08-26)
+
+Both open questions from §5 and §7 are now answered. Same 200 falsification
+cases per condition, rebuilt deterministically, so all three evaluators saw
+byte-identical answers and contexts.
+
+## 8. Three evaluators on the same falsifications
+
+| dataset / generator | scorer | orig | falsified | random | delta | caught @0.5 |
+|---|---|---|---|---|---|---|
+| **NQ / Claude** | nli_max | 0.918 | 0.880 | 0.522 | +0.038 | **4 %** |
+| | claim_min | 0.686 | 0.535 | 0.249 | +0.151 | **23 %** |
+| | AlignScore | 0.818 | 0.586 | 0.342 | +0.233 | **29 %** |
+| **NQ / GPT-4o-mini** | nli_max | 0.893 | 0.436 | 0.507 | +0.456 | 58 % |
+| | claim_min | 0.866 | 0.391 | 0.493 | +0.475 | 63 % |
+| | AlignScore | 0.918 | 0.266 | 0.173 | +0.652 | **76 %** |
+| **HotpotQA / Claude** | nli_max | 0.739 | 0.660 | 0.468 | +0.079 | **13 %** |
+| | claim_min | 0.367 | 0.256 | 0.149 | +0.111 | 33 % |
+| | AlignScore | 0.770 | 0.466 | 0.498 | +0.304 | **45 %** |
+| **HotpotQA / GPT-4o-mini** | nli_max | 0.578 | 0.185 | 0.222 | +0.393 | 70 % |
+| | claim_min | 0.571 | 0.182 | 0.225 | +0.389 | 70 % |
+| | AlignScore | 0.773 | 0.115 | 0.223 | +0.658 | **90 %** |
+
+**AlignScore is the best evaluator in all four cells**, by a wide margin on
+Claude: 29 % against 4 % on NQ, 45 % against 13 % on HotpotQA. On Claude/NQ its
+delta is **six times** nli_max's.
+
+## 9. The severity is DeBERTa-specific; the phenomenon is not
+
+Two separable claims, and only the first narrows:
+
+- **`nli_max` is a poor faithfulness evaluator.** It is the worst of the three
+  in every cell. The paper's headline metric would miss 96 % of falsified
+  values on Claude/NQ where AlignScore misses 71 %.
+- **Verbose multi-claim answers defeat every evaluator tested.** Under
+  AlignScore the Claude/GPT gap is still 29 % vs 76 % (NQ) and 45 % vs 90 %
+  (HotpotQA). Reduced, not removed.
+
+So the reportable finding is the second one, stated across evaluators, with the
+first as a concrete measurement of how much the choice matters.
+
+## 10. Claim-level: mechanism confirmed, partial fix
+
+`nli_max` delta by claim count — falls monotonically for **both** generators,
+which is the dilution mechanism §5 could not identify:
+
+| claims/answer | Claude nli | Claude claim | GPT nli | GPT claim |
+|---|---|---|---|---|
+| 1 | +0.086 | +0.098 | +0.492 | +0.492 |
+| 2 | +0.056 | +0.131 | +0.336 | +0.452 |
+| 3 | +0.018 | +0.188 | +0.137 | +0.277 |
+| 5+ | +0.007 | +0.149 | — | — |
+
+Claude writes **2.99** claims/answer, GPT **1.18** — that is the cross-generator
+residual §5 left open. Single-claim GPT answers score **identically** under both
+scorers (0.4922 vs 0.4922), confirming claim-level reduces to whole-answer when
+there is one claim.
+
+**But it is not a repair.** Scale-free, the median normalised drop on Claude
+goes only 0.01 → 0.03, and `min`-over-claims moves in the correct direction just
+**55 %** of the time: when the falsified claim is not already the weakest, the
+minimum does not move. It converts a small-frequent signal into a
+large-infrequent one.
+
+**A second dilution mechanism remains.** At matched claim count (1 claim) Claude
+still shows +0.098 against GPT's +0.492. Claude's individual claims average
+**20.5 words** against GPT's **13.8** — sentence splitting removes dilution
+*across* claims, not *within* one.
+
+## 11. Consequence for the paper's main result
+
+Every faithfulness number in the Rung 2 results — the four nulls, the spreads of
+0.009–0.027, the 22/24 TOST equivalences — was computed with `nli_max`, now
+measured to be the least discriminating of the three evaluators tested. The
+main embedder comparison should be re-run with AlignScore before any
+equivalence claim is reported. That is the review's "essential, not optional",
+with a number attached.
+
+## 12. Next
+
+1. **Re-run the embedder faithfulness comparison under AlignScore** — free,
+   and it gates the paper's headline.
+2. **Literal value grounding** — every number/date/entity in the answer must
+   appear in the context. Deterministic. 29 % detection is still not a usable
+   product gate.
+3. Sub-claim decomposition, to address the within-claim dilution in §10.
