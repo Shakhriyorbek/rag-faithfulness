@@ -168,3 +168,45 @@ def run_phase_e(datasets: Dict, model_names: List[str] = None,
                 print(f'  {model}/{ds_name}/{gen}: '
                       f'mean AlignScore = {np.mean(raw):.4f}')
     print('[phase E] complete')
+
+
+def main():
+    """
+    Entry point for phases D and E.
+
+    Phase E needs AlignScore, which lives in an isolated install because it
+    pins transformers 4.26 against the 5.x everything else uses:
+
+        PYTHONPATH=$HOME/align_env python3 src/faithfulness.py --phase e
+
+    See RUNBOOK for the install recipe.
+    """
+    import argparse
+    ap = argparse.ArgumentParser(description='NLI / AlignScore faithfulness')
+    ap.add_argument('--phase', default='e', choices=['d', 'e'],
+                    help='d = DeBERTa NLI, e = AlignScore')
+    ap.add_argument('--datasets', default='NQ,HotpotQA')
+    ap.add_argument('--models', default=None,
+                    help='comma-separated; default = every configured model')
+    ap.add_argument('--scope-n', type=int, default=None)
+    ap.add_argument('--batch-size', type=int, default=32)
+    args = ap.parse_args()
+
+    if args.scope_n:
+        from utils import set_scope
+        set_scope(args.scope_n)
+    print(f'  [scope] checkpoints -> {config.CHECKPOINT_DIR}')
+
+    datasets = {d.strip(): None for d in args.datasets.split(',')}
+    models = [m.strip() for m in args.models.split(',')] if args.models else None
+
+    if args.phase == 'd':
+        run_phase_d(datasets, models)
+    else:
+        run_phase_e(datasets, models, batch_size=args.batch_size)
+    return 0
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main())
