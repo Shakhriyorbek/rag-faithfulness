@@ -180,9 +180,21 @@ def equivalence_table(dataset: str = None, metric: str = 'NDCG@5',
     return df
 
 
+# Which checkpoint and field each faithfulness evaluator lives in. The
+# 2026-08-26 perturbation results put nli_max last of the three at detecting a
+# deliberately falsified value (4% on Claude/NQ against AlignScore's 29%), so
+# any equivalence claim should be checked under more than one of these.
+FAITH_SOURCES = {
+    'nli':   ('nli_scores',   'nli_max'),
+    'align': ('align_scores', 'align_score'),
+    'claim': ('claim_scores', 'claim_min'),
+}
+
+
 def faithfulness_by_model(dataset: str, generator: str = 'claude',
                           models: List[str] = None,
-                          answered_only: bool = True) -> dict:
+                          answered_only: bool = True,
+                          metric: str = 'nli') -> dict:
     """
     Mean faithfulness per embedding model on a COMMON set of queries.
 
@@ -207,11 +219,16 @@ def faithfulness_by_model(dataset: str, generator: str = 'claude',
 
     Returns {'means', 'n_common', 'n_total', 'spread', 'best', 'worst'}.
     """
+    if metric not in FAITH_SOURCES:
+        raise ValueError(f'unknown metric {metric!r}; '
+                         f'expected one of {sorted(FAITH_SOURCES)}')
+    prefix, field = FAITH_SOURCES[metric]
+
     model_list = models or [c['name'] for c in config.EMBEDDING_MODELS]
     per = {}
     for m in model_list:
-        nli = load_checkpoint(f'nli_scores_{generator}_{m}_{dataset}')
-        if not nli:
+        scores = load_checkpoint(f'{prefix}_{generator}_{m}_{dataset}')
+        if not scores:
             continue
         drop = set()
         if answered_only:
@@ -219,8 +236,10 @@ def faithfulness_by_model(dataset: str, generator: str = 'claude',
                 f'generated_{generator}_{m}_{dataset}_scored')
             if scored:
                 drop = {r['query_id'] for r in scored if r.get('abstained')}
-        per[m] = {r['query_id']: r['nli_max'] for r in nli
-                  if r['query_id'] not in drop}
+        per[m] = {r['query_id']: r[field] for r in scores
+                  if r['query_id'] not in drop
+                  and r.get(field) is not None
+                  and np.isfinite(r[field])}
     if len(per) < 2:
         return {}
 
@@ -235,6 +254,7 @@ def faithfulness_by_model(dataset: str, generator: str = 'claude',
         'worst': order[0],
         'best': order[-1],
         'per_query': {m: [per[m][q] for q in common] for m in per},
+        'metric': metric,
     }
 
 
