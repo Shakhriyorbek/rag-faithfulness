@@ -247,6 +247,46 @@ def build_cases(generations, limit):
     return cases
 
 
+class _Scorer:
+    """
+    One falsification set, three evaluators.
+
+    The cases are rebuilt deterministically (fixed SEED, same generation
+    checkpoints), so every scorer sees byte-identical answers and contexts.
+    That is the point: it separates "this metric is blind to falsified
+    values" from "DeBERTa specifically is", which a second evaluator run on
+    a different sample could not do.
+    """
+
+    def __init__(self, kind):
+        self.kind = kind
+        if kind == 'align':
+            from alignscore import AlignScore
+            import os
+            ckpt = os.getenv('ALIGNSCORE_CKPT',
+                             os.path.expanduser(
+                                 '~/rag_faithfulness/alignscore/AlignScore-large.ckpt'))
+            print(f'Loading AlignScore from {ckpt}...')
+            self.m = AlignScore(model='roberta-large', batch_size=32,
+                                device=config.DEVICE, ckpt_path=ckpt,
+                                evaluation_mode='nli_sp')
+        else:
+            from nli import NLIScorer
+            self.m = NLIScorer()
+            if kind == 'claim':
+                import claim_faithfulness
+                self.cf = claim_faithfulness
+
+    def score(self, chunks, answer):
+        if self.kind == 'nli':
+            return self.m.score_chunks(chunks, answer)['nli_max']
+        if self.kind == 'claim':
+            return self.cf.score_claims(chunks, answer, self.m)['claim_min']
+        # AlignScore takes the whole context as one premise.
+        return float(self.m.score(contexts=[' '.join(chunks)],
+                                  claims=[answer])[0])
+
+
 def run_check(model, ds_name, gen, limit, nli):
     ck_gen = f'generated_{gen}_{model}_{ds_name}'
     if not checkpoint_exists(ck_gen):
@@ -255,7 +295,8 @@ def run_check(model, ds_name, gen, limit, nli):
     if not generations:
         return None
 
-    ck_out = f'perturb_{gen}_{model}_{ds_name}'
+    suffix = '' if nli.kind == 'nli' else f'_{nli.kind}'
+    ck_out = f'perturb{suffix}_{gen}_{model}_{ds_name}'
     if checkpoint_exists(ck_out):
         print(f'  [skip] {ck_out}')
         return load_checkpoint(ck_out)
@@ -272,11 +313,11 @@ def run_check(model, ds_name, gen, limit, nli):
     for i, c in enumerate(cases, 1):
         if i % 50 == 0:
             print(f'    {i}/{len(cases)}')
-        orig = nli.score_chunks(c['chunks'], c['answer'])['nli_max']
-        num = nli.score_chunks(c['chunks'], c['num_answer'])['nli_max']
-        ent = (nli.score_chunks(c['chunks'], c['ent_answer'])['nli_max']
+        orig = nli.score(c['chunks'], c['answer'])
+        num = nli.score(c['chunks'], c['num_answer'])
+        ent = (nli.score(c['chunks'], c['ent_answer'])
                if c['ent_answer'] else None)
-        rnd = (nli.score_chunks(c['random_chunks'], c['answer'])['nli_max']
+        rnd = (nli.score(c['random_chunks'], c['answer'])
                if c['random_chunks'] else None)
         rows.append({
             'query_id': c['query_id'],
@@ -367,6 +408,10 @@ def main():
                     help='max cases per (model, dataset, generator)')
     ap.add_argument('--scope-n', type=int, default=None,
                     help='checkpoint scope N (default: config default)')
+    ap.add_argument('--scorer', default='nli', choices=['nli', 'claim', 'align'],
+                    help='nli = whole-answer max over chunks (the current '
+                         'metric); claim = min over claims of max over chunks; '
+                         'align = AlignScore (needs PYTHONPATH=~/align_env)')
     args = ap.parse_args()
 
     if args.scope_n:
@@ -379,11 +424,9 @@ def main():
     datasets = [d.strip() for d in args.datasets.split(',')]
     gens = [g.strip() for g in args.generators.split(',')]
 
-    # Imported here, not at module scope: the perturbation logic must be
+    # Constructed here, not at module scope: the perturbation logic must be
     # importable and testable on a machine without torch.
-    from nli import NLIScorer
-
-    nli = NLIScorer()
+    nli = _Scorer(args.scorer)
     summaries = []
     for ds in datasets:
         for gen in gens:
@@ -414,7 +457,9 @@ def main():
     print(f'mean delta  number {d.mean():+.4f}'
           + (f'   entity {de.mean():+.4f}' if de.size else '')
           + (f'   random-context floor {rn.mean():.3f}' if rn.size else ''))
-    save_checkpoint('perturb_summary', summaries)
+    save_checkpoint(
+        'perturb_summary' if args.scorer == 'nli'
+        else f'perturb_summary_{args.scorer}', summaries)
     return 0
 
 
