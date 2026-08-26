@@ -1,0 +1,203 @@
+# What still has to change to finish the paper
+
+Written 2026-08-26, after the AlignScore and claim-level runs. Read alongside
+`reports/2026-08-25_perturbation_check.md` and
+`reports/2026-08-26_evaluator_dependence.md` — every number cited here comes
+from those.
+
+`paper/RAG_Faithfulness_v5_results.docx` is **out of date**. Its title and §6
+are contradicted by the 2026-08-26 results. `paper/build_v5.js` regenerates the
+document, so edits go in the builder, not the .docx.
+
+---
+
+## 0. The one-line summary
+
+The v5 paper says *"Retrieval Quality Predicts Correctness, Not Faithfulness."*
+The data no longer supports that. What the data does support is that **the
+answer to that question depends on which faithfulness evaluator you use** — and
+that is a better paper.
+
+---
+
+## 1. Framing — do this first, everything else follows
+
+### 1.1 The title must change
+
+`"Retrieval Quality Predicts Correctness, Not Faithfulness in RAG"` is dead:
+
+- it is **false on HotpotQA**, where faithfulness tracks NDCG (rho +0.40 to
+  +1.00 across all four generator × evaluator combinations);
+- it is **evaluator-dependent** — 2 of 4 cells flip between `nli_max` and
+  AlignScore;
+- the external review objected to precisely this sentence, calling it a
+  general law where the evidence is an empirical result about four models.
+
+### 1.2 The new spine
+
+Make the paper about **measurement validity in RAG faithfulness evaluation**,
+with the embedder grid as the *testbed* rather than the research question.
+Nothing gets thrown away — the grid, the conditions, the 2×2 all stay; they
+stop being the claim.
+
+Six results support this spine, all measured:
+
+| # | result | where |
+|---|---|---|
+| 1 | The embedder verdict flips with the evaluator — 2/4 cells | evaluator_dependence §1 |
+| 2 | `nli_max` detects 4 % of falsified values on Claude/NQ; AlignScore 29 % | perturbation §8 |
+| 3 | Verbose multi-claim answers defeat every evaluator tested | perturbation §9 |
+| 4 | Pooling abstentions manufactures a retrieval–faithfulness relationship | rung2 §2 |
+| 5 | nRFG's cross-generator agreement is an algebraic artifact | rung2 §6 |
+| 6 | RFG runs negative — its core assumption is empirically backwards | rung2 §7 |
+
+### 1.3 State each of those as a general result, never as autobiography
+
+This is Berend's "dead ends rarely belong in a paper", and it is a rewriting
+instruction, not a deletion instruction:
+
+> ❌ "We initially used nRFG, obtained a spurious result, and then fixed it."
+> ✅ "Any metric of the form 1 − F/RQ reproduces the retrieval ranking when F
+>    is near-constant, so apparent cross-generator agreement in such metrics
+>    is uninformative."
+
+Same content. The second is a finding another researcher can hit; the first is
+a lab notebook. Apply this to all six.
+
+### 1.4 Motivation
+
+Open with the document-QA case — an invoice says $1,000 and the system must not
+say $1,500. One paragraph. It gives the paper a concrete stake and makes the
+perturbation experiment intuitive. Do **not** make the product the subject.
+
+---
+
+## 2. Section-by-section
+
+| section | change |
+|---|---|
+| **Title / abstract** | Rewrite per §1.1–1.2. Lead with evaluator dependence. |
+| **§2 related work** | Keep the Salemi & Zamani (SIGIR 2024) positioning added in v5. **Read the full PDF** — only the abstract has been read. Add RAGAS (Es et al., EACL 2024) and distinguish it: your contribution is conditioning on retrieval success and the attribution decomposition, not the faithfulness measure itself. Verify both citations. |
+| **§3.2 RFG / nRFG** | Keep the v5 demotion. Add §1.3-style general statements. |
+| **§3.3** | Keep necessity/sufficiency, but flag it as provisional pending the LLM judge (see §3 below). |
+| **§4.3 faithfulness** | Must now **name the evaluator** in the definition. Add claim-level: `F = min over claims of max over chunks`. Report all three evaluators wherever a faithfulness number appears. |
+| **§4.4 correctness** | Keep the EM = 0.000 admission. Replace containment numbers once the judge runs. |
+| **§4.6 TOST** | Replace the asserted ±0.05 with the margin sweep (0.01–0.10) from `compare_evaluators.py`. Anchor it: falsifying one grounded value moves `nli_max` by 0.033–0.094, so 0.05 ≈ one fabricated fact. |
+| **§6 results** | Rewrite entirely. The four-null table is superseded. |
+| **§6.3 abstention** | Keep the finding, restate per §1.3 — the review called this the paper's best contribution. |
+| **hypotheses** | H1 not supported. H2 *partially supported* — the retrieval–faithfulness correlation is positive on HotpotQA, absent on NQ (this is new; H2 was framed via RFG). H3 not supported, and note the comparison was ill-posed. H4/H5 not run. |
+| **limitations** | Add: 4 embedders, 2 datasets, 2 closed generators, one language; the NQ sampling filter; effect sizes small even where significant. |
+
+---
+
+## 3. Experiments still needed
+
+Ordered by how much they unblock. Items 1–3 are the ones a reviewer will
+demand.
+
+1. **LLM-judge correctness** — *cheap, blocks the most.*
+   EM = 0.000 on all 4,000 Claude/NQ rows, so every accuracy figure and the
+   whole 2×2 rests on containment, an upper bound. Until this runs, §3.3 and
+   §6.4 cannot be stated as measurements. This has been the top item since
+   2026-08-14.
+
+2. **An open-weight generator — Qwen or Gemma.** *Free on the V100.*
+   Berend asked for it for reproducibility, and under the new framing it is
+   also load-bearing: the effect is mediated by answer verbosity, so a third
+   generator with a different verbosity profile is a direct test of the
+   mechanism, not just a robustness check. Needs `HF_TOKEN` on gpu1.
+
+3. **Claim-level over the full grid.** *Free.*
+   Only the 200-case perturbation subset has been scored. `claim_scores_*`
+   checkpoints do not exist. Run:
+   `python3 -u src/claim_faithfulness.py --scope-n 1000`
+   Then `compare_evaluators.py --metrics nli,align,claim` gives the full
+   three-way table.
+
+4. **Literal value grounding.** *Free, not yet built.*
+   Every number/date/entity in the answer must appear in the context.
+   Deterministic. `src/textnorm.py` already has the right normalisation.
+   Needed for the document-QA argument: 29 % detection is not a usable gate.
+
+5. **C1 / C2 floor and ceiling.** *~$3–4, built, never run.*
+   `pct_of_oracle` is NaN and the 2×2 has no anchors. C1 also tests a validity
+   threat: NQ and HotpotQA are Wikipedia, so the generators may answer from
+   memory rather than from the retrieved context.
+
+6. **QASPER** — third dataset, ~$5. Also the least Wikipedia-like of the three.
+
+7. **ESA and re-ranking** — two of the four original contributions, never run.
+   **Decide with Berend whether they stay in the paper at all.** Under the new
+   spine they are optional; under the old one they were required.
+
+**Dropped:** Shapley / `doc_utility.py`. Berend explicitly released you from it
+("not that important... an underspecified rough idea").
+
+---
+
+## 4. External review red flags — status
+
+From the ChatGPT review Berend commissioned (2026-08-19).
+
+| | red flag | status |
+|---|---|---|
+| 🔴 1 | Single NLI judge, AlignScore not run | ✅ **done** — AlignScore run, changes the conclusion |
+| 🔴 2 | Max-over-chunks aggregation | ✅ **done** — claim-level built, mechanism confirmed |
+| 🔴 3 | Conditioning on "all models answered" (collider) | ⚠️ **partly** — report the 3-way outcome (grounded / ungrounded / abstained) given a hit instead of excluding abstentions |
+| 🔴 4 | Selective NQ sampling | ❌ untouched — must be stated as a limitation |
+| 🔴 5 | Causal language exceeds identification | ⚠️ fix in the rewrite; a decomposition makes no causal claim |
+| 🟠 6 | ±0.05 TOST margin unjustified | ✅ **done** — margin sweep + empirical anchor |
+| 🟠 7 | Correctness metric inadequate | ❌ needs the LLM judge (§3.1) |
+| 🟠 8 | Only 4 embedders | ❌ much weaker objection under the new spine |
+| 🟠 9 | Only 2 English benchmarks | ❌ QASPER would help |
+| 🟠 10 | Only 2 closed-source generators | ❌ needs §3.2 |
+| 🟡 11 | Multiple-testing presentation | ⚠️ state the multiplicity structure; the sweep helps |
+| 🟡 12 | RFG/nRFG conceptually weak | ✅ becomes a result rather than a liability |
+| 🟡 13 | Many experiments mentioned, not run | ⚠️ shrinks as §3 lands; be explicit about what is out of scope |
+
+---
+
+## 5. Berend's own points
+
+| his point | action |
+|---|---|
+| "the paired TOST you pointed me towards" | **Correct the misattribution explicitly in the next email.** TOST was not his suggestion; the reply draft wrongly credited him. |
+| Wall of text | The reply was 2,444 words. Cut it hard. |
+| Heavy genAI, "surface without substance" | See §6 below. |
+| No coherent narrative | §1.2 supplies one. |
+| Too-strong language / overclaiming | Sweep for: "governs", "predicts", "shows that", "demonstrates". Prefer "across the models tested". |
+| Dead ends don't belong | §1.3 — restate, don't delete. |
+| Open-weight generator | §3.2. |
+| Shapley unimportant | Dropped. |
+| Non-archival workshop | Reasonable target. The review's verdict was "major revision"; a workshop gets feedback without spending a submission. |
+
+---
+
+## 6. The prose problem
+
+The review named the fingerprints precisely: `"not X, but Y"`, `"nearly
+necessary, clearly not sufficient"`, and a section progression it called
+"almost too tidy". Those are real and they are in the v5 draft.
+
+Its conclusion is the useful part: *human-designed experiment + LLM-assisted
+writing*, saved by concrete substance — the NLI label-index bug, the abstention
+artifact, the nRFG algebraic trap. **The substance is real; the polish reads as
+hollow.**
+
+So: rewrite the prose in your own voice, and deliberately break those rhythms.
+Do not ask a model to "make it sound less AI" — that produces the same problem
+one layer down. Write the sections from the reports, in your own words, and use
+the model to check facts and numbers rather than to phrase them.
+
+---
+
+## 7. Numbers that must be replaced wherever they appear
+
+- The **four-null** faithfulness table → now 2 nulls, 2 significant (AlignScore).
+- **"22/24 equivalent at ±0.05"** → the margin sweep table.
+- Every **accuracy / 2×2** figure → provisional until the LLM judge runs.
+- **H3 "not supported"** → keep, but add that the comparison was not measuring
+  a stable quantity, since evaluator sensitivity differs ~10× between
+  generators.
+- The **42,000-triple** claim was already cut in v5. Current: **16,000
+  generations**, 4 embedders × 2 datasets × 2 generators × 1,000 queries.

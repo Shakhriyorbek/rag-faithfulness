@@ -9,6 +9,8 @@ whether the model answers and whether it is right; it does not govern how
 grounded its assertions are. See
 [`reports/2026-08-14_rung2_results.md`](reports/2026-08-14_rung2_results.md).
 
+- **Moving to a new machine (SSH keys first)** → [`DEVICE_MIGRATION.md`](DEVICE_MIGRATION.md)
+- **What still has to change to finish the paper** → [`PAPER_TODO.md`](PAPER_TODO.md)
 - **Project context, decisions, and every bug not to reintroduce** → [`CLAUDE.md`](CLAUDE.md)
 - **Full operational detail, the execution ladder, troubleshooting** → [`RUNBOOK.md`](RUNBOOK.md)
 - **This file** → getting a new machine to the point where it can run things
