@@ -191,7 +191,17 @@ the model to check facts and numbers rather than to phrase them.
 
 ---
 
-## 7. Numbers that must be replaced wherever they appear
+## 7. Formatting
+
+The draft is in **IEEE** format. **ACL** is required for any ARR submission, so
+budget the reformatting — it is not a find-and-replace. Decide the venue with
+Berend first: the EMNLP 2026 May ARR deadline has passed, and he has suggested
+a non-archival workshop as a way to get feedback without spending a
+submission.
+
+---
+
+## 8. Numbers that must be replaced wherever they appear
 
 - The **four-null** faithfulness table → now 2 nulls, 2 significant (AlignScore).
 - **"22/24 equivalent at ±0.05"** → the margin sweep table.
