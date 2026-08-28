@@ -44,6 +44,7 @@ COST
     Paid runs refuse to start without --yes.
 """
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
@@ -397,6 +398,23 @@ def main():
         print('Start with --limit 200 for a calibration run: it prints a')
         print('measured projection and shows whether the judge is worth paying')
         print('for before you commit to the full grid.')
+        return 1
+
+    # Fail here, with the fix, rather than in the SDK on the first row. An
+    # unset key surfaces as a TypeError about "authentication method" from deep
+    # inside the client, which reads like a bug in this code rather than a
+    # missing export — and export does not survive a new shell.
+    key_env = 'ANTHROPIC_API_KEY' if args.judge == 'claude' else 'OPENAI_API_KEY'
+    line = 1 if args.judge == 'claude' else 2
+    if not os.getenv(key_env):
+        print()
+        print(f'{key_env} is not set in this shell. Set it with:')
+        print(f"  export {key_env}=$(sed -n '{line}p' ~/.rag_keys "
+              f"| tr -d '\\r\\n')")
+        print()
+        print('The tr strips a trailing carriage return, which otherwise '
+              'gives a 401 that looks exactly like a bad key. An export does '
+              'not survive a new shell, so this needs repeating per session.')
         return 1
 
     judge = (ClaudeJudge(args.model) if args.judge == 'claude'

@@ -199,3 +199,44 @@ class TestResumeSemantics:
         assert src.count('source_ungradable') >= 4
         assert "'ungradable': correct is None" not in src, \
             'the old ambiguous field must be gone'
+
+
+class TestKeyPreflight:
+    """
+    An unset key surfaced as a TypeError from deep inside the SDK
+    ("Could not resolve authentication method"), which reads like a bug in
+    this code rather than a missing export — and an export does not survive a
+    new shell, so this happens every session.
+    """
+
+    def test_missing_key_exits_cleanly_with_the_fix(self, monkeypatch, capsys, tmp_path):
+        monkeypatch.delenv('ANTHROPIC_API_KEY', raising=False)
+        monkeypatch.setenv('RAG_CHECKPOINT_DIR', str(tmp_path))
+        monkeypatch.setattr(sys, 'argv', [
+            'llm_judge.py', '--judge', 'claude', '--yes',
+            '--checkpoints', 'no_such_checkpoint', '--scope-n', '1000'])
+        rc = llm_judge.main()
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert 'ANTHROPIC_API_KEY is not set' in out
+        assert 'export ANTHROPIC_API_KEY=' in out
+        assert '~/.rag_keys' in out
+
+    def test_openai_judge_names_its_own_key_and_line(self, monkeypatch, capsys, tmp_path):
+        monkeypatch.delenv('OPENAI_API_KEY', raising=False)
+        monkeypatch.setenv('RAG_CHECKPOINT_DIR', str(tmp_path))
+        monkeypatch.setattr(sys, 'argv', [
+            'llm_judge.py', '--judge', 'openai', '--yes',
+            '--checkpoints', 'no_such_checkpoint', '--scope-n', '1000'])
+        rc = llm_judge.main()
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert 'OPENAI_API_KEY is not set' in out
+        assert "sed -n '2p'" in out          # OpenAI is line 2 of ~/.rag_keys
+
+    def test_guard_runs_before_any_client_is_constructed(self):
+        """Ordering matters: constructing the client is what raises the TypeError."""
+        src = (SRC / 'llm_judge.py').read_text(encoding='utf-8')
+        guard = src.index('is not set in this shell')
+        build = src.index('judge = (ClaudeJudge(')
+        assert guard < build
