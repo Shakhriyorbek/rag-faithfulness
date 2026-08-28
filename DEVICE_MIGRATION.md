@@ -176,8 +176,12 @@ needs sudo — which is why gpu1 uses `pip install --user`.)
 paid work. Linux has `rsync`, which the Windows box did not:
 
 ```bash
-rsync -avz --progress szte-gpu:rag_faithfulness/checkpoints/ ~/rag-backup/checkpoints/
+mkdir -p ~/rag-backup/checkpoints && rsync -avz --progress szte-gpu:rag_faithfulness/checkpoints/ ~/rag-backup/checkpoints/
 ```
+
+`mkdir -p` first: rsync creates the final path component but not intermediate
+parents, and fails with `mkdir ... No such file or directory` without it.
+(`rsync --mkpath` does the same job on rsync 3.2.3+.)
 
 ---
 
