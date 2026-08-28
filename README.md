@@ -103,8 +103,12 @@ pip install pytest numpy pandas scipy
 python -m pytest tests/ -q
 ```
 
-Expect **139 passed, 11 skipped** — the skips are tests needing `openai` or
-`torch`, which are absent locally by design. On gpu1 all 150 run.
+Expect **0 failures**. The passed/skipped split depends on which optional
+packages happen to be present: with only the four above you get 135 passed /
+15 skipped; with `transformers` also installed, 139 / 11; on gpu1, where
+`torch` and `openai` are present too, all 150 run. Tests needing a heavy
+dependency skip rather than fail, so a count is not the thing to check — a
+failure is.
 
 ---
 

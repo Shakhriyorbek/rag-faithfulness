@@ -12,6 +12,7 @@ qrels, a retriever that finds the right document must score NDCG@5 > 0
 Run:  python tests/test_local_smoke.py
 """
 import os
+import pytest
 import sys
 import tempfile
 from pathlib import Path
@@ -67,6 +68,11 @@ def make_synthetic_dataset(n=8):
 
 
 def test_chunking():
+    # chunk_document() builds a HuggingFace tokenizer, which is absent on a
+    # laptop set up only for the offline suite — and installing it would make
+    # this test download a tokenizer on first run, which is exactly what the
+    # local suite is meant not to do. Skips like the openai/torch tests.
+    pytest.importorskip('transformers', reason='chunking needs a HF tokenizer')
     text = 'Word ' * 600  # 600 tokens -> 3 overlapping 256-token chunks
     chunks = chunk_document('d0', text)
     assert len(chunks) == 3, f'expected 3 chunks, got {len(chunks)}'
@@ -79,6 +85,11 @@ def test_chunking():
 
 
 def test_retrieval_and_qrels():
+    # chunk_document() builds a HuggingFace tokenizer, which is absent on a
+    # laptop set up only for the offline suite — and installing it would make
+    # this test download a tokenizer on first run, which is exactly what the
+    # local suite is meant not to do. Skips like the openai/torch tests.
+    pytest.importorskip('transformers', reason='chunking needs a HF tokenizer')
     ds = make_synthetic_dataset()
     chunks = build_chunks(ds)
     assert chunks, 'no chunks built'
@@ -109,6 +120,11 @@ def test_retrieval_and_qrels():
 
 def test_hotpot_style_qrels():
     """Gold sentence provenance: only chunks containing a gold sentence count."""
+    # chunk_document() builds a HuggingFace tokenizer, which is absent on a
+    # laptop set up only for the offline suite — and installing it would make
+    # this test download a tokenizer on first run, which is exactly what the
+    # local suite is meant not to do. Skips like the openai/torch tests.
+    pytest.importorskip('transformers', reason='chunking needs a HF tokenizer')
     gold_sent = 'The rare mineral formed under immense pressure.'
     filler = 'Unrelated filler text about many other things entirely. ' * 40
     doc = Document(doc_id='hp_doc', text=filler + gold_sent,

@@ -214,6 +214,9 @@ class TestQrelsAnswerBearing:
     def test_token_joined_gold_sentence_matches_its_chunk(self):
         """Before textnorm this returned no match and fell back to marking
         the whole document relevant — B6 all over again."""
+        # build_qrels chunks documents, which needs a HF tokenizer.
+        pytest.importorskip('transformers',
+                            reason='build_qrels chunks via a HF tokenizer')
         from datasets_loader import Document, LoadedDataset, QASample
         import retrieval_eval
 
