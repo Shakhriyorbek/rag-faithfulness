@@ -103,8 +103,8 @@ pip install pytest numpy pandas scipy
 python -m pytest tests/ -q
 ```
 
-Expect **87 passed, 11 skipped** — the skips are tests needing `openai` or
-`torch`, which are absent locally by design. On gpu1 all 98 run.
+Expect **139 passed, 11 skipped** — the skips are tests needing `openai` or
+`torch`, which are absent locally by design. On gpu1 all 150 run.
 
 ---
 

@@ -130,7 +130,7 @@ cd rag-faithfulness
 git remote add gpu1 szte-gpu:rag-faithfulness.git
 ```
 
-Everything is pushed as of `2c65172`. The gpu1 remote lets you deploy without
+Everything is pushed to both remotes. The gpu1 remote lets you deploy without
 putting a GitHub credential on the university server.
 
 Deploy loop:
@@ -153,8 +153,8 @@ pip install pytest numpy pandas scipy
 python -m pytest tests/ -q
 ```
 
-Expect **119 passed, 11 skipped**. The skips need `openai` or `torch`, absent
-by design. On gpu1 all 130 run.
+Expect **139 passed, 11 skipped**. The skips need `openai` or `torch`, absent
+by design. On gpu1 all 150 run.
 
 (`python3 -m venv` works here. It is broken on *gpu1* — `ensurepip` missing,
 needs sudo — which is why gpu1 uses `pip install --user`.)
