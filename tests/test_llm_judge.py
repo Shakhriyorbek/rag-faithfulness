@@ -168,3 +168,34 @@ class TestJudgeWiring:
     def test_paid_run_requires_yes(self):
         src = (SRC / 'llm_judge.py').read_text(encoding='utf-8')
         assert "--yes" in src and 'args.yes' in src
+
+
+class TestResumeSemantics:
+    """
+    A stored correct=None means two different things, and conflating them
+    silently freezes queries as ungradable forever.
+
+    The first run against a revoked API key wrote four rows with correct=None.
+    Without this distinction, every later run skips them as 'already done' and
+    they never get judged — a transient rate-limit blip would do the same.
+    """
+
+    def test_judge_side_failure_is_retried(self):
+        src = (SRC / 'llm_judge.py').read_text(encoding='utf-8')
+        # resume must drop rows that are None and NOT ungradable at source
+        assert "if r.get('correct') is None and not r.get('source_ungradable'):" in src
+        assert 'continue' in src.split(
+            "if r.get('correct') is None and not r.get('source_ungradable'):")[1][:40]
+
+    def test_source_ungradable_rows_are_kept(self):
+        """[ERROR] generations and C2 oracle Nones must NOT be re-sent."""
+        src = (SRC / 'llm_judge.py').read_text(encoding='utf-8')
+        assert "'source_ungradable': True" in src
+        assert "'source_ungradable': False" in src
+
+    def test_the_two_cases_are_distinguishable_in_the_record(self):
+        """Both write correct=None, so the flag is the only thing telling them apart."""
+        src = (SRC / 'llm_judge.py').read_text(encoding='utf-8')
+        assert src.count('source_ungradable') >= 4
+        assert "'ungradable': correct is None" not in src, \
+            'the old ambiguous field must be gone'

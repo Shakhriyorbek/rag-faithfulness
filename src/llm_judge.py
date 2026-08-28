@@ -203,7 +203,20 @@ def judge_checkpoint(name: str, judge, limit: int = None,
         return {}
 
     ck_out = f'{name}_judged_{judge.name}'
-    done = {r['query_id']: r for r in (load_checkpoint(ck_out) or [])}
+
+    # Two different reasons a stored row can carry correct=None, and they must
+    # not be treated alike on resume:
+    #   source_ungradable  the ROW has no usable prediction ([ERROR] generation,
+    #                      or a None answer from the C2 oracle). Permanent.
+    #   otherwise          the JUDGE failed on it — an API error or a reply that
+    #                      did not parse. Transient, and must be retried, or a
+    #                      rate-limit blip silently freezes those queries as
+    #                      ungradable for every future run.
+    done = {}
+    for r in (load_checkpoint(ck_out) or []):
+        if r.get('correct') is None and not r.get('source_ungradable'):
+            continue                      # judge-side failure -> retry it
+        done[r['query_id']] = r
 
     todo = []
     for r in records:
@@ -213,7 +226,7 @@ def judge_checkpoint(name: str, judge, limit: int = None,
             # Recorded, never sent. Correctness is undefined here, not False.
             done[r['query_id']] = {'query_id': r['query_id'], 'correct': None,
                                    'abstained': None, 'judge': judge.name,
-                                   'ungradable': True}
+                                   'source_ungradable': True}
             continue
         todo.append(r)
     if limit:
@@ -252,7 +265,7 @@ def judge_checkpoint(name: str, judge, limit: int = None,
         done[r['query_id']] = {
             'query_id': r['query_id'], 'correct': correct,
             'abstained': abstained, 'judge': judge.name,
-            'ungradable': correct is None,
+            'source_ungradable': False,   # judged; a None here is retryable
             'raw': reply[:80] if correct is None else None,
         }
 
