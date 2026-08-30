@@ -86,6 +86,48 @@ def compare(dataset: str, generator: str, models: List[str],
     return out
 
 
+
+def _report_source_sensitivity(rows, alpha: float = 0.05):
+    """
+    Where the significance verdict moves when `abstained` is decided by the
+    judge instead of the heuristic.
+
+    This exists because it does move. On 2026-08-30 the switch flipped
+    NQ/Claude from evaluator-disagreement to agreement and created a fresh
+    disagreement at HotpotQA/Claude, with p-values landing on 0.048 and 0.049.
+    The paper's spine is that measurement choices decide the result; this is a
+    second, independent measurement choice doing exactly that, so it belongs in
+    the output rather than in a footnote.
+    """
+    by = {}
+    for r in rows:
+        by.setdefault((r['dataset'], r['generator'], r['metric']),
+                      {})[r['correct_source']] = r
+    moved = []
+    for key, d in sorted(by.items()):
+        if len(d) < 2:
+            continue
+        c, j = d.get('contains'), d.get('judge')
+        vc, vj = c['p_value'] < alpha, j['p_value'] < alpha
+        if vc != vj:
+            moved.append((key, c, j))
+    print('\n' + '=' * 92)
+    print('ABSTENTION-SOURCE SENSITIVITY  (heuristic vs judge, alpha=%.2f)' % alpha)
+    print('=' * 92)
+    if not moved:
+        print('  no cell changes verdict — the result is stable to this choice')
+        return
+    for (ds, gen, metric), c, j in moved:
+        print('  %-9s %-10s %-6s  contains p=%.4f (%s, n=%d)  ->  '
+              'judge p=%.4f (%s, n=%d)'
+              % (ds, gen, metric, c['p_value'],
+                 'DIFFERS' if c['p_value'] < alpha else 'null', c['n_common'],
+                 j['p_value'], 'DIFFERS' if j['p_value'] < alpha else 'null',
+                 j['n_common']))
+    print('  -> %d of %d cells are not stable to how "abstained" is decided.'
+          % (len(moved), len(by)))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--datasets', default='NQ,HotpotQA')
@@ -184,44 +226,3 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
-
-
-def _report_source_sensitivity(rows, alpha: float = 0.05):
-    """
-    Where the significance verdict moves when `abstained` is decided by the
-    judge instead of the heuristic.
-
-    This exists because it does move. On 2026-08-30 the switch flipped
-    NQ/Claude from evaluator-disagreement to agreement and created a fresh
-    disagreement at HotpotQA/Claude, with p-values landing on 0.048 and 0.049.
-    The paper's spine is that measurement choices decide the result; this is a
-    second, independent measurement choice doing exactly that, so it belongs in
-    the output rather than in a footnote.
-    """
-    by = {}
-    for r in rows:
-        by.setdefault((r['dataset'], r['generator'], r['metric']),
-                      {})[r['correct_source']] = r
-    moved = []
-    for key, d in sorted(by.items()):
-        if len(d) < 2:
-            continue
-        c, j = d.get('contains'), d.get('judge')
-        vc, vj = c['p_value'] < alpha, j['p_value'] < alpha
-        if vc != vj:
-            moved.append((key, c, j))
-    print('\n' + '=' * 92)
-    print('ABSTENTION-SOURCE SENSITIVITY  (heuristic vs judge, alpha=%.2f)' % alpha)
-    print('=' * 92)
-    if not moved:
-        print('  no cell changes verdict — the result is stable to this choice')
-        return
-    for (ds, gen, metric), c, j in moved:
-        print('  %-9s %-10s %-6s  contains p=%.4f (%s, n=%d)  ->  '
-              'judge p=%.4f (%s, n=%d)'
-              % (ds, gen, metric, c['p_value'],
-                 'DIFFERS' if c['p_value'] < alpha else 'null', c['n_common'],
-                 j['p_value'], 'DIFFERS' if j['p_value'] < alpha else 'null',
-                 j['n_common']))
-    print('  -> %d of %d cells are not stable to how "abstained" is decided.'
-          % (len(moved), len(by)))
