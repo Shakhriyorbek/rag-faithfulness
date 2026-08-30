@@ -72,6 +72,17 @@ the grounded-and-wrong rate at 4.5-7.9% rather than 23-45%. See
 `reports/2026-08-30_judge_full_grid.md`. Faithfulness scoring is untouched, so
 the evaluator-dependence spine stands.
 
+**The evaluator-dependence spine was re-checked after the judge run and holds**
+(`reports/2026-08-30_evaluator_dependence_recheck.md`): the 2026-08-26 numbers
+reproduce exactly, and 2 of 4 nulls still break under AlignScore. But the
+*identity* of those two cells depends on whether abstentions are decided by
+`is_abstention` or by the judge — NQ/Claude stops disagreeing, HotpotQA/Claude
+starts, both at p≈0.048. **`faithfulness_by_model` therefore defaults to
+`correct_source='contains'` on purpose**, unlike `conditional.py` which defaults
+to `judge`: this analysis needs only `abstained` (string matching, deterministic),
+not `correct`. Do not "align" the two defaults. Report the count as the finding,
+never an individual cell.
+
 **The biggest remaining gap** is now significance: the new faith_gap cells rest
 on n=44-84 answered-wrong rows and have had no paired test. Full ordering in
 **`PAPER_TODO.md`** — that file, not this one, is the to-do.

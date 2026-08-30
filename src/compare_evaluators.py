@@ -184,11 +184,12 @@ def main():
     print('A margin near 0.05 on nli_max is about the size of ONE falsified')
     print('fact (perturbation report, 2026-08-26) — not a negligible difference.')
     print('=' * 92)
-    hdr2 = '%-10s %-10s %-6s' % ('dataset', 'generator', 'metric')
+    hdr2 = '%-10s %-10s %-6s %-9s' % ('dataset', 'generator', 'metric', 'abstain')
     hdr2 += ''.join('%12s' % ('+/-%.2f' % m) for m in MARGINS)
     print(hdr2); print('-' * len(hdr2))
     for r in rows:
-        line = '%-10s %-10s %-6s' % (r['dataset'], r['generator'], r['metric'])
+        line = '%-10s %-10s %-6s %-9s' % (r['dataset'], r['generator'],
+                                          r['metric'], r['correct_source'])
         for mg in MARGINS:
             eq, tot = r['tost'][mg]
             line += '%12s' % ('%d/%d' % (eq, tot))
