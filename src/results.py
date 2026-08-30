@@ -196,7 +196,7 @@ def faithfulness_by_model(dataset: str, generator: str = 'claude',
                           models: List[str] = None,
                           answered_only: bool = True,
                           metric: str = 'nli',
-                          correct_source: str = 'judge') -> dict:
+                          correct_source: str = 'contains') -> dict:
     """
     Mean faithfulness per embedding model on a COMMON set of queries.
 
@@ -234,8 +234,25 @@ def faithfulness_by_model(dataset: str, generator: str = 'claude',
             continue
         drop = set()
         if answered_only:
-            # Abstention comes from the same resolver conditional.py uses, so
-            # the two analyses never disagree about which rows were answered.
+            # ⚠️ DEFAULTS TO THE HEURISTIC, DELIBERATELY — unlike conditional.py,
+            # which defaults to the judge. The two analyses want different
+            # things from this field.
+            #
+            # conditional.py needs `correct`, where the judge is plainly better
+            # (it grades 5-15 points higher than containment on every cell).
+            # This function needs only `abstained`, to decide which rows were
+            # attempts. That is string matching, which is_abstention() does
+            # well — 31 agreements against 3+3 disagreements on the 2026-08-30
+            # calibration — and it is deterministic.
+            #
+            # It matters because this drop set feeds the paper's spine result,
+            # and the choice MOVES it: on 2026-08-30, switching this to 'judge'
+            # took NQ/Claude from evaluator-disagreement to agreement and
+            # created a new disagreement at HotpotQA/Claude, with two p-values
+            # landing on 0.048/0.049. A headline that flips on an LLM's
+            # abstention call is not one to ship by default. Pass
+            # correct_source='judge' explicitly to run it as a robustness check
+            # — compare_evaluators.py --correct-source both does exactly that.
             graded, _ = load_correctness(
                 f'generated_{generator}_{m}_{dataset}', source=correct_source)
             drop = {q for q, r in graded.items() if r.get('abstained')}

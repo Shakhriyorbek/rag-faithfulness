@@ -59,11 +59,12 @@ def _pairwise_tost(per_query: dict, margin: float) -> tuple:
 
 
 def compare(dataset: str, generator: str, models: List[str],
-            metrics: List[str]) -> list:
+            metrics: List[str], correct_source: str = 'contains') -> list:
     out = []
     for metric in metrics:
         r = faithfulness_by_model(dataset, generator, models,
-                                  answered_only=True, metric=metric)
+                                  answered_only=True, metric=metric,
+                                  correct_source=correct_source)
         if not r:
             print(f'  [{dataset}/{generator}/{metric}] no checkpoints — skipped')
             continue
@@ -75,6 +76,7 @@ def compare(dataset: str, generator: str, models: List[str],
         p = sig.get('p_value', float('nan'))
 
         row = {'dataset': dataset, 'generator': generator, 'metric': metric,
+               'correct_source': correct_source,
                'n_common': r['n_common'], 'means': r['means'],
                'spread': r['spread'], 'best': best, 'worst': worst,
                'p_value': p, 'tost': {}}
@@ -90,6 +92,13 @@ def main():
     ap.add_argument('--generators', default='claude,gpt4omini')
     ap.add_argument('--models', default=None)
     ap.add_argument('--metrics', default='nli,align,claim')
+    ap.add_argument('--correct-source', default='contains',
+                    choices=['contains', 'judge', 'both'],
+                    help='which signal decides `abstained`, and so which rows '
+                         'count as attempts. Default "contains" is the '
+                         'deterministic heuristic and is what the published '
+                         'result uses; "judge" is the robustness check; "both" '
+                         'runs each and reports where the verdict moves')
     ap.add_argument('--scope-n', type=int, default=1000)
     args = ap.parse_args()
 
@@ -101,25 +110,30 @@ def main():
         if m not in FAITH_SOURCES:
             raise SystemExit(f'unknown metric {m!r}')
 
+    sources = (['contains', 'judge'] if args.correct_source == 'both'
+               else [args.correct_source])
     rows = []
-    for ds in [d.strip() for d in args.datasets.split(',')]:
-        for gen in [g.strip() for g in args.generators.split(',')]:
-            rows += compare(ds, gen, models, metrics)
+    for src in sources:
+        for ds in [d.strip() for d in args.datasets.split(',')]:
+            for gen in [g.strip() for g in args.generators.split(',')]:
+                rows += compare(ds, gen, models, metrics, correct_source=src)
 
     if not rows:
         print('No results — check the scope and that phase e has run.')
         return 1
 
+    if len(sources) > 1:
+        _report_source_sensitivity(rows)
     print('\n' + '=' * 92)
     print('EMBEDDER FAITHFULNESS SPREAD, answered-only, paired on a common subset')
     print('=' * 92)
-    hdr = ('%-10s %-10s %-6s %6s %8s %8s %8s %9s'
-           % ('dataset', 'generator', 'metric', 'n', 'worst', 'best',
-              'spread', 'p'))
+    hdr = ('%-10s %-10s %-6s %-9s %6s %8s %8s %8s %9s'
+           % ('dataset', 'generator', 'metric', 'abstain', 'n', 'worst',
+              'best', 'spread', 'p'))
     print(hdr); print('-' * len(hdr))
     for r in rows:
-        print('%-10s %-10s %-6s %6d %8.4f %8.4f %8.4f %9.4f'
-              % (r['dataset'], r['generator'], r['metric'], r['n_common'],
+        print('%-10s %-10s %-6s %-9s %6d %8.4f %8.4f %8.4f %9.4f'
+              % (r['dataset'], r['generator'], r['metric'], r['correct_source'], r['n_common'],
                  r['means'][r['worst']], r['means'][r['best']],
                  r['spread'], r['p_value']))
 
@@ -170,3 +184,44 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
+
+def _report_source_sensitivity(rows, alpha: float = 0.05):
+    """
+    Where the significance verdict moves when `abstained` is decided by the
+    judge instead of the heuristic.
+
+    This exists because it does move. On 2026-08-30 the switch flipped
+    NQ/Claude from evaluator-disagreement to agreement and created a fresh
+    disagreement at HotpotQA/Claude, with p-values landing on 0.048 and 0.049.
+    The paper's spine is that measurement choices decide the result; this is a
+    second, independent measurement choice doing exactly that, so it belongs in
+    the output rather than in a footnote.
+    """
+    by = {}
+    for r in rows:
+        by.setdefault((r['dataset'], r['generator'], r['metric']),
+                      {})[r['correct_source']] = r
+    moved = []
+    for key, d in sorted(by.items()):
+        if len(d) < 2:
+            continue
+        c, j = d.get('contains'), d.get('judge')
+        vc, vj = c['p_value'] < alpha, j['p_value'] < alpha
+        if vc != vj:
+            moved.append((key, c, j))
+    print('\n' + '=' * 92)
+    print('ABSTENTION-SOURCE SENSITIVITY  (heuristic vs judge, alpha=%.2f)' % alpha)
+    print('=' * 92)
+    if not moved:
+        print('  no cell changes verdict — the result is stable to this choice')
+        return
+    for (ds, gen, metric), c, j in moved:
+        print('  %-9s %-10s %-6s  contains p=%.4f (%s, n=%d)  ->  '
+              'judge p=%.4f (%s, n=%d)'
+              % (ds, gen, metric, c['p_value'],
+                 'DIFFERS' if c['p_value'] < alpha else 'null', c['n_common'],
+                 j['p_value'], 'DIFFERS' if j['p_value'] < alpha else 'null',
+                 j['n_common']))
+    print('  -> %d of %d cells are not stable to how "abstained" is decided.'
+          % (len(moved), len(by)))
