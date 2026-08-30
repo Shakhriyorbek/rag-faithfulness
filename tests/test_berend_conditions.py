@@ -426,3 +426,74 @@ class TestFaithGapBaselineIsSymmetric:
         cf = conditional_faithfulness(self._frame(tmp_path, monkeypatch, 5))
         # correct pooled = (10*0.9 + 5*0.4)/15; wrong pooled = 0.9
         assert cf.iloc[0]['faith_gap_pooled'] == round(0.9 - (9.0 + 2.0) / 15, 4)
+
+
+# ── faith_gap significance ───────────────────────────────────────────────────
+# Added 2026-08-30. faith_gap compares disjoint groups of unequal size, so
+# bootstrap_significance (paired, asserts equal length) is the wrong test.
+class TestFaithGapSignificance:
+
+    @staticmethod
+    def _frame(tmp_path, monkeypatch, wrong_faith, n_wrong=60):
+        import config as cfg
+        import pandas as pd
+        monkeypatch.setenv('RAG_CHECKPOINT_DIR', str(tmp_path))
+        monkeypatch.setattr(cfg, 'CHECKPOINT_DIR', tmp_path)
+        rng = __import__('numpy').random.default_rng(0)
+        rows = []
+        for i in range(700):
+            rows.append(dict(query_id=f'c{i}', dataset='NQ', model='m1',
+                             paradigm='contrastive', generator='claude',
+                             condition='rag', ndcg=1.0, recall=1.0, hit=True,
+                             correct=True, correct_f1=0.0, abstained=False,
+                             correct_source='judge',
+                             faithfulness=float(rng.normal(0.90, 0.05))))
+        for i in range(n_wrong):
+            rows.append(dict(query_id=f'w{i}', dataset='NQ', model='m1',
+                             paradigm='contrastive', generator='claude',
+                             condition='rag', ndcg=1.0, recall=1.0, hit=True,
+                             correct=False, correct_f1=0.0, abstained=False,
+                             correct_source='judge',
+                             faithfulness=float(rng.normal(wrong_faith, 0.05))))
+        return pd.DataFrame(rows)
+
+    def test_detects_a_real_gap(self, tmp_path, monkeypatch):
+        from conditional import faith_gap_significance
+        sg = faith_gap_significance(self._frame(tmp_path, monkeypatch, 0.70),
+                                    n_iter=2000)
+        row = sg.iloc[0]
+        assert row['faith_gap'] < -0.1
+        assert row['p_raw'] < 0.01 and row['sig_holm']
+        assert row['ci_high'] < 0        # CI excludes zero
+
+    def test_does_not_invent_one(self, tmp_path, monkeypatch):
+        from conditional import faith_gap_significance
+        sg = faith_gap_significance(self._frame(tmp_path, monkeypatch, 0.90),
+                                    n_iter=2000)
+        row = sg.iloc[0]
+        assert row['p_raw'] > 0.05 and not row['sig_holm']
+        assert row['ci_low'] < 0 < row['ci_high']
+
+    def test_reports_both_group_sizes(self, tmp_path, monkeypatch):
+        """n_wrong is 44-84 on real data; the reader needs to see it."""
+        from conditional import faith_gap_significance
+        sg = faith_gap_significance(self._frame(tmp_path, monkeypatch, 0.80,
+                                                n_wrong=44), n_iter=500)
+        assert sg.iloc[0]['n_wrong'] == 44 and sg.iloc[0]['n_correct'] == 700
+
+    def test_unpaired_groups_do_not_raise(self, tmp_path, monkeypatch):
+        """bootstrap_significance would assert here; permutation_test must not."""
+        from results import bootstrap_significance, permutation_test
+        import pytest as _pt
+        with _pt.raises(AssertionError):
+            bootstrap_significance([0.1] * 10, [0.2] * 7)
+        r = permutation_test([0.1] * 10, [0.2] * 7, n_iter=200)
+        assert r['n_a'] == 10 and r['n_b'] == 7
+
+    def test_holm_is_monotone_and_conservative(self):
+        from results import holm_bonferroni
+        raw = [0.001, 0.02, 0.04, 0.5]
+        adj = holm_bonferroni(raw)
+        assert all(a >= r for a, r in zip(adj, raw))     # never smaller
+        assert adj == sorted(adj)                        # step-down monotone
+        assert adj[0] == 0.004                           # 4 * 0.001

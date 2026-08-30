@@ -415,6 +415,49 @@ def conditional_faithfulness(df: pd.DataFrame,
     return out
 
 
+
+def faith_gap_significance(df: pd.DataFrame, generator: str = 'claude',
+                           n_iter: int = 10_000) -> pd.DataFrame:
+    """
+    Is faith_gap distinguishable from zero, per dataset x model?
+
+    The gap compares two DISJOINT sets of queries of unequal size — answers
+    graded wrong against answers graded right — so this uses
+    results.permutation_test, not bootstrap_significance, which is paired and
+    asserts equal lengths.
+
+    Abstentions are excluded from both sides, matching conditional_faithfulness.
+    16 cells are tested at once, so a Holm-Bonferroni adjusted p is reported
+    alongside the raw one; at alpha=0.05 roughly one raw positive is expected by
+    chance across 16 tests.
+    """
+    from results import holm_bonferroni, permutation_test
+
+    sub = df[(df['condition'] == 'rag') & (df['generator'] == generator)]
+    sub = sub[sub['correct'].notna()]
+    rows = []
+    for (dataset, model), g in sub.groupby(['dataset', 'model']):
+        ab = g['abstained'].fillna(False).astype(bool)
+        wrong = g[~g['correct'] & ~ab]['faithfulness'].dropna().tolist()
+        right = g[g['correct'] & ~ab]['faithfulness'].dropna().tolist()
+        r = permutation_test(wrong, right, n_iter=n_iter)
+        rows.append({
+            'dataset': dataset, 'model': model,
+            'n_wrong': r['n_a'], 'n_correct': r['n_b'],
+            'faith_gap': r['observed_diff'],
+            'ci_low': r['ci_95'][0], 'ci_high': r['ci_95'][1],
+            'p_raw': r['p_value'],
+        })
+    out = pd.DataFrame(rows)
+    if out.empty:
+        return out
+    out['p_holm'] = holm_bonferroni(out['p_raw'].tolist())
+    out['sig_holm'] = out['p_holm'] < 0.05
+    out = out.sort_values(['dataset', 'faith_gap'])
+    save_checkpoint(f'faith_gap_significance_{generator}', out)
+    return out
+
+
 def anchor_table(df: pd.DataFrame, generator: str = 'claude') -> pd.DataFrame:
     """
     Floor -> embedders -> ceiling, per dataset.
@@ -522,6 +565,20 @@ def report_generator(df: pd.DataFrame, generator: str):
             print(f'  [!] for {len(flipped)} model(s) the pooled gap has the '
                   f'OPPOSITE sign — abstentions were masking the effect. '
                   f'Report faith_gap, never faith_gap_pooled alone.')
+
+    print(f'\n=== faith_gap significance [{generator}] ===')
+    sg = faith_gap_significance(df, generator)
+    if sg.empty:
+        print('  (no gradable rows)')
+    else:
+        print(sg.to_string(index=False))
+        n_sig = int(sg['sig_holm'].sum())
+        print(f'  {n_sig}/{len(sg)} cells survive Holm correction across the '
+              f'{len(sg)} tests in this arm.')
+        thin = sg[sg['n_wrong'] < 100]
+        if not thin.empty:
+            print(f'  [!] {len(thin)} cell(s) have < 100 wrong-answered rows — '
+                  f'the CI width, not the p-value, is the thing to read.')
 
     print(f'\n=== anchors: floor -> embedders -> ceiling [{generator}] ===')
     at = anchor_table(df, generator)

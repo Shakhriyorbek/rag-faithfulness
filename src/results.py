@@ -54,6 +54,79 @@ def bootstrap_significance(scores_a: List[float], scores_b: List[float],
     }
 
 
+
+def permutation_test(scores_a, scores_b, n_iter: int = 10_000,
+                     alpha: float = 0.05) -> dict:
+    """
+    Two-sample permutation test for UNPAIRED groups of unequal size.
+
+    bootstrap_significance() cannot be used for faith_gap: it asserts equal
+    lengths and pairs by index, but "answers that were wrong" and "answers that
+    were right" are disjoint sets of different queries and different sizes.
+    Pairing them by position would compare unrelated rows.
+
+    The null is that both groups are draws from one distribution, so it is
+    tested by pooling and reshuffling the group labels. Reports the observed
+    difference mean(a) - mean(b), a percentile CI from a two-sample bootstrap,
+    and n for each side — with cells this small (faith_gap has 44-84 wrong
+    answers) the n matters as much as the p.
+    """
+    a = np.asarray([x for x in scores_a if x == x], dtype=float)
+    b = np.asarray([x for x in scores_b if x == x], dtype=float)
+    if len(a) < 2 or len(b) < 2:
+        return {'observed_diff': np.nan, 'p_value': np.nan,
+                'significant': False, 'n_a': len(a), 'n_b': len(b),
+                'ci_95': (np.nan, np.nan), 'n_iter': n_iter}
+
+    observed = a.mean() - b.mean()
+    pooled = np.concatenate([a, b])
+    n_a = len(a)
+    rng = np.random.default_rng(config.SEED)
+
+    null = np.empty(n_iter)
+    for i in range(n_iter):
+        perm = rng.permutation(pooled)
+        null[i] = perm[:n_a].mean() - perm[n_a:].mean()
+    p_value = float(np.mean(np.abs(null) >= abs(observed)))
+
+    # CI on the effect itself, by resampling each group independently.
+    ia = rng.integers(0, n_a, size=(n_iter, n_a))
+    ib = rng.integers(0, len(b), size=(n_iter, len(b)))
+    boot = a[ia].mean(axis=1) - b[ib].mean(axis=1)
+    lo, hi = np.percentile(boot, [2.5, 97.5])
+    return {
+        'observed_diff': round(float(observed), 4),
+        'p_value': round(p_value, 4),
+        'significant': p_value < alpha,
+        'n_a': n_a, 'n_b': len(b),
+        'ci_95': (round(float(lo), 4), round(float(hi), 4)),
+        'n_iter': n_iter,
+    }
+
+
+def holm_bonferroni(p_values, alpha: float = 0.05):
+    """
+    Holm-Bonferroni step-down adjustment.
+
+    faith_gap is tested in 16 cells at once (4 embedders x 2 datasets x 2
+    generators). At alpha=0.05 that is roughly one false positive expected by
+    chance, so the raw p-values cannot be read as 16 independent findings.
+    Holm controls the family-wise error rate and is uniformly more powerful
+    than plain Bonferroni. Returns adjusted p-values in the input order; NaNs
+    pass through and are excluded from the family.
+    """
+    idx = [i for i, p in enumerate(p_values) if p == p]
+    order = sorted(idx, key=lambda i: p_values[i])
+    m = len(order)
+    out = [float('nan')] * len(p_values)
+    running = 0.0
+    for rank, i in enumerate(order):
+        adj = min(1.0, (m - rank) * p_values[i])
+        running = max(running, adj)      # step-down: enforce monotonicity
+        out[i] = round(running, 4)
+    return out
+
+
 # ── Equivalence testing (matched retrieval quality) ───────────────
 # The paper's premise is that these embedders reach NEAR-IDENTICAL retrieval
 # quality yet diverge downstream. A non-significant difference does not
