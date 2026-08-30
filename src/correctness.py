@@ -112,10 +112,22 @@ def contains_answer(pred: str, golds: Sequence[str]) -> bool:
         58% of queries. The metric was measuring verbosity, not correctness.
 
     HOW TO REPORT IT
-        Containment is an UPPER bound: a long answer can mention the gold
-        string incidentally while asserting something else. EM is a LOWER
-        bound. Report both and state that the true value lies between them —
-        do not quietly present containment alone as "accuracy".
+        ⚠️ NOT A CLEAN UPPER BOUND — measured 2026-08-30. The reasoning below
+        is sound in one direction only: a long answer CAN mention the gold
+        string incidentally while asserting something else, and on the
+        200-row Claude/all-mpnet/NQ judge calibration that happens 5.85% of
+        the time. But containment also MISSES correct answers — paraphrases,
+        aliases, different units — at 8.29%, which is more. Net, containment
+        UNDERSTATED accuracy: judge 0.800 vs containment 0.776 vs EM 0.000.
+
+        So "the truth lies between EM and containment" is false; the truth was
+        above both. Containment is a cheap proxy with error in both
+        directions, not a bound. Report it as a proxy, give the judge number
+        where one exists, and never present containment alone as "accuracy".
+
+        90% of the abstentions that containment graded correct were overturned
+        by the judge — that is the dominant false-positive mode, and it is why
+        conditional.py reports n_correct_abstained.
 
     NORMALIZATION (changed 2026-08-14)
         Containment uses textnorm, not normalize_answer. normalize_answer

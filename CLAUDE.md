@@ -387,8 +387,13 @@ prompt yields "Based on the provided context, **Wilhelm Conrad Röntgen** of
 Germany received…" against gold "Wilhelm Conrad Röntgen, of Germany" — correct,
 but EM=0 and F1=0.28 because precision dies on every extra token.
 Fixed: `correctness.py` gains `contains_answer()` and `CORRECT_MODE='contains'`.
-EM is the **lower** bound, containment the **upper** — report both, never
-containment alone as "accuracy".
+EM is the **lower** bound; containment was assumed to be the **upper** one.
+**It is not — measured 2026-08-30** on the 200-row judge calibration
+(Claude/all-mpnet/NQ): judge **0.800** > containment **0.776** > EM **0.000**.
+Containment errs both ways — 5.85% false positives, **8.29% false negatives** —
+so it understates accuracy on net and the truth is *outside* the EM–containment
+interval. Treat containment as a cheap proxy, not a bound, and never present it
+alone as "accuracy".
 
 **⚠️ Abstentions invert the paper's headline statistic.** ~30% of answers are
 "I cannot answer based on the provided context", which is correctly NOT entailed
