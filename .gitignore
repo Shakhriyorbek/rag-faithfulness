@@ -29,3 +29,6 @@ credentials*
 # OS
 .DS_Store
 Thumbs.db
+
+# Node toolchain for paper/build_v*.js (installed 2026-08-30)
+paper/node_modules/
