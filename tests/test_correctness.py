@@ -173,3 +173,127 @@ def test_rfg_normal_values_unchanged():
     # Berend's discriminating example must still separate
     assert metrics.nrfg(0.9, 0.85) == pytest.approx(0.0556, abs=1e-4)
     assert metrics.nrfg(0.3, 0.25) == pytest.approx(0.1667, abs=1e-4)
+
+
+# ── load_correctness: which source supplies `correct` ────────────────────────
+# Added 2026-08-30. Until then llm_judge.py wrote `*_judged_*` and nothing read
+# it: conditional.py and results.py went straight to `*_scored`, so grading the
+# full grid would have cost ~$32 and moved no number in the paper.
+class TestLoadCorrectness:
+
+    @staticmethod
+    def _fixture(tmp_path, monkeypatch, judged=None):
+        import config as cfg
+        import utils
+        from correctness import score_records
+        monkeypatch.setenv('RAG_CHECKPOINT_DIR', str(tmp_path))
+        monkeypatch.setattr(cfg, 'CHECKPOINT_DIR', tmp_path)
+        raw = [
+            # containment right, EM wrong — the B7 case
+            {'query_id': 'q1', 'answer': 'Paris',
+             'generated_answer': 'Based on the context, the capital is Paris.'},
+            # plainly wrong
+            {'query_id': 'q2', 'answer': 'Paris',
+             'generated_answer': 'The capital is Berlin.'},
+            # abstention
+            {'query_id': 'q3', 'answer': 'Paris',
+             'generated_answer': 'I cannot answer based on the provided context.'},
+            # unusable source row -> correctness undefined
+            {'query_id': 'q4', 'answer': 'Paris',
+             'generated_answer': '[ERROR: RateLimit]'},
+        ]
+        utils.save_checkpoint('gen', raw)
+        utils.save_checkpoint('gen_scored', score_records(raw))
+        if judged is not None:
+            utils.save_checkpoint('gen_judged_claude', judged)
+        return raw
+
+    def test_sources_disagree_as_expected(self, tmp_path, monkeypatch):
+        from correctness import load_correctness
+        self._fixture(tmp_path, monkeypatch)
+        con, _ = load_correctness('gen', source='contains')
+        em, _ = load_correctness('gen', source='em')
+        assert con['q1']['correct'] is True     # containment finds "Paris"
+        assert em['q1']['correct'] is False     # EM cannot, because of B7
+        assert con['q2']['correct'] is False
+
+    def test_ungradable_source_row_is_none_never_false(self, tmp_path, monkeypatch):
+        from correctness import load_correctness
+        self._fixture(tmp_path, monkeypatch)
+        for src in ('contains', 'em', 'f1', 'judge'):
+            by, cov = load_correctness('gen', source=src)
+            assert by['q4']['correct'] is None, src
+            assert cov['ungradable'] == 1, src
+
+    def test_judge_overrides_heuristic_and_is_counted(self, tmp_path, monkeypatch):
+        from correctness import load_correctness
+        self._fixture(tmp_path, monkeypatch, judged=[
+            {'query_id': 'q1', 'correct': False, 'abstained': False,
+             'source_ungradable': False},
+        ])
+        by, cov = load_correctness('gen', source='judge')
+        # containment said True; the judge is authoritative
+        assert by['q1']['correct'] is False
+        assert by['q1']['correct_source'] == 'judge:claude'
+        assert cov['judge'] == 1
+        # every other row falls back, and the fallback is visible
+        assert by['q2']['correct_source'] == 'contains'
+        assert cov['heuristic'] == 2 and cov['ungradable'] == 1
+
+    def test_judge_side_failure_falls_back_rather_than_dropping(self, tmp_path,
+                                                               monkeypatch):
+        """A rate-limited judge call is retryable; it must not delete a query."""
+        from correctness import load_correctness
+        self._fixture(tmp_path, monkeypatch, judged=[
+            {'query_id': 'q1', 'correct': None, 'abstained': None,
+             'source_ungradable': False, 'raw': '[ERROR: 429]'},
+        ])
+        by, cov = load_correctness('gen', source='judge')
+        assert by['q1']['correct'] is True          # containment, not None
+        assert by['q1']['correct_source'] == 'contains'
+        assert cov['judge'] == 0
+
+    def test_legacy_ungradable_field_still_understood(self, tmp_path, monkeypatch):
+        """Checkpoints written before the field rename used `ungradable`."""
+        from correctness import load_correctness
+        self._fixture(tmp_path, monkeypatch, judged=[
+            {'query_id': 'q2', 'correct': None, 'ungradable': True,
+             'raw': '[ERROR: AuthenticationError 401]'},
+        ])
+        by, _ = load_correctness('gen', source='judge')
+        assert by['q2']['correct'] is None
+
+    def test_abstention_survives_every_source(self, tmp_path, monkeypatch):
+        """faith_gap flips sign if abstentions leak into 'incorrect'."""
+        from correctness import load_correctness
+        self._fixture(tmp_path, monkeypatch, judged=[
+            {'query_id': 'q3', 'correct': False, 'abstained': True,
+             'source_ungradable': False},
+        ])
+        for src in ('contains', 'em', 'f1', 'judge'):
+            by, _ = load_correctness('gen', source=src)
+            assert by['q3']['abstained'] is True, src
+            assert by['q3']['correct'] is False, src
+
+    def test_unknown_source_raises(self, tmp_path, monkeypatch):
+        from correctness import load_correctness
+        self._fixture(tmp_path, monkeypatch)
+        with pytest.raises(ValueError):
+            load_correctness('gen', source='vibes')
+
+    def test_missing_checkpoint_is_empty_not_an_error(self, tmp_path, monkeypatch):
+        from correctness import load_correctness
+        self._fixture(tmp_path, monkeypatch)
+        by, cov = load_correctness('nope', source='judge')
+        assert by == {} and not cov
+
+    def test_judged_checkpoints_are_not_rescored(self, tmp_path, monkeypatch):
+        """`generated_*_judged_*` matches the generation glob but holds verdicts."""
+        import config as cfg
+        import utils
+        from correctness import _generation_checkpoint_names
+        monkeypatch.setenv('RAG_CHECKPOINT_DIR', str(tmp_path))
+        monkeypatch.setattr(cfg, 'CHECKPOINT_DIR', tmp_path)
+        utils.save_checkpoint('generated_claude_m_NQ', [{'query_id': 'q'}])
+        utils.save_checkpoint('generated_claude_m_NQ_judged_claude', [{'query_id': 'q'}])
+        assert _generation_checkpoint_names() == ['generated_claude_m_NQ']

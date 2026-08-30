@@ -194,3 +194,60 @@ class TestWiring:
         from correctness import GENERATION_GLOBS
         name = 'generated_gpt4omini_BGE-M3_NQ.pkl'
         assert any(fnmatch.fnmatch(name, g) for g in GENERATION_GLOBS)
+
+
+# ── the open-weight arm is no longer pinned to Llama-3 ───────────────────────
+class TestOpenWeightGenerator:
+
+    def test_llama_subclass_keeps_its_own_id(self):
+        import config
+        from generate import Llama3Generator, LocalHFGenerator
+        assert issubclass(Llama3Generator, LocalHFGenerator)
+        assert Llama3Generator.MODEL_ID == 'meta-llama/Meta-Llama-3-8B-Instruct'
+        assert LocalHFGenerator.MODEL_ID is None
+        assert config.OPEN_MODEL_ID and config.OPEN_MODEL_LABEL
+
+    def test_label_scopes_the_checkpoint_key(self, monkeypatch, tmp_path):
+        """A Qwen run and a Llama run must not write to the same checkpoint."""
+        import config as cfg
+        import generate
+        monkeypatch.setenv('RAG_CHECKPOINT_DIR', str(tmp_path))
+        monkeypatch.setattr(cfg, 'CHECKPOINT_DIR', tmp_path)
+
+        seen = []
+
+        class FakeGen:
+            def __init__(self, model_id=None):
+                seen.append(model_id)
+
+            def generate(self, question, chunks):
+                return 'answer'
+
+        monkeypatch.setattr(generate, 'LocalHFGenerator', FakeGen)
+        from utils import load_checkpoint, save_checkpoint
+        save_checkpoint('retrieval_m1_NQ', [
+            {'query_id': 'q1', 'question': 'q?', 'retrieved_texts': ['ctx']}])
+
+        generate.run_phase_llama({'NQ': object()}, model_names=['m1'], subset=1)
+        assert seen == [cfg.OPEN_MODEL_ID]
+        rows = load_checkpoint(f'generated_{cfg.OPEN_MODEL_LABEL}_m1_NQ')
+        assert rows and rows[0]['generator'] == cfg.OPEN_MODEL_LABEL
+        assert load_checkpoint('generated_llama3_m1_NQ') is None
+
+    def test_open_arm_is_visible_to_every_analysis(self):
+        """Every module that fans out over generators must know the label,
+        or the arm gets generated and then silently never scored."""
+        import importlib
+
+        import config
+        label = config.OPEN_MODEL_LABEL
+        checked = 0
+        for mod in ('conditional', 'results', 'faithfulness',
+                    'perturbation_check', 'claim_faithfulness'):
+            try:
+                m = importlib.import_module(mod)
+            except ImportError:
+                continue          # torch/transformers absent off the GPU box
+            assert label in m.GENERATORS, mod
+            checked += 1
+        assert checked >= 2

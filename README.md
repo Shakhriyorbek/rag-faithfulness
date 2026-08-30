@@ -4,9 +4,12 @@ Experiment pipeline for the paper on whether embedding models with different
 retrieval quality produce different **faithfulness** in downstream RAG
 generation.
 
-**Short answer from the data so far: they do not.** Retrieval quality governs
-whether the model answers and whether it is right; it does not govern how
-grounded its assertions are. See
+**Short answer from the data so far: it depends on the evaluator.** Under
+NLI-max none of the four dataset x generator cells shows a difference between
+embedders; under AlignScore two of them do, at p = 0.0005 — same queries, same
+answers, same test. That sensitivity is now the paper. See
+[`reports/2026-08-26_evaluator_dependence.md`](reports/2026-08-26_evaluator_dependence.md),
+with the earlier single-evaluator read in
 [`reports/2026-08-14_rung2_results.md`](reports/2026-08-14_rung2_results.md).
 
 - **Moving to a new machine (SSH keys first)** → [`DEVICE_MIGRATION.md`](DEVICE_MIGRATION.md)
@@ -237,11 +240,25 @@ Use `pip install --user`.
 | queries × embedders × generators | 1000 × 4 × 2 | 1000 × 4 × 2 |
 | NDCG@5 spread | 4.4 pts | 11.9 pts |
 | faithfulness pairs equivalent (±0.05) | 6/6 both generators | 6/6 Claude, 4/6 GPT |
-| hit × incorrect ("not sufficient") | 23.3% | 30.2% |
+| hit × incorrect ("not sufficient"), Claude | 23.3% | 30.2% |
+| hit × incorrect ("not sufficient"), GPT-4o-mini | 46.5% | — |
 
-**Not yet run:** LLM-judge correctness (blocks the accuracy numbers — EM is
-0.000, see the results report), C1/C2 floor and ceiling, ESA, re-ranking,
-Llama-3, QASPER.
+The GPT-4o-mini row was invisible until 2026-08-30: `conditional.GENERATORS`
+listed `llama3` (zero checkpoints) but not `gpt4omini` (8,000). Both arms are
+in the frame now, and `--correct-source` selects where `correct` comes from:
+
+```bash
+python3 src/conditional.py --datasets NQ,HotpotQA --correct-source judge
+```
+
+It prints its coverage (`judged N, heuristic N, ungradable N`) and falls back to
+containment per row, so a run where the judge has not been executed is visible
+in the log rather than silently identical to one where it has.
+
+**Not yet run:** LLM-judge correctness over the grid (blocks the accuracy
+numbers — EM is 0.000, see the results report), the open-weight generator arm
+(`Qwen/Qwen2.5-7B-Instruct`, ungated), C1/C2 floor and ceiling, ESA,
+re-ranking, QASPER.
 
 **Reading order for someone new:** this file → `CLAUDE.md` §5 (design decisions
 not to reverse) → `reports/2026-08-14_rung2_results.md` (what the data says) →

@@ -69,6 +69,10 @@ def main():
     ap.add_argument('--filtered', action='store_true',
                     help='phase `cond`: restrict to retrieval-necessary '
                          'queries (needs conditions.py --emit-filter)')
+    ap.add_argument('--correct-source', default='judge',
+                    help='phase `cond`: where `correct` comes from — judge, '
+                         'contains, em or f1. "judge" falls back to '
+                         'containment per row and prints the coverage')
     ap.add_argument('--yes', action='store_true',
                     help=f'authorize the paid phases {sorted(PAID_PHASES)}')
     args = ap.parse_args()
@@ -151,16 +155,12 @@ def main():
         print('=== phase: correctness scoring (no API cost) ===')
         run_phase_correctness()
     if 'cond' in phases:
-        from conditional import (anchor_table, build_query_frame,
-                                 conditional_faithfulness,
-                                 necessity_sufficiency)
-        qdf = build_query_frame(datasets, models, filtered=args.filtered)
-        print(f'\n=== necessary/sufficient grid ({len(qdf):,} query rows) ===')
-        print(necessity_sufficiency(qdf).to_string(index=False))
-        print('\n=== faithfulness conditioned on correctness ===')
-        print(conditional_faithfulness(qdf).to_string(index=False))
-        print('\n=== anchors: floor -> embedders -> ceiling ===')
-        print(anchor_table(qdf).to_string(index=False))
+        from conditional import build_query_frame, report_generator
+        qdf = build_query_frame(datasets, models, filtered=args.filtered,
+                                correct_source=args.correct_source)
+        print(f'\n=== query frame: {len(qdf):,} rows ===')
+        for gen in sorted(qdf['generator'].unique()):
+            report_generator(qdf, gen)
     if 'esa' in phases:
         from esa_analysis import run_esa
         run_esa(datasets, models)

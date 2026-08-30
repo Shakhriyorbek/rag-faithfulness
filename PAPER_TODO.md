@@ -110,11 +110,34 @@ demand.
    §6.4 cannot be stated as measurements. This has been the top item since
    2026-08-14.
 
+   **Unblocked 2026-08-30.** The judge previously wrote `*_judged_*` that
+   nothing read, so the ~$32 run would have moved no number. `conditional.py`
+   and `results.py` now go through `correctness.load_correctness`:
+
+   ```bash
+   python3 src/conditional.py --datasets NQ,HotpotQA --correct-source judge
+   ```
+
+   It overlays the judge per row, falls back to containment where the judge has
+   not run, and prints `judged N, heuristic N, ungradable N` so the difference
+   is visible. Calibrate before spending: the only judged checkpoint in the
+   backup is **4 rows of `AuthenticationError 401`** — the $0.01 calibration in
+   the 2026-08-28 status report is not evidenced by any artifact on this
+   machine, so re-run the 200-row calibration and `--compare-only` first.
+
 2. **An open-weight generator — Qwen or Gemma.** *Free on the V100.*
    Berend asked for it for reproducibility, and under the new framing it is
    also load-bearing: the effect is mediated by answer verbosity, so a third
    generator with a different verbosity profile is a direct test of the
-   mechanism, not just a robustness check. Needs `HF_TOKEN` on gpu1.
+   mechanism, not just a robustness check.
+
+   **Unblocked 2026-08-30.** `Llama3Generator` was hardcoded; it is now
+   `LocalHFGenerator(model_id)` with `config.OPEN_MODEL_ID =
+   'Qwen/Qwen2.5-7B-Instruct'` — **ungated, so `HF_TOKEN` is no longer a
+   blocker** — and `config.OPEN_MODEL_LABEL = 'qwen'` scoping the checkpoint
+   key. `qwen` is already in `GENERATORS` in all five analysis modules, so the
+   arm gets scored rather than generated and forgotten. Run:
+   `python3 -u src/run_pipeline.py --full --phases llama,d --datasets NQ`
 
 3. **Claim-level over the full grid.** *Free.*
    Only the 200-case perturbation subset has been scored. `claim_scores_*`
@@ -141,6 +164,14 @@ demand.
 
 **Dropped:** Shapley / `doc_utility.py`. Berend explicitly released you from it
 ("not that important... an underspecified rough idea").
+
+**Also settled 2026-08-30, and it changes a reported number:**
+`conditional.GENERATORS` omitted `gpt4omini`, so every table in §3.3/§6.4
+described the Claude arm only while ignoring 8,000 paid GPT-4o-mini rows. With
+both arms in the frame, *hit × incorrect* on NQ is 23.3 % for Claude but
+**46.5 %** for GPT-4o-mini. Whatever §8 says about that cell has to be restated
+per generator, not pooled — and the near-doubling is itself a result worth a
+sentence, since it is the same retrieval feeding both.
 
 ---
 

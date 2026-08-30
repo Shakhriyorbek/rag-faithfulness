@@ -52,8 +52,9 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
@@ -61,9 +62,15 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent))
 
 import config
+from correctness import (CORRECT_SOURCES, DEFAULT_JUDGE, format_coverage,
+                         load_correctness)
 from utils import load_checkpoint, save_checkpoint
 
-GENERATORS = ('claude', 'llama3')
+# Every generator arm that can appear in the frame. Missing checkpoints are
+# skipped, so listing one that has not been run is harmless — but OMITTING one
+# that has is not: 'gpt4omini' was absent until 2026-08-30 and the 2x2 silently
+# described Claude only, ignoring 8,000 paid generations.
+GENERATORS = ('claude', 'gpt4omini', 'llama3', config.OPEN_MODEL_LABEL)
 # Sentinel model names for the embedder-independent conditions, so they can sit
 # in the same frame as the real models without pretending to be one.
 NO_RETRIEVAL = '(C1 no-retrieval)'
@@ -104,9 +111,19 @@ def per_query_retrieval(loaded, model: str, ds_name: str,
     return out
 
 
-def _scored(name: str) -> Optional[List[dict]]:
-    """Prefer the correctness-scored checkpoint, fall back to the raw one."""
-    return load_checkpoint(f'{name}_scored') or load_checkpoint(name)
+def _scored(name: str, source: str = 'judge',
+            judge: str = DEFAULT_JUDGE, cov: Counter = None):
+    """
+    {query_id: correctness fields} for one generation checkpoint.
+
+    Delegates to correctness.load_correctness so the LLM judge, containment,
+    EM and F1 are all reachable from the same call. Accumulates coverage into
+    `cov` so build_query_frame can report how many labels each source supplied.
+    """
+    by_qid, c = load_correctness(name, source=source, judge=judge)
+    if cov is not None:
+        cov.update(c)
+    return by_qid
 
 
 def _nli_by_qid(name: str) -> Dict[str, float]:
@@ -122,16 +139,21 @@ def load_eval_filter() -> Dict[str, set]:
 
 # ── the frame everything else reads ──────────────────────────────────────────
 def build_query_frame(datasets: Dict, model_names: List[str] = None,
-                      filtered: bool = False) -> pd.DataFrame:
+                      filtered: bool = False, correct_source: str = 'judge',
+                      judge: str = DEFAULT_JUDGE) -> pd.DataFrame:
     """
     One row per query x model x dataset x generator, plus the C1/C2 conditions.
 
     Columns
         query_id dataset model paradigm generator condition
         ndcg recall hit          retrieval quality for THIS query (NaN for C1/C2)
-        correct correct_f1 abstained
+        correct correct_f1 abstained correct_source
         faithfulness             nli_max, NaN where not scored
     """
+    if correct_source not in CORRECT_SOURCES:
+        raise ValueError(f'correct_source must be one of {CORRECT_SOURCES}, '
+                         f'got {correct_source!r}')
+    cov = Counter()
     eval_filter = load_eval_filter() if filtered else {}
     if filtered and not eval_filter:
         print('[conditional] --filtered requested but no eval_filter checkpoint '
@@ -155,12 +177,11 @@ def build_query_frame(datasets: Dict, model_names: List[str] = None,
                 continue
             for gen in GENERATORS:
                 base = f'generated_{gen}_{model}_{ds_name}'
-                records = _scored(base)
-                if not records:
+                graded = _scored(base, correct_source, judge, cov)
+                if not graded:
                     continue
                 nli = _nli_by_qid(f'{gen}_{model}_{ds_name}')
-                for r in records:
-                    qid = r['query_id']
+                for qid, r in graded.items():
                     if not keep(ds_name, qid):
                         continue
                     q = rq.get(qid)
@@ -171,9 +192,10 @@ def build_query_frame(datasets: Dict, model_names: List[str] = None,
                         'paradigm': paradigm.get(model, '?'), 'generator': gen,
                         'condition': 'rag',
                         'ndcg': q['ndcg'], 'recall': q['recall'], 'hit': q['hit'],
-                        'correct': r.get('correct'),
-                        'correct_f1': r.get('correct_f1'),
-                        'abstained': r.get('abstained'),
+                        'correct': r['correct'],
+                        'correct_f1': r['correct_f1'],
+                        'abstained': r['abstained'],
+                        'correct_source': r['correct_source'],
                         'faithfulness': nli.get(qid, np.nan),
                     })
 
@@ -181,12 +203,11 @@ def build_query_frame(datasets: Dict, model_names: List[str] = None,
     for ds_name in datasets:
         for ck, model_label, cond in ((f'norag_{ds_name}', NO_RETRIEVAL, 'c1_norag'),
                                       (f'oracle_{ds_name}', ORACLE, 'c2_oracle')):
-            records = _scored(ck)
-            if not records:
+            graded = _scored(ck, correct_source, judge, cov)
+            if not graded:
                 continue
             nli = _nli_by_qid(ck)
-            for r in records:
-                qid = r['query_id']
+            for qid, r in graded.items():
                 if not keep(ds_name, qid):
                     continue
                 rows.append({
@@ -197,15 +218,21 @@ def build_query_frame(datasets: Dict, model_names: List[str] = None,
                     # nothing and C2 bypasses the retriever. NaN, never 0.0 —
                     # a 0 here would be read as "retrieval failed".
                     'ndcg': np.nan, 'recall': np.nan, 'hit': np.nan,
-                    'correct': r.get('correct'),
-                    'correct_f1': r.get('correct_f1'),
-                    'abstained': r.get('abstained'),
+                    'correct': r['correct'],
+                    'correct_f1': r['correct_f1'],
+                    'abstained': r['abstained'],
+                    'correct_source': r['correct_source'],
                     # C1 has no context, so faithfulness is undefined rather
                     # than zero — you cannot be unfaithful to nothing.
                     'faithfulness': (np.nan if cond == 'c1_norag'
                                      else nli.get(qid, np.nan)),
                 })
 
+    # Where the labels actually came from. A 'judge' run that fell back to
+    # containment for every row produces identical tables to a real judged run
+    # unless this is printed.
+    print(f'[conditional] correctness source={correct_source} '
+          f'-> {format_coverage(cov)}')
     df = pd.DataFrame(rows)
     if df.empty:
         raise RuntimeError(
@@ -380,7 +407,16 @@ def main():
     ap.add_argument('--datasets', default=None, help='comma-separated subset')
     ap.add_argument('--models', default=None, help='comma-separated subset')
     ap.add_argument('--n-queries', type=int, default=None)
-    ap.add_argument('--generator', default='claude', choices=list(GENERATORS))
+    ap.add_argument('--generator', default=None, choices=list(GENERATORS),
+                    help='restrict the tables to one arm; default is every '
+                         'generator present in the frame')
+    ap.add_argument('--correct-source', default='judge',
+                    choices=list(CORRECT_SOURCES),
+                    help='where `correct` comes from. "judge" uses the LLM '
+                         'judge where it has run and falls back to containment '
+                         'per row; coverage is printed either way')
+    ap.add_argument('--judge', default=DEFAULT_JUDGE,
+                    help='which judge checkpoint to read (llm_judge.py --judge)')
     ap.add_argument('--filtered', action='store_true',
                     help='restrict to queries the model gets wrong without '
                          'retrieval (needs conditions.py --emit-filter)')
@@ -393,16 +429,25 @@ def main():
     models = args.models.split(',') if args.models else None
     datasets = load_all(args.n_queries or config.N_QUERIES, ds_names)
 
-    df = build_query_frame(datasets, models, filtered=args.filtered)
+    df = build_query_frame(datasets, models, filtered=args.filtered,
+                           correct_source=args.correct_source, judge=args.judge)
     scope = 'FILTERED (retrieval-necessary queries only)' if args.filtered else 'all queries'
     print(f'\n=== query frame: {len(df):,} rows | {scope} ===')
 
-    print(f'\n=== necessary/sufficient grid [{args.generator}] ===')
-    ns = necessity_sufficiency(df, args.generator)
+    gens = ([args.generator] if args.generator
+            else [g for g in GENERATORS if (df['generator'] == g).any()])
+    for gen in gens:
+        report_generator(df, gen)
+
+
+def report_generator(df: pd.DataFrame, generator: str):
+    """The three tables for one generator arm."""
+    print(f'\n=== necessary/sufficient grid [{generator}] ===')
+    ns = necessity_sufficiency(df, generator)
     print(ns.to_string(index=False) if not ns.empty else '  (no gradable rows)')
 
-    print(f'\n=== faithfulness conditioned on correctness [{args.generator}] ===')
-    cf = conditional_faithfulness(df, args.generator)
+    print(f'\n=== faithfulness conditioned on correctness [{generator}] ===')
+    cf = conditional_faithfulness(df, generator)
     print(cf.to_string(index=False) if not cf.empty else '  (no gradable rows)')
     if not cf.empty and (cf['faith_gap'] > 0).any():
         worse = cf[cf['faith_gap'] > 0]['model'].tolist()
@@ -414,8 +459,8 @@ def main():
                   f'OPPOSITE sign — abstentions were masking the effect. '
                   f'Report faith_gap, never faith_gap_pooled alone.')
 
-    print(f'\n=== anchors: floor -> embedders -> ceiling [{args.generator}] ===')
-    at = anchor_table(df, args.generator)
+    print(f'\n=== anchors: floor -> embedders -> ceiling [{generator}] ===')
+    at = anchor_table(df, generator)
     print(at.to_string(index=False) if not at.empty else '  (run conditions.py)')
     if not at.empty and (at['pct_of_oracle'] > 1.0).any():
         beat = at[at['pct_of_oracle'] > 1.0]

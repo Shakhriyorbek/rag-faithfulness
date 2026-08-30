@@ -7,20 +7,40 @@
 
 ## 1. What this project is
 
-**Paper title:** *Beyond Retrieval Quality: How Embedding Architecture Affects Faithfulness in RAG Systems*
+**Paper title (v6, 2026-08-26):** *When the Evaluator Decides the Result*
+Superseded: v5 *"Retrieval Quality Predicts Correctness, Not Faithfulness"* —
+contradicted by its own data (false on HotpotQA, and evaluator-dependent).
+Older still: *"Beyond Retrieval Quality: How Embedding Architecture Affects
+Faithfulness in RAG Systems"*.
 
 **Author:** Shakhriyorbek Boltabaev (Aiden), MSc Computer Science, University of Szeged (SZTE)
 **Supervisor:** Dr. Gábor Berend (SZTE NLP group / RGAI) — actively engaged, has reviewed two drafts
 
-**Core research question:** Do embedding models with near-identical retrieval quality scores (NDCG@5, Recall@5) produce different *faithfulness* rates in downstream RAG generation? If so, why?
+**Core research question (v6):** does the *choice of faithfulness evaluator*
+decide whether a RAG faithfulness result exists at all? The embedding grid is
+now the **testbed**, not the claim: it supplies matched-retrieval-quality
+systems whose faithfulness verdict can then be shown to flip with the metric.
 
-**Key contributions:**
-1. **RFG** (Retrieval-Faithfulness Gap) metric — Eq. (2)
-2. **nRFG** normalized variant — Eq. (3), added to fix a design flaw the supervisor found
-3. **ESA** (Entailment-Similarity Alignment) geometric analysis — Eq. (4)
-4. Faithfulness-aware **re-ranking** strategy — Eq. (5)
+**Key contributions (v6):**
+1. Same 16,000 answers scored by **three evaluators** (NLI-max, claim-min,
+   AlignScore) — 2 of 4 nulls break under AlignScore alone
+2. A **falsification probe**: replace one grounded number with a value absent
+   from the context and re-score. Detection ranges 4%–90% across evaluators and
+   generators
+3. The **mechanism**: the score decays with the number of assertions an answer
+   contains (Claude 2.99/answer, GPT-4o-mini 1.18). Verbatim copying was tested
+   as the alternative explanation and rejected
+4. Consequence for equivalence testing: one fabricated fact moves NLI-max by
+   0.033–0.094, so a TOST margin of ±0.05 is about the size of one fabrication.
+   The margin is reported as a **curve** (±0.01 to ±0.10), not a point
 
-**Experimental scale:** 7 embedding models × 3 QA datasets × 2 generators × 1000 queries = **42,000 triples**
+Carried over as secondary: **RFG/nRFG** (diagnostics now, not the spine — see
+§5), **ESA** and **re-ranking** (never run; keep-or-drop pending with Berend).
+
+**Experimental scale actually run:** 4 embedding models × 2 QA datasets (NQ,
+HotpotQA) × 2 generators × 1000 queries = **16,000 generations**, $13.46, zero
+API errors. Not 42,000 triples — do not quote that number; 7 models and QASPER
+are configured but were never run.
 
 ---
 
@@ -30,13 +50,21 @@
 |------|--------|
 | Paper draft (IEEE format) | ✅ Complete, all supervisor feedback addressed |
 | References verified | ⚠️ 5 wrong attributions fixed (see §6), but ref **[8] cites a non-existent "jina-embeddings-v5-text"** — must become jina-embeddings-v3 (arXiv:2409.10173) in the next paper pass |
-| Pipeline code | ✅ **All of §8 built in `src/`** (2026-07-23); notebook is now a reference artifact only |
-| Notebook | ✅ Patched: title/"Mechanistic"/eq numbers fixed, `SIMULATED_RESULTS` removed, NLI index resolved from config |
-| Server access | ✅ Granted by Berend, SSH key installed |
-| Experiments | ❌ **Not started** — all results in the paper are still simulated |
-| Venue | ⚠️ EMNLP 2026 May 25 ARR deadline **has passed**. Target July ARR cycle or COLING 2026. |
+| Pipeline code | ✅ All of §8 built in `src/`; notebook is a reference artifact only |
+| Server access | ✅ Granted by Berend. **Fedora is now the only machine that can deploy** — the Windows laptop's key was revoked on both hosts 2026-08-28 |
+| Experiments | ✅ **Rung 2 done** — 16,000 real generations, NLI + AlignScore + claim-level, perturbation probe, TOST margin sweep |
+| Paper v6 | ✅ `paper/RAG_Faithfulness_v6_evaluators.docx`, built by `paper/build_v6.js` |
+| Format | ⚠️ Draft is **IEEE**; **ACL is required for any ARR submission** |
+| Venue | ⚠️ EMNLP 2026 May 25 ARR deadline passed. Target July ARR cycle or COLING 2026. |
 
-**The single biggest gap:** every number, table, and figure in the paper is placeholder/simulated data. Real experiments have never been run.
+**Backup:** 266 MB / 168 files at `~/rag-backup/checkpoints` on Fedora — the only
+copy of $13.46 of paid work outside gpu1. Refresh it after every paid run:
+`rsync -avz szte-gpu:rag_faithfulness/checkpoints/ ~/rag-backup/checkpoints/`
+
+**The biggest remaining gap:** correctness. EM is **0.000** on all 16,000 rows,
+so every accuracy number rests on string containment, which is only an upper
+bound. `src/llm_judge.py` exists and is wired in (see §8) but has not been run.
+Full ordering in **`PAPER_TODO.md`** — that file, not this one, is the to-do.
 
 **Critical bug found & fixed during the 2026-07-23 audit (do not regress):**
 the notebook hardcoded `probs[2]` as the NLI "entailment" probability, but
@@ -57,6 +85,13 @@ per-chunk scoring), `intfloat/e5-large-instruct` does not exist (now
 laptop ──ssh──> hop (193.225.250.29) ──ssh gpu1──> gpu1 (NVIDIA V100)
                 user: sboltabaev                    alias pre-configured by Berend
 ```
+
+> **The laptop is Fedora as of 2026-08-28**, and its key is the only one still
+> authorized — the Windows machine's key was revoked on both hosts. The
+> Windows-specific notes below (`ControlMaster` unsupported, no `rsync`) are
+> kept as history; on Fedora both work and `ControlMaster` should be **on**,
+> because it is what keeps the gateway from rate-limiting you. Setup:
+> `README.md`; moving machines again: `DEVICE_MIGRATION.md`.
 
 - SSH config at `server/ssh_config` → copy to `~/.ssh/config`, then `ssh szte-gpu` connects in one hop
 - **Access granted by Berend on 2026-07-02.** His maintenance-outage window ("during the next week", ~Jul 2–9) **has passed** — it is no longer a blocker. The hop reported 12 days uptime on 2026-07-26, i.e. stable since ~Jul 14.
@@ -195,7 +230,7 @@ paper's spine.
 - **Both generators get a byte-identical prompt** (one user turn with the full template). The instruction is deliberately NOT hoisted into Claude's `system` parameter, idiomatic though that would be — H3 compares rankings across generators, so a prompt difference would confound it.
 - **Faithfulness is measured between retrieved context and the GENERATED answer**, never the gold answer. Gold answers are used only for retrieval-quality evaluation (qrels). Reversing this breaks the paper's central argument.
 - **ESA deliberately uses the gold answer** (unlike F) because it measures a static property of the embedding space, independent of any generator. This asymmetry is intentional and is explained in §4.5.1.
-- **nRFG is the primary metric**; raw RFG is a secondary diagnostic and must always be reported alongside absolute faithfulness so the both-low case stays visible.
+- **nRFG is a diagnostic, not the primary metric** (demoted 2026-08-13, confirmed by v6). It subtracts a faithfulness score from a ranking metric and only means anything under the reading Berend questioned. Report it alongside absolute faithfulness so the both-low case stays visible; the paper's spine is evaluator sensitivity, not nRFG.
 - **Never call §4.5 "mechanistic analysis"** — it is correlational/geometric. True mechanistic analysis (à la ReDeEP) probes attention heads and FFNs; this does not.
 - **Avoid overclaiming language** in any new text: no "causally", "first to", "novel", "comprehensive", "pioneered", "state-of-the-art". Supervisor explicitly flagged this and recommended Nicholas Carlini's writing guide.
 
@@ -227,11 +262,11 @@ The HuggingFace dataset APIs do not match the naive assumptions the original cod
 
 ---
 
-## 8. Build status (all code items ✅ as of 2026-07-23)
+## 8. Build status
 
 1. ✅ **`src/datasets_loader.py`** — 3 loaders with §7 fixes; corpus docs carry gold-provenance; NQ pools contexts so distractors exist
 2. ✅ **`src/embed_index.py`** — offset-based chunking (original text preserved), stable chunk IDs, FAISS-or-numpy exact index, per-family encoder handling (Instructor pairs, jina trust_remote_code, E5-instruct template, OpenAI cost-tracked), Phase A retrieves top-20 pool
-3. ✅ **`src/generate.py`** — GPT-4o-mini (resumable, budget-capped) + Llama-3-8B (VRAM-probed 8-bit, chat template, greedy, token-sliced)
+3. ✅ **`src/generate.py`** — Claude + GPT-4o-mini (one shared driver, resumable, budget-capped) + `LocalHFGenerator` for the open-weight arm (VRAM-probed 8-bit, chat template, greedy, token-sliced)
 4. ✅ **`src/faithfulness.py`** — per-chunk NLI (max/mean/concat) + optional AlignScore, both generators
 5. ✅ **`src/esa_analysis.py`** — both `NLI(d, gold_a)` and `NLI(d, q)` (closes supervisor point 6)
 6. ✅ **`src/rerank.py`** — Eq. (5) ablation: re-rank top-20 → regenerate → re-score; λ sweep helper
@@ -412,23 +447,79 @@ ever supported by a non-significant difference, which is not evidence of
 equivalence. `matched` requires **both** no detectable difference **and** TOST
 equivalence.
 
+### Modules added for the v6 measurement spine (2026-08-25/26)
+
+17. ✅ **`src/perturbation_check.py`** — the falsification probe, `--scorer {nli,claim,align}`
+18. ✅ **`src/claim_faithfulness.py`** — min over claims of max over chunks
+19. ✅ **`src/compare_evaluators.py`** — per-evaluator comparison + TOST margin sweep
+20. ✅ **`src/llm_judge.py`** — correctness grading, two judges, per-model pricing
+
+### ⚠️ Three code gaps found on 2026-08-30 (fixed — do not regress)
+
+**B9 — the LLM judge was write-only.** `llm_judge.py` wrote
+`{name}_judged_{judge}` and *nothing read it*: `conditional.py` and
+`results.py` went straight to `{name}_scored`. Running the ~$32 full-grid judge
+would have changed no number in the paper. Fixed: `correctness.load_correctness`
+is now the single resolver (`CORRECT_SOURCES = judge|contains|em|f1`), used by
+`conditional.build_query_frame(correct_source=...)`,
+`results.compare_faithfulness` and `run_pipeline --correct-source`. It overlays
+the judge **per row** and **prints coverage** (`judged N, heuristic N,
+ungradable N`) — a run that quietly fell back to containment is otherwise
+indistinguishable from a judged one. Three judged-row cases must stay distinct:
+no judged row → heuristic; `source_ungradable` → `None`, never `False`; a
+judge-side `None` (429, unparseable) → heuristic, because it is retryable.
+The legacy field name `ungradable` is also honoured — the backup's only judged
+file is 4 rows of `AuthenticationError 401` frozen in the pre-fix schema.
+
+**B10 — `conditional.GENERATORS` was `('claude', 'llama3')`.** `llama3` has
+**zero** checkpoints; `gpt4omini` has **8,000** paid ones. The 2×2, the
+conditional table and the anchors therefore described Claude only. Adding
+`gpt4omini` doubles the frame (4,000 → 8,000 rows on NQ) and moves the headline
+cell: *hit × incorrect* is 23.3% for Claude but **46.5%** for GPT-4o-mini on NQ.
+Any generator added to `generate.py` must also be added to `GENERATORS` in
+`conditional.py`, `faithfulness.py`, `results.py`, `perturbation_check.py` and
+`claim_faithfulness.py`, or the arm is generated and then never scored.
+`tests/test_openai_generator.py::TestOpenWeightGenerator` pins this.
+
+**B11 — `correctness._generation_checkpoint_names` matched `*_judged_*`.**
+Judged files match `generated_*.pkl` and hold verdicts, not generations, so
+`run_phase_correctness` would have scored them into junk
+`*_judged_*_scored` checkpoints. Now excluded, as `llm_judge.py` already did.
+
 **Still open:**
-9. ❌ **Run the experiments** — smoke test passes end to end; Rung 2 (3×NQ at
-   N=1000), then Rung 5 (the Berend conditions, ~$15), ESA, rerank, Llama-3,
-   AlignScore, and the full 7×3 grid
-10. ❌ **Paper update** — replace every simulated number with real results; rewrite §6 from "Expected Results" (H1–H5) into actual Results + Discussion, reporting honestly which hypotheses failed; fix ref [8] (jina v3, see §2); resolve §4.5.2 "cross-attention" wording (Llama-3 is decoder-only — self-attention over context tokens, and no code implements this analysis yet)
+21. ❌ **The experiments in `PAPER_TODO.md` §3** — LLM judge (~$32, top item),
+   open-weight generator (free), claim-level over the full grid (free),
+   literal value grounding (not built), C1/C2 (~$3–4), QASPER (~$5),
+   ESA/re-ranking (decision pending with Berend). Shapley/`doc_utility.py`
+   is **dropped** at Berend's explicit direction.
+22. ❌ **Paper update** — v6 exists but references are **unverified** (five were
+   wrong in earlier drafts, see §6); fix ref [8] (jina v3, see §1); convert
+   IEEE → ACL; read the Salemi & Zamani PDF (only the abstract has been read);
+   resolve §4.5.2 "cross-attention" wording (decoder-only models use
+   self-attention over context tokens, and no code implements that analysis)
 
 ---
 
-## 9. Hypotheses under test
+## 9. Hypotheses — and what the data did to them
 
-- **H1** Instruction-tuned models show lower RFG than contrastive-only
-- **H2** RFG is largest on HotpotQA (multi-hop)
-- **H3** Model ranking by RFG is consistent across GPT-4o-mini and Llama-3
-- **H4** ESA is higher for instruction-tuned models
-- **H5** Faithfulness-aware re-ranking cuts the worst model's RFG by ≥15% relative
+H1–H5 were written before any experiment ran. Rung 2 settled several of them,
+mostly against the hypothesis. Report that honestly; the supervisor values it
+over an inflated claim, and it is why the paper was reframed rather than
+rewritten to fit.
 
-Report failures honestly — the supervisor values this over inflated claims.
+| | claim | outcome at N=1000 |
+|---|---|---|
+| **H1** | instruction-tuned show lower RFG than contrastive-only | **not supported** — the faithfulness differences between embedders are mostly null, and where they are not, the sign depends on the evaluator |
+| **H2** | RFG largest on HotpotQA (multi-hop) | **dataset does matter, but not as RFG** — all four HotpotQA cells correlate *positively* with NDCG@5 (rho +0.40…+1.00); all four NQ cells are zero or negative |
+| **H3** | model ranking by RFG survives a change of generator | **partly** — but the more interesting finding is that it does not survive a change of *evaluator*, which is now the paper |
+| **H4** | ESA higher for instruction-tuned models | **not run** |
+| **H5** | faithfulness-aware re-ranking cuts the worst model's RFG ≥15% | **not run** |
+
+The v6 spine is **measurement validity**: same queries, same answers, same
+test, different evaluator, different verdict (2 of 4 nulls break under
+AlignScore at p=0.0005). Details in
+`reports/2026-08-26_evaluator_dependence.md` and
+`reports/2026-08-25_perturbation_check.md`.
 
 ---
 

@@ -46,7 +46,7 @@ import config
 from utils import checkpoint_exists, load_checkpoint, save_checkpoint
 
 SEED = config.RANDOM_SEED if hasattr(config, 'RANDOM_SEED') else 42
-GENERATORS = ['claude', 'gpt4omini', 'llama3']
+GENERATORS = ['claude', 'gpt4omini', 'llama3', config.OPEN_MODEL_LABEL]
 
 # Gate used for the operational "would this be caught?" rate. A product that
 # suppresses answers below a grounding threshold needs the DETECTION rate, not

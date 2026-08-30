@@ -234,3 +234,80 @@ def test_conditions_needing_gold_return_none_without_it():
 def test_unknown_condition_raises():
     with pytest.raises(ValueError):
         _ctx('gold_sideways')
+
+
+# ── the query frame: which generators and which correctness source ───────────
+# Added 2026-08-30. GENERATORS omitted 'gpt4omini' until then, so the 2x2 and
+# the conditional table silently described the Claude arm only and ignored
+# 8,000 paid GPT-4o-mini generations.
+class TestQueryFrame:
+
+    @staticmethod
+    def _setup(tmp_path, monkeypatch, judged=None):
+        import config as cfg
+        import conditional
+        import utils
+        from correctness import score_records
+        monkeypatch.setenv('RAG_CHECKPOINT_DIR', str(tmp_path))
+        monkeypatch.setattr(cfg, 'CHECKPOINT_DIR', tmp_path)
+        monkeypatch.setattr(cfg, 'EMBEDDING_MODELS',
+                            [{'name': 'm1', 'paradigm': 'contrastive'}])
+
+        raw = [{'query_id': 'q1', 'answer': 'Paris',
+                'generated_answer': 'The capital is Paris.'},
+               {'query_id': 'q2', 'answer': 'Paris',
+                'generated_answer': 'The capital is Berlin.'}]
+        for gen in ('claude', 'gpt4omini'):
+            utils.save_checkpoint(f'generated_{gen}_m1_NQ', raw)
+            utils.save_checkpoint(f'generated_{gen}_m1_NQ_scored',
+                                  score_records(raw))
+            utils.save_checkpoint(f'nli_scores_{gen}_m1_NQ',
+                                  [{'query_id': 'q1', 'nli_max': 0.9},
+                                   {'query_id': 'q2', 'nli_max': 0.8}])
+        if judged is not None:
+            utils.save_checkpoint('generated_claude_m1_NQ_judged_claude', judged)
+
+        monkeypatch.setattr(conditional, 'per_query_retrieval',
+                            lambda loaded, model, ds, k=None: {
+                                'q1': {'ndcg': 1.0, 'recall': 1.0, 'mrr': 1.0,
+                                       'hit': True},
+                                'q2': {'ndcg': 0.0, 'recall': 0.0, 'mrr': 0.0,
+                                       'hit': False}})
+        return conditional
+
+    def test_both_paid_generator_arms_reach_the_frame(self, tmp_path, monkeypatch):
+        conditional = self._setup(tmp_path, monkeypatch)
+        assert 'gpt4omini' in conditional.GENERATORS
+        df = conditional.build_query_frame({'NQ': object()})
+        assert set(df['generator']) == {'claude', 'gpt4omini'}
+        assert len(df) == 4
+
+    def test_frame_records_where_each_label_came_from(self, tmp_path, monkeypatch):
+        conditional = self._setup(tmp_path, monkeypatch, judged=[
+            {'query_id': 'q1', 'correct': False, 'abstained': False,
+             'source_ungradable': False}])
+        df = conditional.build_query_frame({'NQ': object()}, correct_source='judge')
+        judged = df[df['correct_source'] == 'judge:claude']
+        assert len(judged) == 1                       # only the claude arm
+        assert judged.iloc[0]['correct'] is False or judged.iloc[0]['correct'] == False
+        # the gpt arm has no judged checkpoint and falls back, visibly
+        assert (df['correct_source'] == 'contains').sum() == 3
+
+    def test_source_changes_the_2x2(self, tmp_path, monkeypatch):
+        """The whole point: switching the source must move the reported cells."""
+        conditional = self._setup(tmp_path, monkeypatch, judged=[
+            {'query_id': 'q1', 'correct': False, 'abstained': False,
+             'source_ungradable': False}])
+        con = conditional.build_query_frame({'NQ': object()},
+                                            correct_source='contains')
+        jud = conditional.build_query_frame({'NQ': object()},
+                                            correct_source='judge')
+        c = con[(con['generator'] == 'claude') & (con['query_id'] == 'q1')]
+        j = jud[(jud['generator'] == 'claude') & (jud['query_id'] == 'q1')]
+        assert bool(c.iloc[0]['correct']) is True
+        assert bool(j.iloc[0]['correct']) is False
+
+    def test_bad_source_raises_before_any_work(self, tmp_path, monkeypatch):
+        conditional = self._setup(tmp_path, monkeypatch)
+        with pytest.raises(ValueError):
+            conditional.build_query_frame({'NQ': object()}, correct_source='vibes')

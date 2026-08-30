@@ -17,13 +17,14 @@ import numpy as np
 import pandas as pd
 
 import config
+from correctness import load_correctness
 from metrics import (compute_rfg_variants, nrfg, rfg,
                      robustness_correlation_matrix, summarize_robustness)
 from utils import checkpoint_exists, load_checkpoint, save_checkpoint
 
 # Order matters only for display. 'claude' stays the reference arm because it
 # is the one generator run over the full 7-model grid.
-GENERATORS = ['claude', 'gpt4omini', 'llama3']
+GENERATORS = ['claude', 'gpt4omini', 'llama3', config.OPEN_MODEL_LABEL]
 
 
 def bootstrap_significance(scores_a: List[float], scores_b: List[float],
@@ -194,7 +195,8 @@ FAITH_SOURCES = {
 def faithfulness_by_model(dataset: str, generator: str = 'claude',
                           models: List[str] = None,
                           answered_only: bool = True,
-                          metric: str = 'nli') -> dict:
+                          metric: str = 'nli',
+                          correct_source: str = 'judge') -> dict:
     """
     Mean faithfulness per embedding model on a COMMON set of queries.
 
@@ -232,10 +234,11 @@ def faithfulness_by_model(dataset: str, generator: str = 'claude',
             continue
         drop = set()
         if answered_only:
-            scored = load_checkpoint(
-                f'generated_{generator}_{m}_{dataset}_scored')
-            if scored:
-                drop = {r['query_id'] for r in scored if r.get('abstained')}
+            # Abstention comes from the same resolver conditional.py uses, so
+            # the two analyses never disagree about which rows were answered.
+            graded, _ = load_correctness(
+                f'generated_{generator}_{m}_{dataset}', source=correct_source)
+            drop = {q for q, r in graded.items() if r.get('abstained')}
         per[m] = {r['query_id']: r[field] for r in scores
                   if r['query_id'] not in drop
                   and r.get(field) is not None

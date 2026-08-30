@@ -242,6 +242,131 @@ def score_records(records: Iterable[Dict],
     return out
 
 
+# ── choosing where `correct` comes from ──────────────────────────────────────
+# score_records() writes all three heuristic signals; llm_judge.py writes a
+# fourth, better one to a SEPARATE checkpoint. Until 2026-08-30 nothing read
+# that fourth one: conditional.py and results.py went straight to `_scored`,
+# so grading the grid with an LLM judge would have cost ~$32 and changed no
+# number in the paper. load_correctness() is the single place that decides.
+CORRECT_SOURCES = ('judge', 'contains', 'em', 'f1')
+DEFAULT_JUDGE = 'claude'
+
+
+def _heuristic_correct(rec: Dict, source: str,
+                       threshold: float = CORRECT_F1_THRESHOLD) -> Optional[bool]:
+    """
+    Derive `correct` from the three stored signals rather than trusting the
+    stored `correct` field, which was fixed at scoring time by whatever
+    --mode happened to be passed then. None stays None: see score_records().
+    """
+    em = rec.get('correct_em')
+    f1 = rec.get('correct_f1')
+    con = rec.get('correct_contains')
+    if em is None and f1 is None and con is None:
+        return None
+    if source == 'em':
+        return bool(em)
+    if source == 'f1':
+        return bool(em or (f1 is not None and f1 >= threshold))
+    return bool(con or em)          # 'contains', and the fallback for 'judge'
+
+
+def load_correctness(name: str, source: str = 'judge',
+                     judge: str = DEFAULT_JUDGE,
+                     threshold: float = CORRECT_F1_THRESHOLD):
+    """
+    Per-query correctness for one generation checkpoint, from the chosen source.
+
+    Returns (by_qid, coverage) where
+        by_qid    {query_id: {'correct', 'abstained', 'correct_f1',
+                              'correct_source'}}
+        coverage  Counter — 'judge', 'heuristic', 'ungradable', 'total'.
+                  Print it. A run that quietly fell back to containment for
+                  every row is indistinguishable from a judged run in the
+                  output tables, and that is exactly the mistake worth $32.
+
+    source='judge' overlays the judge on the heuristic PER ROW, with three
+    cases that must not be collapsed:
+      - no judged row at all              -> heuristic (judge has not been run
+                                             on this checkpoint yet)
+      - judged, source_ungradable=True    -> None. The ROW has no usable
+                                             prediction; the heuristic says
+                                             None here too. Never False.
+      - judged, correct=None, not
+        source_ungradable                 -> a judge-side failure (rate limit,
+                                             unparseable reply). Retryable, so
+                                             fall back to the heuristic rather
+                                             than dropping the query.
+    """
+    if source not in CORRECT_SOURCES:
+        raise ValueError(f'source must be one of {CORRECT_SOURCES}, got {source!r}')
+
+    base = load_checkpoint(f'{name}_scored')
+    if not base:
+        raw = load_checkpoint(name)
+        if not raw:
+            return {}, Counter()
+        # Not scored yet — score in memory so callers still get an answer.
+        # 'judge' grades on top of containment, which is the default mode.
+        mode = source if source in CORRECT_MODES else CORRECT_MODE
+        base = score_records(raw, threshold=threshold, mode=mode)
+
+    judged = {}
+    if source == 'judge':
+        judged = {r['query_id']: r
+                  for r in (load_checkpoint(f'{name}_judged_{judge}') or [])}
+
+    out, cov = {}, Counter()
+    for rec in base:
+        qid = rec.get('query_id')
+        if qid is None:
+            continue
+        cov['total'] += 1
+        correct = _heuristic_correct(rec, source, threshold)
+        abstained = rec.get('abstained')
+        used = source if source != 'judge' else 'contains'
+
+        j = judged.get(qid)
+        if j is not None:
+            if j.get('correct') is not None:
+                correct = bool(j['correct'])
+                # parse_verdict() returns abstention alongside the verdict; it
+                # sees the same string is_abstention() does but understands
+                # paraphrases, so prefer it when present.
+                if j.get('abstained') is not None:
+                    abstained = bool(j['abstained'])
+                used = f'judge:{judge}'
+            elif j.get('source_ungradable') or j.get('ungradable'):
+                # 'ungradable' is the pre-2026-08-28 field name. Checkpoints
+                # written before the resume fix used it for BOTH cases, so a
+                # rate-limited row was frozen as permanently ungradable; the
+                # backup's only judged file is 4 rows of 401 stored that way.
+                # Reading it as ungradable is still safe: the heuristic returns
+                # None for those rows too, because the source row is unusable.
+                correct = None
+            # else: judge-side failure -> keep the heuristic value above
+
+        if correct is None:
+            cov['ungradable'] += 1
+        elif used.startswith('judge'):
+            cov['judge'] += 1
+        else:
+            cov['heuristic'] += 1
+
+        out[qid] = {'correct': correct, 'abstained': abstained,
+                    'correct_f1': rec.get('correct_f1'),
+                    'correct_source': used}
+    return out, cov
+
+
+def format_coverage(cov: Counter) -> str:
+    """One-line summary of where a frame's correctness labels came from."""
+    if not cov:
+        return 'no rows'
+    return (f'{cov["total"]} rows: judged {cov["judge"]}, '
+            f'heuristic {cov["heuristic"]}, ungradable {cov["ungradable"]}')
+
+
 # Every family of checkpoint that holds generated answers. `generated_*` alone
 # would miss the controlled conditions, which is exactly where correctness
 # matters most: the C1 floor and the C2 ceiling ARE accuracy numbers.
@@ -260,7 +385,10 @@ def _generation_checkpoint_names() -> List[str]:
     for pattern in GENERATION_GLOBS:
         for p in sorted(Path(config.CHECKPOINT_DIR).glob(pattern)):
             stem = p.stem
-            if stem.endswith('_partial') or stem.endswith('_scored'):
+            # '_judged_*' matches 'generated_*.pkl' but holds verdicts, not
+            # generations — scoring it produces a junk '*_judged_*_scored'.
+            if (stem.endswith('_partial') or stem.endswith('_scored')
+                    or '_judged_' in stem):
                 continue
             names.append(stem)
     return sorted(set(names))

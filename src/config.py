@@ -27,7 +27,18 @@ CHUNK_SIZE    = 256
 CHUNK_OVERLAP = 32
 LAMBDA_RERANK = 0.6      # Re-ranking mix weight (Eq. 5)
 RERANK_LAMBDAS = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]  # λ sensitivity sweep
-LLAMA_SUBSET  = 300      # Llama-3 validation queries per dataset
+LLAMA_SUBSET  = 300      # open-weight validation queries per dataset
+
+# ── open-weight generator arm ──
+# Berend asked for Qwen or Gemma rather than Llama-3. Qwen2.5-7B-Instruct is
+# UNGATED, which removes the HF_TOKEN blocker that has held this arm up; it
+# also fits fp16 on the 32GB V100. Under the v6 framing this arm does real
+# work: the perturbation effect scales with how many assertions an answer
+# contains, so a third generator tests that mechanism rather than only
+# reproducing H3. The label goes into the checkpoint key, so changing the
+# model without changing the label would silently mix two models' answers.
+OPEN_MODEL_ID    = 'Qwen/Qwen2.5-7B-Instruct'
+OPEN_MODEL_LABEL = 'qwen'
 ESA_N_SAMPLES = 200      # Queries per model×dataset for the ESA correlation
 
 # ── NLI model (faithfulness, ESA, re-ranking) ──

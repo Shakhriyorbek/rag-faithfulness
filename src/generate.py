@@ -288,19 +288,30 @@ def _run_api_generation(gen, label: str, datasets: Dict,
     print(f'[phase C: {label}] complete')
 
 
-# ── Llama-3-8B-Instruct ───────────────────────────────────────────
-class Llama3Generator:
-    MODEL_ID = 'meta-llama/Meta-Llama-3-8B-Instruct'
+# ── open-weight generator (local HF model) ────────────────────────
+class LocalHFGenerator:
+    """
+    Any instruct-tuned causal LM from the Hub, run locally on the GPU.
 
-    def __init__(self):
+    Was Llama3Generator with the id hardcoded. Berend asked for Qwen or Gemma
+    instead, and pinning the id in the class meant swapping models required an
+    edit rather than an argument. The prompt still comes from build_prompt()
+    unchanged — prompt parity across generators is what makes the cross-
+    generator comparison mean anything.
+    """
+    MODEL_ID = None      # subclasses may pin one; otherwise config.OPEN_MODEL_ID
+
+    def __init__(self, model_id: str = None):
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
-        assert torch.cuda.is_available(), 'Llama-3 requires a GPU'
+        self.MODEL_ID = model_id or self.MODEL_ID or config.OPEN_MODEL_ID
+        assert torch.cuda.is_available(), \
+            f'{self.MODEL_ID} requires a GPU'
 
         vram_gb = torch.cuda.get_device_properties(0).total_memory / 1e9
         use_8bit = (config.LLAMA_FORCE_8BIT if config.LLAMA_FORCE_8BIT
                     is not None else vram_gb < 20)
-        print(f'Loading Llama-3-8B-Instruct '
+        print(f'Loading {self.MODEL_ID} '
               f'(VRAM {vram_gb:.0f} GB -> {"8-bit" if use_8bit else "fp16"})...')
 
         self.tokenizer = AutoTokenizer.from_pretrained(
@@ -338,20 +349,32 @@ class Llama3Generator:
                                      skip_special_tokens=True).strip()
 
 
+class Llama3Generator(LocalHFGenerator):
+    """Kept so existing callers and checkpoints keep working."""
+    MODEL_ID = 'meta-llama/Meta-Llama-3-8B-Instruct'
+
+
 def run_phase_llama(datasets: Dict, model_names: List[str] = None,
-                    subset: int = config.LLAMA_SUBSET):
+                    subset: int = config.LLAMA_SUBSET,
+                    model_id: str = None, label: str = None):
     """
-    Llama-3 validation subset (H3: generator independence).
+    Open-weight validation subset (H3: generator independence).
     Default: the 3 core models, `subset` queries per dataset.
     NLI scoring happens in Phase D against these checkpoints.
+
+    `label` goes into the checkpoint key, so a Qwen run and a Llama run never
+    collide. Passing a different `model_id` under the SAME label would mix two
+    models' answers into one checkpoint, which resume would then treat as done.
     """
+    model_id = model_id or config.OPEN_MODEL_ID
+    label = label or config.OPEN_MODEL_LABEL
     val_models = model_names or ['all-mpnet-base-v2', 'E5-large-instruct',
                                  'BGE-M3']
-    llama = Llama3Generator()
+    llama = LocalHFGenerator(model_id)
 
     for model in val_models:
         for ds_name in datasets:
-            ck = f'generated_llama3_{model}_{ds_name}'
+            ck = f'generated_{label}_{model}_{ds_name}'
             if checkpoint_exists(ck):
                 print(f'  [skip] {ck}')
                 continue
@@ -363,7 +386,7 @@ def run_phase_llama(datasets: Dict, model_names: List[str] = None,
             todo = retrievals[:subset]
             generations = load_checkpoint(ck + '_partial') or []
             done = len(generations)
-            print(f'  Llama-3 [{model}] [{ds_name}] '
+            print(f'  {label} [{model}] [{ds_name}] '
                   f'({done}/{len(todo)} done)...')
             for i, r in enumerate(todo[done:], start=done):
                 answer = llama.generate(
@@ -371,11 +394,11 @@ def run_phase_llama(datasets: Dict, model_names: List[str] = None,
                 generations.append({
                     **r,
                     'generated_answer': answer,
-                    'generator': 'llama3',
+                    'generator': label,
                 })
                 if (i + 1) % 50 == 0:
                     save_checkpoint(ck + '_partial', generations)
                     print(f'    {i + 1}/{len(todo)}')
             save_checkpoint(ck, generations)
             print(f'  {model}/{ds_name}: {len(generations)} answers')
-    print('[phase Llama] complete')
+    print(f'[phase open-weight: {label}] complete')
