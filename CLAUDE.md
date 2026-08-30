@@ -400,6 +400,11 @@ or more (0.83–0.99 vs 0.82–0.90). `conditional.py` reports `faith_gap` over
 answered rows only; `faith_gap_pooled` is kept solely to keep the artifact
 auditable. **Never report the pooled column alone.**
 
+> **Superseded at N=1000 — see B12 in §8.** That "+0.02…+0.16" came from a
+> baseline that excluded abstentions on the *wrong* side only. With both sides
+> symmetric, Claude/NQ is −0.006…+0.018, i.e. nothing. The abstention warning
+> above still holds; the positive gap it claimed to recover does not.
+
 ### ⚠️ Three defects found on the first real N=1000 attempt (2026-08-14)
 
 **B8a — every checkpoint key was scoped to nothing, so the full run reused
@@ -485,6 +490,38 @@ Any generator added to `generate.py` must also be added to `GENERATORS` in
 Judged files match `generated_*.pkl` and hold verdicts, not generations, so
 `run_phase_correctness` would have scored them into junk
 `*_judged_*_scored` checkpoints. Now excluded, as `llm_judge.py` already did.
+
+**B12 — `faith_gap` had a one-sided baseline (found 2026-08-30 by running the
+free analysis on gpu1 with both generator arms).** It compared
+`faith(wrong, ANSWERED)` against `faith(correct, ALL)`. Containment grades some
+abstentions **correct** — a short gold answer string occurs inside "I cannot
+answer based on the provided context" — 193/2893 of Claude's correct rows on NQ
+(6.7%) and 315/2695 on HotpotQA (11.7%), each scoring ~0.37–0.51 NLI. They
+depressed the correct-side mean and manufactured a positive gap.
+
+Symmetric, **Claude/NQ goes from +0.018…+0.050 on all four embedders to
+−0.006…+0.018** — from "more faithful when WRONG", the sharpest claim in the
+draft, to nothing. HotpotQA keeps its sign and most of its magnitude.
+GPT-4o-mini has **zero** abstained-correct rows on NQ and never moved, which is
+exactly why the two generators looked like they disagreed. `faith_gap` now
+excludes abstentions on both sides, `faith_gap_pooled` pools both sides, and
+`n_correct_abstained` is reported so the containment false positives stay
+visible. Those same rows also inflate `accuracy` — another reason to run the
+judge rather than ship containment.
+
+**B13 — the tables pooled datasets.** `conditional_faithfulness` grouped by
+model only and `necessity_sufficiency` not at all, so NQ and HotpotQA were
+averaged. That made `faith_gap` look like a *generator* effect; split by
+dataset, NQ is ~0 for both generators and HotpotQA carries all of it, in
+**opposite directions** (Claude −0.087…−0.182, GPT-4o-mini +0.030…+0.093).
+Both tables now emit one block per dataset, with an `ALL` block kept for
+continuity. Read the per-dataset blocks.
+
+**The hit × incorrect cell is mostly refusals.** Abstention share of that cell:
+Claude/NQ 24.9%, Claude/HotpotQA 56.2%, GPT-4o-mini/NQ 53.6%,
+GPT-4o-mini/HotpotQA 60.1%. Its raw size is therefore not comparable across
+generators or datasets and is not on its own evidence that retrieval was
+insufficient — `share_answered` subtracts the refusals.
 
 **Still open:**
 21. ❌ **The experiments in `PAPER_TODO.md` §3** — LLM judge (~$32, top item),

@@ -165,6 +165,16 @@ demand.
 **Dropped:** Shapley / `doc_utility.py`. Berend explicitly released you from it
 ("not that important... an underspecified rough idea").
 
+**Two numbers changed on 2026-08-30, both against the paper.** `faith_gap` used
+a one-sided baseline: containment grades ~7-12% of Claude's *correct* rows as
+correct while they are actually abstentions, and those sat in the baseline but
+not in the numerator. Fixed, **Claude/NQ falls from +0.018..+0.050 to
+-0.006..+0.018** — the "more faithful when wrong" line does not survive on NQ,
+only on HotpotQA. Separately, the tables pooled NQ and HotpotQA, which made the
+remaining effect look like a generator difference when it is a dataset one.
+Anything in the draft resting on either has to be restated per dataset, and the
+"more faithful when wrong" sentence has to be scoped to HotpotQA or dropped.
+
 **Also settled 2026-08-30, and it changes a reported number:**
 `conditional.GENERATORS` omitted `gpt4omini`, so every table in §3.3/§6.4
 described the Claude arm only while ignoring 8,000 paid GPT-4o-mini rows. With
