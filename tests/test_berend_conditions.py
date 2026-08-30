@@ -311,3 +311,62 @@ class TestQueryFrame:
         conditional = self._setup(tmp_path, monkeypatch)
         with pytest.raises(ValueError):
             conditional.build_query_frame({'NQ': object()}, correct_source='vibes')
+
+
+# ── the tables must not pool datasets ────────────────────────────────────────
+# Added 2026-08-30. Pooling NQ and HotpotQA made faith_gap look like a
+# generator effect (Claude negative, GPT-4o-mini positive). Split by dataset,
+# NQ is flat for both and HotpotQA carries all of it in opposite directions.
+class TestDatasetsAreNotPooled:
+
+    @staticmethod
+    def _frame(tmp_path, monkeypatch):
+        import config as cfg
+        import pandas as pd
+        monkeypatch.setenv('RAG_CHECKPOINT_DIR', str(tmp_path))
+        monkeypatch.setattr(cfg, 'CHECKPOINT_DIR', tmp_path)
+
+        rows = []
+        # ds A: wrong answers are LESS faithful. ds B: MORE. Pooled ~ 0.
+        for ds, f_correct, f_wrong in (('A', 0.90, 0.60), ('B', 0.60, 0.90)):
+            for i in range(10):
+                for correct, faith in ((True, f_correct), (False, f_wrong)):
+                    rows.append({
+                        'query_id': f'{ds}{i}{correct}', 'dataset': ds,
+                        'model': 'm1', 'paradigm': 'contrastive',
+                        'generator': 'claude', 'condition': 'rag',
+                        'ndcg': 1.0, 'recall': 1.0, 'hit': True,
+                        'correct': correct, 'correct_f1': 0.0,
+                        'abstained': False, 'correct_source': 'contains',
+                        'faithfulness': faith})
+        return pd.DataFrame(rows)
+
+    def test_faith_gap_keeps_the_opposite_signs(self, tmp_path, monkeypatch):
+        from conditional import conditional_faithfulness
+        cf = conditional_faithfulness(self._frame(tmp_path, monkeypatch))
+        assert set(cf['dataset']) == {'A', 'B'}
+        gaps = dict(zip(cf['dataset'], cf['faith_gap']))
+        assert gaps['A'] < 0 and gaps['B'] > 0
+        # the pooled average would have been ~0 and reported nothing
+        assert abs(gaps['A'] + gaps['B']) < 1e-9
+
+    def test_2x2_is_emitted_per_dataset_plus_all(self, tmp_path, monkeypatch):
+        from conditional import necessity_sufficiency
+        ns = necessity_sufficiency(self._frame(tmp_path, monkeypatch))
+        assert set(ns['dataset']) == {'A', 'B', 'ALL'}
+        # `share` is within-dataset, so each block sums to 1
+        for ds in ('A', 'B', 'ALL'):
+            assert abs(ns[ns['dataset'] == ds]['share'].sum() - 1.0) < 1e-6
+
+    def test_answered_share_excludes_refusals(self, tmp_path, monkeypatch):
+        """The hit x incorrect cell is mostly abstention; its size alone is
+        not evidence that retrieval was insufficient."""
+        import pandas as pd
+        from conditional import necessity_sufficiency
+        df = self._frame(tmp_path, monkeypatch)
+        df.loc[(df['dataset'] == 'A') & (~df['correct']), 'abstained'] = True
+        ns = necessity_sufficiency(df)
+        cell = ns[(ns['dataset'] == 'A') & (ns['retrieval'] == 'hit')
+                  & (ns['answer'] == 'incorrect')].iloc[0]
+        assert cell['share'] == 0.5 and cell['share_answered'] == 0.0
+        assert cell['n_abstained'] == 10

@@ -247,7 +247,17 @@ def necessity_sufficiency(df: pd.DataFrame,
                           generator: str = 'claude') -> pd.DataFrame:
     """
     The central table. Counts and mean faithfulness in each cell of
-    retrieval-hit x answer-correct, pooled over models.
+    retrieval-hit x answer-correct, pooled over models, ONE BLOCK PER DATASET
+    plus an 'ALL' block.
+
+    ⚠️ READ THE PER-DATASET BLOCKS, NOT 'ALL'. The hit x incorrect cell is
+    mostly ABSTENTION, and the share varies enormously — measured 2026-08-30
+    at N=1000: Claude/NQ 24.9%, Claude/HotpotQA 56.2%, GPT-4o-mini/NQ 53.6%,
+    GPT-4o-mini/HotpotQA 60.1%. A pooled cell therefore mixes "grounded and
+    wrong" with "declined to answer" in a ratio that changes with the mix of
+    datasets, so its size is not comparable across generators. `n_abstained`
+    is in the table for exactly this reason — subtract it before calling the
+    cell evidence that retrieval was not sufficient.
 
     Read it as:
       hit & incorrect  -> good retrieval was NOT SUFFICIENT (branch A).
@@ -257,13 +267,19 @@ def necessity_sufficiency(df: pd.DataFrame,
                           Compare its size against the C1 floor: if C1 already
                           answers these, retrieval was never in play.
     """
-    sub = df[(df['condition'] == 'rag') & (df['generator'] == generator)]
-    sub = sub[sub['correct'].notna() & sub['hit'].notna()]
-    if sub.empty:
+    full = df[(df['condition'] == 'rag') & (df['generator'] == generator)]
+    full = full[full['correct'].notna() & full['hit'].notna()]
+    if full.empty:
         return pd.DataFrame()
 
+    blocks = [(ds, full[full['dataset'] == ds])
+              for ds in sorted(full['dataset'].unique())]
+    if len(blocks) > 1:
+        blocks.append(('ALL', full))
+
     rows = []
-    for hit in (True, False):
+    for ds_label, sub in blocks:
+      for hit in (True, False):
         for correct in (True, False):
             cell = sub[(sub['hit'] == hit) & (sub['correct'] == correct)]
             if hit and not correct:
@@ -277,13 +293,19 @@ def necessity_sufficiency(df: pd.DataFrame,
             # conditional_faithfulness(): pooling them inverts the sign of the
             # gap this table exists to expose.
             answered = cell[~cell['abstained'].fillna(False).astype(bool)]
+            n_abst = int(cell['abstained'].fillna(False).sum())
             rows.append({
+                'dataset': ds_label,
                 'retrieval': 'hit' if hit else 'miss',
                 'answer': 'correct' if correct else 'incorrect',
                 'verdict': verdict,
                 'n': len(cell),
                 'share': round(len(cell) / len(sub), 4),
-                'n_abstained': int(cell['abstained'].fillna(False).sum()),
+                'n_abstained': n_abst,
+                # The cell minus refusals: what "grounded and wrong" actually
+                # costs once declining to answer is taken out of it.
+                'share_answered': (round((len(cell) - n_abst) / len(sub), 4)
+                                   if len(sub) else np.nan),
                 'mean_faith_answered': (round(float(answered['faithfulness'].mean()), 4)
                                         if answered['faithfulness'].notna().any()
                                         else np.nan),
@@ -323,11 +345,20 @@ def conditional_faithfulness(df: pd.DataFrame,
 
     `faith_gap` is therefore defined over ANSWERED rows only.
     `faith_gap_pooled` keeps the naive version so the difference stays visible.
+
+    ⚠️ SPLIT BY DATASET (2026-08-30). Pooling NQ and HotpotQA made the gap look
+    like a GENERATOR effect — Claude negative, GPT-4o-mini positive. It is not.
+    Measured at N=1000, NQ is flat for both (-0.006..+0.019) and HotpotQA
+    carries all of it, in OPPOSITE directions: Claude -0.087..-0.182,
+    GPT-4o-mini +0.030..+0.093. The two datasets have different faithfulness
+    levels and different correct/incorrect mixes, so their average describes
+    neither — the same failure mode as faith_gap_pooled, one level up.
     """
     sub = df[(df['condition'] == 'rag') & (df['generator'] == generator)]
     sub = sub[sub['correct'].notna()]
     rows = []
-    for (model, paradigm), g in sub.groupby(['model', 'paradigm']):
+    for (dataset, model, paradigm), g in sub.groupby(['dataset', 'model',
+                                                      'paradigm']):
         abstained = g['abstained'].fillna(False).astype(bool)
         corr = g[g['correct']]['faithfulness']
         inco_all = g[~g['correct']]['faithfulness']
@@ -339,7 +370,7 @@ def conditional_faithfulness(df: pd.DataFrame,
 
         f_c, f_ia, f_ians, f_ab = _m(corr), _m(inco_all), _m(inco_ans), _m(abst)
         rows.append({
-            'model': model, 'paradigm': paradigm,
+            'dataset': dataset, 'model': model, 'paradigm': paradigm,
             'n': len(g),
             'accuracy': round(float(g['correct'].mean()), 4),
             'abstention': round(float(abstained.mean()), 4),
@@ -355,7 +386,8 @@ def conditional_faithfulness(df: pd.DataFrame,
             'faith_gap_pooled': (round(f_ia - f_c, 4)
                                  if f_c == f_c and f_ia == f_ia else np.nan),
         })
-    out = pd.DataFrame(rows).sort_values('accuracy', ascending=False)
+    out = (pd.DataFrame(rows)
+           .sort_values(['dataset', 'accuracy'], ascending=[True, False]))
     save_checkpoint(f'conditional_faithfulness_{generator}', out)
     return out
 
@@ -450,9 +482,18 @@ def report_generator(df: pd.DataFrame, generator: str):
     cf = conditional_faithfulness(df, generator)
     print(cf.to_string(index=False) if not cf.empty else '  (no gradable rows)')
     if not cf.empty and (cf['faith_gap'] > 0).any():
-        worse = cf[cf['faith_gap'] > 0]['model'].tolist()
+        worse = [f'{r.dataset}/{r.model}'
+                 for r in cf[cf['faith_gap'] > 0].itertuples()]
         print(f'  [!] more faithful when WRONG (abstentions excluded): '
               f'{", ".join(worse)}')
+        # The sign is a per-dataset property; saying "model X" without the
+        # dataset is what made this look like a generator effect.
+        if cf['dataset'].nunique() > 1:
+            signs = cf.groupby('dataset')['faith_gap'].apply(
+                lambda g: 'positive' if (g > 0).all()
+                else 'negative' if (g < 0).all() else 'mixed')
+            print('      by dataset: '
+                  + ', '.join(f'{d} {v}' for d, v in signs.items()))
         flipped = cf[(cf['faith_gap'] > 0) & (cf['faith_gap_pooled'] < 0)]
         if not flipped.empty:
             print(f'  [!] for {len(flipped)} model(s) the pooled gap has the '
