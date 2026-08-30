@@ -172,6 +172,14 @@ demand.
 **Dropped:** Shapley / `doc_utility.py`. Berend explicitly released you from it
 ("not that important... an underspecified rough idea").
 
+**⚠️ "More faithful when wrong" is dead (2026-08-30).** Permutation-tested in
+all 16 cells with Holm correction: **3 significant, all NEGATIVE**; zero
+positive cells reach significance and none has a CI excluding zero. The
+surviving effects say answers are more grounded when they are *correct*.
+NQ/E5-large-instruct replicates across both generators (-0.113, -0.115) and is
+the most defensible number in the grid. Remove the claim from the draft; do not
+soften it. `reports/2026-08-30_faith_gap_significance.md`.
+
 **Two numbers changed on 2026-08-30, both against the paper.** `faith_gap` used
 a one-sided baseline: containment grades ~7-12% of Claude's *correct* rows as
 correct while they are actually abstentions, and those sat in the baseline but

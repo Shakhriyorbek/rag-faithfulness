@@ -83,8 +83,14 @@ to `judge`: this analysis needs only `abstained` (string matching, deterministic
 not `correct`. Do not "align" the two defaults. Report the count as the finding,
 never an individual cell.
 
-**The biggest remaining gap** is now significance: the new faith_gap cells rest
-on n=44-84 answered-wrong rows and have had no paired test. Full ordering in
+**Significance is now done, and it killed the claim.** Two-sample permutation
+test (`results.permutation_test` — NOT `bootstrap_significance`, which is paired
+and asserts equal lengths; the wrong/right groups are disjoint and unequal),
+Holm-corrected over 16 cells: **3 significant, all negative**. No positive cell
+survives, none has a CI excluding zero. NQ/E5-large-instruct replicates across
+generators at -0.113/-0.115. `n_wrong` is 44-84 per cell so the CIs are ±0.08 to
+±0.13 — well powered against the general claim, weak on individual cells.
+See `reports/2026-08-30_faith_gap_significance.md`. Full ordering in
 **`PAPER_TODO.md`** — that file, not this one, is the to-do.
 
 **Critical bug found & fixed during the 2026-07-23 audit (do not regress):**
