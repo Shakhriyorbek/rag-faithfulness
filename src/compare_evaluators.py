@@ -207,18 +207,23 @@ def main():
     print('\n' + '=' * 92)
     print('DOES THE NULL SURVIVE A MORE SENSITIVE EVALUATOR?')
     print('=' * 92)
+    # Keyed by abstention source too: with --correct-source both, omitting it
+    # let the second pass silently overwrite the first and the section showed
+    # one set of numbers under no label at all.
     by_cell = {}
     for r in rows:
-        by_cell.setdefault((r['dataset'], r['generator']), {})[r['metric']] = r
-    for (ds, gen), d in sorted(by_cell.items()):
+        by_cell.setdefault((r['dataset'], r['generator'],
+                            r['correct_source']), {})[r['metric']] = r
+    for (ds, gen, src), d in sorted(by_cell.items()):
         parts = []
         for metric in ('nli', 'align', 'claim'):
             if metric in d:
                 verdict = 'null' if d[metric]['p_value'] >= 0.05 else 'DIFFERS'
-                parts.append('%s: spread %.4f p=%.3f -> %s'
+                parts.append('%s: spread %.4f p=%.3f n=%d -> %s'
                              % (metric, d[metric]['spread'],
-                                d[metric]['p_value'], verdict))
-        print('  %s / %s' % (ds, gen))
+                                d[metric]['p_value'], d[metric]['n_common'],
+                                verdict))
+        print('  %s / %s   [abstained by: %s]' % (ds, gen, src))
         for p in parts:
             print('      ' + p)
     return 0
