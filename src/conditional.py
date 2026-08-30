@@ -348,11 +348,27 @@ def conditional_faithfulness(df: pd.DataFrame,
 
     ⚠️ SPLIT BY DATASET (2026-08-30). Pooling NQ and HotpotQA made the gap look
     like a GENERATOR effect — Claude negative, GPT-4o-mini positive. It is not.
-    Measured at N=1000, NQ is flat for both (-0.006..+0.019) and HotpotQA
+    Measured at N=1000, NQ is near zero for both (-0.006..+0.019) and HotpotQA
     carries all of it, in OPPOSITE directions: Claude -0.087..-0.182,
     GPT-4o-mini +0.030..+0.093. The two datasets have different faithfulness
     levels and different correct/incorrect mixes, so their average describes
     neither — the same failure mode as faith_gap_pooled, one level up.
+
+    ⚠️ THE BASELINE MUST ALSO EXCLUDE ABSTENTIONS (fixed 2026-08-30). Until
+    this was fixed, faith_gap compared faith(wrong, ANSWERED) against
+    faith(correct, ALL) — an asymmetric baseline. Some abstentions are graded
+    CORRECT by containment, because a short gold answer string appears inside
+    "I cannot answer based on the provided context": 6.7% of Claude's correct
+    rows on NQ and 11.7% on HotpotQA, scoring ~0.37-0.51 NLI. They pulled the
+    correct-baseline down and inflated the gap.
+
+    It changed the sign of the paper's own headline. Claude/NQ read
+    +0.018..+0.050 ("more faithful when WRONG") on all four embedders; with a
+    symmetric baseline it is -0.006..+0.018, i.e. nothing. GPT-4o-mini/NQ has
+    zero abstained-correct rows and never moved, which is precisely why the two
+    generators looked like they differed. `n_correct_abstained` is reported so
+    the containment false positives stay visible — the LLM judge should remove
+    most of them.
     """
     sub = df[(df['condition'] == 'rag') & (df['generator'] == generator)]
     sub = sub[sub['correct'].notna()]
@@ -360,7 +376,8 @@ def conditional_faithfulness(df: pd.DataFrame,
     for (dataset, model, paradigm), g in sub.groupby(['dataset', 'model',
                                                       'paradigm']):
         abstained = g['abstained'].fillna(False).astype(bool)
-        corr = g[g['correct']]['faithfulness']
+        corr_all = g[g['correct']]['faithfulness']
+        corr_ans = g[g['correct'] & ~abstained]['faithfulness']
         inco_all = g[~g['correct']]['faithfulness']
         inco_ans = g[~g['correct'] & ~abstained]['faithfulness']
         abst = g[abstained]['faithfulness']
@@ -368,7 +385,8 @@ def conditional_faithfulness(df: pd.DataFrame,
         def _m(s):
             return float(s.mean()) if s.notna().any() else np.nan
 
-        f_c, f_ia, f_ians, f_ab = _m(corr), _m(inco_all), _m(inco_ans), _m(abst)
+        f_call, f_c = _m(corr_all), _m(corr_ans)
+        f_ia, f_ians, f_ab = _m(inco_all), _m(inco_ans), _m(abst)
         rows.append({
             'dataset': dataset, 'model': model, 'paradigm': paradigm,
             'n': len(g),
@@ -377,14 +395,19 @@ def conditional_faithfulness(df: pd.DataFrame,
             'faith_correct': round(f_c, 4) if f_c == f_c else np.nan,
             'faith_wrong_answered': round(f_ians, 4) if f_ians == f_ians else np.nan,
             'n_wrong_answered': int((~g['correct'] & ~abstained).sum()),
+            # Abstentions graded correct by containment. Should be ~0; anything
+            # else is a containment false positive inflating `accuracy` too.
+            'n_correct_abstained': int((g['correct'] & abstained).sum()),
             'faith_abstained': round(f_ab, 4) if f_ab == f_ab else np.nan,
             # The number to report. Positive => more grounded when wrong.
+            # BOTH sides exclude abstentions; see the docstring for what a
+            # one-sided version did to the sign.
             'faith_gap': (round(f_ians - f_c, 4)
                           if f_c == f_c and f_ians == f_ians else np.nan),
             # The number NOT to report on its own — kept only so the
-            # abstention artifact stays auditable.
-            'faith_gap_pooled': (round(f_ia - f_c, 4)
-                                 if f_c == f_c and f_ia == f_ia else np.nan),
+            # abstention artifact stays auditable. Both sides pooled.
+            'faith_gap_pooled': (round(f_ia - f_call, 4)
+                                 if f_call == f_call and f_ia == f_ia else np.nan),
         })
     out = (pd.DataFrame(rows)
            .sort_values(['dataset', 'accuracy'], ascending=[True, False]))

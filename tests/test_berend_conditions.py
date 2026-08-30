@@ -370,3 +370,59 @@ class TestDatasetsAreNotPooled:
                   & (ns['answer'] == 'incorrect')].iloc[0]
         assert cell['share'] == 0.5 and cell['share_answered'] == 0.0
         assert cell['n_abstained'] == 10
+
+
+# ── faith_gap's baseline must exclude abstentions on BOTH sides ──────────────
+# Added 2026-08-30. It compared faith(wrong, answered) against
+# faith(correct, ALL). Containment grades some abstentions correct — 6.7% of
+# Claude's correct rows on NQ — and those score ~0.4 NLI, so the baseline was
+# dragged down and the gap came out positive where it is really ~0.
+class TestFaithGapBaselineIsSymmetric:
+
+    @staticmethod
+    def _frame(tmp_path, monkeypatch, n_correct_abstained):
+        import config as cfg
+        import pandas as pd
+        monkeypatch.setenv('RAG_CHECKPOINT_DIR', str(tmp_path))
+        monkeypatch.setattr(cfg, 'CHECKPOINT_DIR', tmp_path)
+
+        def row(i, correct, abstained, faith):
+            return {'query_id': f'q{i}', 'dataset': 'NQ', 'model': 'm1',
+                    'paradigm': 'contrastive', 'generator': 'claude',
+                    'condition': 'rag', 'ndcg': 1.0, 'recall': 1.0, 'hit': True,
+                    'correct': correct, 'correct_f1': 0.0,
+                    'abstained': abstained, 'correct_source': 'contains',
+                    'faithfulness': faith}
+
+        rows, i = [], 0
+        for _ in range(10):                      # answered + correct
+            rows.append(row(i, True, False, 0.90)); i += 1
+        for _ in range(10):                      # answered + wrong
+            rows.append(row(i, False, False, 0.90)); i += 1
+        for _ in range(n_correct_abstained):     # abstained, graded correct
+            rows.append(row(i, True, True, 0.40)); i += 1
+        return pd.DataFrame(rows)
+
+    def test_abstained_correct_rows_do_not_move_the_gap(self, tmp_path,
+                                                        monkeypatch):
+        from conditional import conditional_faithfulness
+        clean = conditional_faithfulness(self._frame(tmp_path, monkeypatch, 0))
+        dirty = conditional_faithfulness(self._frame(tmp_path, monkeypatch, 5))
+        # answered-correct and answered-wrong are both 0.90, so the gap is 0
+        assert clean.iloc[0]['faith_gap'] == 0.0
+        assert dirty.iloc[0]['faith_gap'] == 0.0, (
+            'abstentions graded correct leaked into the baseline')
+
+    def test_the_leak_is_counted_not_hidden(self, tmp_path, monkeypatch):
+        from conditional import conditional_faithfulness
+        cf = conditional_faithfulness(self._frame(tmp_path, monkeypatch, 5))
+        assert cf.iloc[0]['n_correct_abstained'] == 5
+        assert cf.iloc[0]['faith_correct'] == 0.9   # answered rows only
+
+    def test_pooled_column_stays_pooled_on_both_sides(self, tmp_path,
+                                                      monkeypatch):
+        """faith_gap_pooled is the naive version; it must stay auditable."""
+        from conditional import conditional_faithfulness
+        cf = conditional_faithfulness(self._frame(tmp_path, monkeypatch, 5))
+        # correct pooled = (10*0.9 + 5*0.4)/15; wrong pooled = 0.9
+        assert cf.iloc[0]['faith_gap_pooled'] == round(0.9 - (9.0 + 2.0) / 15, 4)
