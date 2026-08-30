@@ -62,10 +62,14 @@ are configured but were never run.
 copy of $13.46 of paid work outside gpu1. Refresh it after every paid run:
 `rsync -avz szte-gpu:rag_faithfulness/checkpoints/ ~/rag-backup/checkpoints/`
 
-**Correctness is now measured, and it moved the paper.** The judge grades 5-15
-points higher than containment in every one of the 16 cells (false negatives
-8.7-15.1% against false positives 0-7.9%), and it never grades a refusal
-correct, so B12 is fully resolved. Two draft claims did not survive: **"more
+**Correctness is now measured, and it moved the paper.** Containment is biased
+against the judge and **the sign of the bias is not constant**: it understates
+accuracy by 5-15 points in 12 cells but *overstates* by 3-7 points in the four
+HotpotQA cells under Claude, where long multi-hop answers mention a reference
+string while asserting something else (false positives 8.9-13.0% there against
+5.8-7.3% false negatives). Containment is a bound in **neither** direction — do
+not describe it as one. The judge never grades a refusal correct, so B12 is
+fully resolved. Two draft claims did not survive: **"more
 faithful when wrong" is false on NQ for both generators** (faith_gap -0.051 to
 -0.115), and the "retrieval NOT SUFFICIENT" cell is **~80% refusals**, putting
 the grounded-and-wrong rate at 4.5-7.9% rather than 23-45%. See

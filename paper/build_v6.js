@@ -385,11 +385,103 @@ kids.push(CAP(
   + 'exactly (spread 0.090). Restricted to answered rows the spread is 0.019 and the ordering '
   + 'does not follow retrieval quality.'));
 kids.push(P(
-  'The general statement is that any evaluation population whose membership depends on the '
-  + 'system under comparison can transfer an effect from the selection into the measurement. '
-  + 'Here the weakest retriever refuses most often, and every refusal lowers its average. All '
-  + 'faithfulness results in this paper exclude refusals and are paired on the queries every '
-  + 'system answered. Section X notes what that pairing costs.',
+  'Any evaluation population whose membership depends on the system under comparison can '
+  + 'transfer an effect from the selection into the measurement. Here the weakest retriever '
+  + 'refuses most often, and every refusal lowers its average. All faithfulness results in this '
+  + 'paper exclude refusals and are paired on the queries every system answered.',
+  { after: 160 }));
+
+kids.push(H('VI-A. Membership Is Set by a Grader, and Graders Disagree', H2));
+kids.push(P(
+  'Excluding refusals requires deciding which answers are refusals, and that decision is made '
+  + 'by a rule rather than given by the data. We compare two defensible rules: a string-matching '
+  + 'heuristic keyed to the refusal templates the prompts offer, and a judge model shown the '
+  + 'question, the reference answers and the answer. They agree on the large majority of rows '
+  + 'and disagree consistently at the margin.',
+  { after: 120 }));
+kids.push(table(
+  ['HotpotQA, Claude', 'all-mpnet', 'text-emb-3-small', 'BGE-M3', 'E5-instruct'],
+  [
+    ['Refusal rate, heuristic', '0.376', '0.279', '0.224', '0.207'],
+    ['Refusal rate, judge', '0.422', '0.332', '0.277', '0.252'],
+  ],
+  [2700, 1575, 1725, 1500, 1500]));
+kids.push(CAP(
+  'Table V. Two refusal detectors on the same answers. The judge finds roughly four to five '
+  + 'more refusals per hundred answers in every column, so the disagreement is a level shift '
+  + 'rather than noise, and it does not reorder the systems.'));
+kids.push(P(
+  'A uniform shift that preserves the ordering would ordinarily be unremarkable. It is not '
+  + 'unremarkable here, because the excluded rows are not a random sample of the population: '
+  + 'they are the rows nearest the boundary between refusing and attempting. Substituting one '
+  + 'detector for the other moves nineteen rows on Natural Questions with Claude and fifty-five '
+  + 'on HotpotQA with Claude, and changes the significance verdict in two of the eight '
+  + 'dataset-generator-evaluator cells. Under the entailment aggregate, Natural Questions with '
+  + 'Claude moves from no detectable difference (p = 0.223) to a detectable one (p = 0.048); '
+  + 'under AlignScore, HotpotQA with Claude moves from p = 0.151 to p = 0.049. Both land within '
+  + 'a thousandth of the conventional threshold, which is the point: the verdict in these cells '
+  + 'is not a property of the systems.',
+  { after: 140 }));
+kids.push(P(
+  'The count is more stable than the cells. Two of four dataset-generator cells change verdict '
+  + 'between evaluators under either detector, but not the same two. We therefore report the '
+  + 'count as the finding and treat any individual cell as undetermined.',
+  { after: 160 }));
+
+kids.push(H('VI-B. The Correctness Grader Admits Refusals to the Wrong Population', H2));
+kids.push(P(
+  'The same problem appears once faithfulness is conditioned on correctness. String containment '
+  + 'grades an answer correct when a reference answer string occurs in it, and a short reference '
+  + 'string can occur inside a refusal. On a 200-answer calibration, ten refusals were graded '
+  + 'correct by containment and the judge overturned nine of them. A refusal admitted to the '
+  + 'correct population carries a near-floor faithfulness score into the correct-answer average, '
+  + 'which lowers the baseline that any correct-versus-incorrect comparison is measured against. '
+  + 'Under graded judgement no refusal is graded correct in any of the sixteen cells.',
+  { after: 140 }));
+kids.push(P(
+  'The effect is large enough to change a sign. Measured with containment and a baseline that '
+  + 'excluded refusals from the incorrect side only, answers on Natural Questions with Claude '
+  + 'appeared more grounded when wrong than when right, by 0.018 to 0.050 across the four '
+  + 'systems. Excluding refusals from both sides reduces this to between -0.006 and +0.018. '
+  + 'Grading correctness with the judge instead of containment moves it to between -0.051 and '
+  + '-0.113, in the opposite direction. Each of the three steps is a correction to the grader '
+  + 'rather than a change to the answers, and all three move the quantity the same way.',
+  { after: 140 }));
+kids.push(P(
+  'Tested directly, no positive value of this quantity survives. Across all sixteen cells a '
+  + 'two-sample permutation test with Holm correction finds three significant, all negative, and '
+  + 'none of the eight positive-signed cells has a confidence interval excluding zero. The '
+  + 'clearest single result is E5-instruct on Natural Questions, where the same effect appears '
+  + 'under both generators (-0.113 and -0.115). We report no evidence that answers are more '
+  + 'grounded when they are wrong. The intervals are wide, between 0.08 and 0.13, because only '
+  + '44 to 84 wrong answered rows remain per cell once refusals are excluded; these tests bear '
+  + 'on the general claim and not on individual systems.',
+  { after: 160 }));
+
+kids.push(H('VI-C. A Contingency Cell That Mostly Counts Refusals', H2));
+kids.push(P(
+  'The same accounting governs the contingency between retrieval success and correctness. The '
+  + 'cell in which retrieval succeeded and the answer was still wrong is the one that bears on '
+  + 'whether retrieval quality is sufficient, and most of it consists of answers that were never '
+  + 'attempted.',
+  { after: 120 }));
+kids.push(table(
+  ['Retrieval hit and answer incorrect', 'Claude, NQ', 'Claude, HQA', 'GPT, NQ', 'GPT, HQA'],
+  [
+    ['Share of all queries', '17.4%', '34.0%', '31.7%', '36.3%'],
+    ['Of that cell, refusals', '69.3%', '86.8%', '79.0%', '78.1%'],
+    ['Attempted and wrong', '5.4%', '4.5%', '6.7%', '7.9%'],
+  ],
+  [3300, 1425, 1425, 1425, 1425]));
+kids.push(CAP(
+  'Table VI. Correctness from graded judgement. The raw cell is between 17 and 36 per cent of '
+  + 'queries; the share that is a grounded, committed, wrong answer is between 4.5 and 7.9 per '
+  + 'cent.'));
+kids.push(P(
+  'Read without the decomposition, the raw cell would support the claim that good retrieval '
+  + 'frequently fails to produce a correct answer. Most of what it counts is a system declining '
+  + 'to answer, and refusal rates differ by more than twenty points across the systems compared. '
+  + 'The residual is a real phenomenon and it is roughly a fifth the size the raw cell implies.',
   { after: 160 }));
 
 // ── VII. Consequences for the comparison ───────────────────────────
@@ -408,7 +500,7 @@ kids.push(table(
   ],
   [2700, 900, 1800, 1000, 1800, 800]));
 kids.push(CAP(
-  'Table V. The same comparison under two evaluators. Two of four cells change verdict at '
+  'Table VII. The same comparison under two evaluators. Two of four cells change verdict at '
   + 'alpha = 0.05. Queries, answers, refusal handling and test are identical throughout.'));
 kids.push(P(
   'Under the common choice of evaluator, no cell shows a detectable difference. Under an '
@@ -431,7 +523,7 @@ kids.push(table(
   ],
   [2400, 1650, 1650, 1650, 1650]));
 kids.push(CAP(
-  'Table VI. With four systems these coefficients cannot carry significance individually. The '
+  'Table VIII. With four systems these coefficients cannot carry significance individually. The '
   + 'pattern is that all four HotpotQA cells are positive and all four Natural Questions cells '
   + 'are zero or negative, across both generators and both evaluators.'));
 kids.push(P(
@@ -446,7 +538,7 @@ kids.push(P(
 // ── VIII. Equivalence ──────────────────────────────────────────────
 kids.push(H('VIII. What an Equivalence Claim Requires', H1));
 kids.push(P(
-  'Two of the four cells in Table V show no detectable difference under either evaluator. '
+  'Two of the four cells in Table VII show no detectable difference under either evaluator. '
   + 'Absence of a detected difference is not evidence of equivalence, so we test equivalence '
   + 'directly with two one-sided tests [8]. A TOST result depends entirely on the margin, and a '
   + 'margin is a substantive judgement rather than a statistical fact — so we report a curve '
@@ -466,7 +558,7 @@ kids.push(table(
   ],
   [2200, 1400, 1080, 1080, 1080, 1080, 1080]));
 kids.push(CAP(
-  'Table VII. System pairs judged equivalent, of six tested, across margins. A claim of '
+  'Table IX. System pairs judged equivalent, of six tested, across margins. A claim of '
   + 'equivalence is a claim about a particular column.'));
 kids.push(P(
   'Section V supplies an external anchor for choosing that column. Falsifying one grounded '
@@ -508,11 +600,13 @@ kids.push(BULLET(
   + 'substantially; an open-weight generator with a third profile would test the mechanism in '
   + 'Section V-C rather than merely repeat it.'));
 kids.push(BULLET(
-  'Correctness figures are provisional. Exact match is 0.000 across all 4,000 Claude Natural '
-  + 'Questions answers because the generators do not emit bare answer spans, and token F1 is '
-  + '0.121 for the same reason, so correctness currently rests on string containment, an upper '
-  + 'bound. A graded judgement is implemented but not yet run. Table VIII is reported for '
-  + 'completeness and should not be cited as a measurement.'));
+  'Correctness is graded by a judge model rather than by string overlap. Exact match is 0.000 '
+  + 'across all 16,000 answers because the generators do not emit bare answer spans. String '
+  + 'containment, the obvious fallback, is not a bound in either direction: against the judge it '
+  + 'understates accuracy by 5 to 15 points in twelve cells and overstates it by 3 to 7 points '
+  + 'in the four HotpotQA cells under Claude, where long answers mention a reference string '
+  + 'while asserting something else. The judge is itself a language model applied to its own '
+  + 'outputs, and its agreement with a human annotator on this data has not been established.'));
 kids.push(BULLET(
   'Retrieval hit is defined as the gold answer string appearing in the retrieved context. This '
   + 'is a strong definition, and it does not separate retrieval failure from failures of '
@@ -528,19 +622,11 @@ kids.push(BULLET(
 kids.push(BULLET(
   'Effect sizes are small where detected — 0.018 and 0.046 — against retrieval spreads of 4.4 '
   + 'and 11.9 NDCG@5 points. These are detectable differences, not large ones.'));
-kids.push(P('', { after: 60 }));
-kids.push(table(
-  ['Contingency (Claude, provisional)', 'NQ', 'HotpotQA'],
-  [
-    ['hit and correct', '71.8%', '67.2%'],
-    ['hit and incorrect', '23.3%', '30.2%'],
-    ['miss and correct', '0.5%', '0.2%'],
-    ['miss and incorrect', '4.4%', '2.4%'],
-  ],
-  [4200, 2400, 2400]));
-kids.push(CAP(
-  'Table VIII. Retrieval hit against correctness. Computed with string containment, an upper '
-  + 'bound on correctness, and therefore provisional — see Limitations.'));
+kids.push(BULLET(
+  'The correct-versus-incorrect faithfulness comparison rests on 44 to 84 attempted wrong '
+  + 'answers per cell. Excluding refusals and grading correctness with a judge both reduce that '
+  + 'population, and the resulting confidence intervals are 0.08 to 0.13 wide. The tests reported '
+  + 'in Section VI-B bear on the general claim and do not resolve individual systems.'));
 
 // ── XI. Conclusion ─────────────────────────────────────────────────
 kids.push(H('XI. Conclusion', H1));

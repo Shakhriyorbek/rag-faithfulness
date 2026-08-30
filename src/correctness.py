@@ -120,9 +120,15 @@ def contains_answer(pred: str, golds: Sequence[str]) -> bool:
         aliases, different units — at 8.29%, which is more. Net, containment
         UNDERSTATED accuracy: judge 0.800 vs containment 0.776 vs EM 0.000.
 
-        So "the truth lies between EM and containment" is false; the truth was
-        above both. Containment is a cheap proxy with error in both
-        directions, not a bound. Report it as a proxy, give the judge number
+        So "the truth lies between EM and containment" is false. Nor is
+        "containment understates" reliable: over the full grid (2026-08-30)
+        its bias FLIPS SIGN by block — it understates by 5-15 points in 12
+        cells but OVERSTATES by 3-7 points in the four HotpotQA cells under
+        Claude, whose long multi-hop answers mention a reference string while
+        asserting something else (false positives 8.9-13.0% there).
+
+        Containment is a cheap proxy with error in both directions and no
+        stable sign, not a bound. Report it as a proxy, give the judge number
         where one exists, and never present containment alone as "accuracy".
 
         90% of the abstentions that containment graded correct were overturned

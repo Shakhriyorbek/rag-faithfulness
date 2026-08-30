@@ -10,25 +10,34 @@ correctness signal; it survives only as a reported proxy.
 
 ---
 
-## 1. Containment understated accuracy everywhere
+## 1. Containment is biased, and not even in a consistent direction
 
-Not by a little, and not symmetrically. Across all 16 cells the judge grades
-**5 to 15 points higher**:
+⚠️ **Corrected 2026-08-30.** An earlier version of this report said containment
+understated accuracy in all 16 cells. That was wrong — generalised from the NQ
+rows. In the four HotpotQA cells under Claude it *overstates*.
 
-| | containment | judge | FP | FN |
-|---|---|---|---|---|
-| Claude / NQ (4 cells) | 0.709-0.738 | **0.760-0.796** | 0.6-7.9% | 8.7-13.7% |
-| GPT-4o-mini / NQ (4 cells) | 0.479-0.495 | **0.627-0.646** | **0.0%** | 14.8-15.1% |
+| block | containment | judge | delta | FP | FN |
+|---|---|---|---|---|---|
+| Claude / NQ | 0.709-0.738 | 0.760-0.796 | **+0.051 to +0.066** | 6.9-8.7% | 13.4-14.5% |
+| Claude / HotpotQA | 0.599-0.734 | 0.528-0.703 | **-0.028 to -0.071** | 8.9-13.0% | 5.8-7.3% |
+| GPT-4o-mini / NQ | 0.479-0.495 | 0.627-0.646 | **+0.148 to +0.151** | 0.0-0.1% | 14.8-15.1% |
+| GPT-4o-mini / HotpotQA | 0.458-0.607 | 0.515-0.689 | **+0.057 to +0.082** | 2.5-3.2% | 8.7-10.7% |
 
 FP = containment says correct, judge says wrong. FN = the reverse.
 
-The false-negative rate dominates in every cell, so the "containment is an upper
-bound" framing was wrong in the direction that mattered — corrected already in
-`correctness.py` and `CLAUDE.md` after the calibration.
+Which error dominates depends on the cell. Claude's HotpotQA answers are long
+and multi-hop, so they mention a reference string while asserting something
+else — the classic containment false positive, at 8.9-13.0%. Everywhere else
+the false negatives (paraphrase, alias, unit) dominate.
 
-**GPT-4o-mini was penalised worst.** Its containment false-positive rate on NQ is
-literally zero and its false-negative rate ~15%, so containment understated it by
-about 15 points while understating Claude by about 6. Under containment the
+**Containment is therefore a bound in neither direction.** The "EM lower,
+containment upper" framing was wrong, but so is "containment understates" — its
+bias flips sign between dataset-generator blocks, which is worse for a proxy
+than a consistent offset would be.
+
+**GPT-4o-mini was penalised worst on NQ.** Its containment false-positive rate
+there is essentially zero and its false-negative rate ~15%, so containment
+understated it by about 15 points while understating Claude by about 6. Under containment the
 Claude-vs-GPT accuracy gap on NQ/all-mpnet read 0.725 vs 0.496 (22.9 pts); judged
 it is 0.790 vs 0.646 (**14.4 pts**). A third of that gap was measurement error.
 
