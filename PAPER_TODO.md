@@ -110,6 +110,13 @@ demand.
    §6.4 cannot be stated as measurements. This has been the top item since
    2026-08-14.
 
+   **✅ DONE 2026-08-30** — 16,000 rows, 0 errors, $29.27. Results and the
+   consequences for the draft: `reports/2026-08-30_judge_full_grid.md`.
+   Headlines: containment understated accuracy by 5-15 points everywhere;
+   "more faithful when wrong" is **false on NQ for both generators**; the
+   "not sufficient" cell is ~80% refusals, so the grounded-and-wrong rate is
+   4.5-7.9%, not 23-45%. Use `--correct-source judge` from here on.
+
    **Unblocked 2026-08-30.** The judge previously wrote `*_judged_*` that
    nothing read, so the ~$32 run would have moved no number. `conditional.py`
    and `results.py` now go through `correctness.load_correctness`:

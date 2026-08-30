@@ -53,6 +53,7 @@ are configured but were never run.
 | Pipeline code | ✅ All of §8 built in `src/`; notebook is a reference artifact only |
 | Server access | ✅ Granted by Berend. **Fedora is now the only machine that can deploy** — the Windows laptop's key was revoked on both hosts 2026-08-28 |
 | Experiments | ✅ **Rung 2 done** — 16,000 real generations, NLI + AlignScore + claim-level, perturbation probe, TOST margin sweep |
+| Correctness | ✅ **LLM judge over the full grid** (2026-08-30, $29.27, 0 errors). Containment is retired as the correctness signal — always run analyses with `--correct-source judge` |
 | Paper v6 | ✅ `paper/RAG_Faithfulness_v6_evaluators.docx`, built by `paper/build_v6.js` |
 | Format | ⚠️ Draft is **IEEE**; **ACL is required for any ARR submission** |
 | Venue | ⚠️ EMNLP 2026 May 25 ARR deadline passed. Target July ARR cycle or COLING 2026. |
@@ -61,10 +62,19 @@ are configured but were never run.
 copy of $13.46 of paid work outside gpu1. Refresh it after every paid run:
 `rsync -avz szte-gpu:rag_faithfulness/checkpoints/ ~/rag-backup/checkpoints/`
 
-**The biggest remaining gap:** correctness. EM is **0.000** on all 16,000 rows,
-so every accuracy number rests on string containment, which is only an upper
-bound. `src/llm_judge.py` exists and is wired in (see §8) but has not been run.
-Full ordering in **`PAPER_TODO.md`** — that file, not this one, is the to-do.
+**Correctness is now measured, and it moved the paper.** The judge grades 5-15
+points higher than containment in every one of the 16 cells (false negatives
+8.7-15.1% against false positives 0-7.9%), and it never grades a refusal
+correct, so B12 is fully resolved. Two draft claims did not survive: **"more
+faithful when wrong" is false on NQ for both generators** (faith_gap -0.051 to
+-0.115), and the "retrieval NOT SUFFICIENT" cell is **~80% refusals**, putting
+the grounded-and-wrong rate at 4.5-7.9% rather than 23-45%. See
+`reports/2026-08-30_judge_full_grid.md`. Faithfulness scoring is untouched, so
+the evaluator-dependence spine stands.
+
+**The biggest remaining gap** is now significance: the new faith_gap cells rest
+on n=44-84 answered-wrong rows and have had no paired test. Full ordering in
+**`PAPER_TODO.md`** — that file, not this one, is the to-do.
 
 **Critical bug found & fixed during the 2026-07-23 audit (do not regress):**
 the notebook hardcoded `probs[2]` as the NLI "entailment" probability, but
