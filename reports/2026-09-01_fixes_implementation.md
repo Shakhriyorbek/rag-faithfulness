@@ -343,7 +343,41 @@ retrieved document may entail the answer and a concatenation exceeds the
 extracted claim; AlignScore receives the concatenated context as a single
 premise and performs its own splitting."*
 
-<!--F5-DIAGNOSTIC-->
+### The diagnostic, run — premise granularity is about a quarter of the gap
+
+`--scorer nli_concat` scores the same cases with the same DeBERTa model on
+AlignScore's premise construction: one concatenated context, no per-chunk
+maximum. Pooled over the four embedders (800 cases per cell):
+
+| cell | | NLI-max | **NLI-concat** | AlignScore |
+|---|---|---|---|---|
+| NQ / Claude | Δ | +0.043 | **+0.081** | +0.233 |
+| | detected @0.5 | 4% | **11%** | 29% |
+| HotpotQA / Claude | Δ | +0.073 | **+0.068** | +0.304 |
+| | detected @0.5 | 14% | **21%** | 45% |
+| NQ / GPT-4o-mini | Δ | +0.446 | +0.419 | +0.652 |
+| | detected @0.5 | 56% | 65% | 76% |
+| HotpotQA / GPT-4o-mini | Δ | +0.391 | +0.241 | +0.659 |
+| | detected @0.5 | 71% | 71% | 90% |
+
+(NLI rows are the post-fix runs; the AlignScore column is the archived run —
+its post-fix re-run is still in flight and will be appended.)
+
+Taking detection as the yardstick, the share of the NLI-max → AlignScore gap
+that premise construction alone explains is **28%** on NQ/Claude, **23%** on
+HotpotQA/Claude, 45% on NQ/GPT-4o-mini and **0%** on HotpotQA/GPT-4o-mini.
+
+**So the confound is real and it is bounded at roughly a quarter.** Dropping
+the per-chunk maximum roughly doubles NLI's response to a falsified value on
+Claude's answers — max-over-chunks is itself part of what makes NLI-max
+insensitive, which is the same weakest-link argument the paper already makes
+about max-over-claims — but it leaves most of the distance to AlignScore
+unexplained. The Section V cross-evaluator claim survives with that quarter
+subtracted and stated.
+
+The floor moves the same way: the mean random-context score is 0.420 under
+NLI-max and **0.238** under NLI-concat, i.e. a good part of the inflated floor
+in F6 is the maximum over six premises rather than the model.
 
 ---
 
