@@ -559,10 +559,109 @@ GPT-4o-mini/HotpotQA 60.1%. Its raw size is therefore not comparable across
 generators or datasets and is not on its own evidence that retrieval was
 insufficient — `share_answered` subtracts the refusals.
 
+### ⚠️ Six defects found on 2026-09-01 by the external audit brief (fixed — do not regress)
+
+Full write-up with every before/after number:
+`reports/2026-09-01_fixes_implementation.md`.
+
+**B14 — `perturbation_check.num_in_text` matched a number as a SUBSTRING.**
+`num_in_text('1000', 'the total was 10000 USD')` was True. Both falsification
+eligibility rules run through it, so ungrounded values entered the sample (a
+value the context never supported cannot lose entailment when falsified, so
+those cases arrive with a ~0 delta and drag the mean toward the reported
+conclusion) and eligible cases were silently discarded. Now matched at
+numeric/word boundaries — `\b` is WRONG here, it treats `,` and `.` as
+boundaries and reinstates the bug on `1,000` and `3.55`. Eligible cases over
+the grid: 5,123 → 5,371.
+
+**B15 — `textnorm.contains` had the same defect one level up.**
+`contains('the budget was 10000 dollars', '1000')` and
+`contains('Alice went to Paris', 'Ali')` were True. It decides the NQ retained
+sample, `build_qrels` relevance and `correctness.contains_answer`. Now a
+token-sequence test (both sides space-padded). Impact measured: **0** NQ
+samples change status, 7/1000 NQ queries change their relevant chunk set (NDCG
+moves in the 4th decimal, no TOST verdict moves), 166/16,000 correctness rows
+flip and agreement with the judge improves 0.8340 → 0.8360. An existing test
+asserted the defect as deliberate ("gold spans are frequently sub-token"); the
+justification is wrong, because `squash()` splits on punctuation, so the real
+sub-token cases are separate tokens and still match.
+**`CORPUS_VERSION` was deliberately NOT bumped** — the corpus and the retained
+samples are byte-identical and bumping strands 16,000 paid generations. The
+old qrels/per-query/aggregate checkpoints are archived in
+`checkpoints/n1000_v3/superseded_2026-09-01/`.
+
+**B16 — `split_claims` never split a sentence that OPENS with a digit.** The
+boundary test required `nxt.isupper()`. Selective on numeric-heavy answers,
+i.e. exactly the ones the falsification probe uses. Fixed with
+`nxt.isdigit()`. Impact is small — 32/16,000 answers, means 2.992 → 2.996
+(Claude/NQ) and 1.176 → 1.176 (GPT/NQ) — so **Table III's gradient is not an
+artifact of it**.
+
+**B17 — there were TWO `is_abstention()` functions and they disagreed on 365
+of 16,000 rows.** `perturbation_check` matched 9 phrases as a substring
+ANYWHERE; `correctness` matched 4 phrases anchored with `startswith` on
+SQuAD-normalised text. Section V and Section VI therefore called different
+populations "answered". The canonical rule now lives in **`src/abstention.py`**
+and both import it; `correctness`'s anchored rule is canonical because 253 of
+the 365 disagreements (69%) are substantive answers carrying a mid-text hedge.
+Adopting it changes no published number (`correctness`-only was 0 rows).
+`normalize_answer` moved to `textnorm.squad_normalize` (aliased in
+`correctness`) so `abstention.py` can share it without a circular import.
+
+**B18 — the NLI hypothesis carries markdown for one aggregate and not the
+other.** `nli.score_chunks` scores the answer exactly as written, `**bold**`
+included; `claim_faithfulness.score_claims` runs `strip_markdown` over claims
+first. On single-claim answers the two therefore read different strings: 244 of
+1,615 such cases differ, by up to **0.73** on one `**Graduados**`. Markdown is
+**74.9%** of Claude's answered rows and **0.3%** of GPT-4o-mini's, so the
+paper's cross-generator sensitivity gap is partly confounded with formatting.
+`src/markdown_check.py` sizes the confound; **the fix — strip markdown in both
+places, or neither — is NOT applied**, because it would move every `nli_max`
+number for Claude. Decide before the next paper pass.
+
+**B19 — a chunk citation is not an asserted quantity.** The prompt numbers the
+retrieved chunks and Claude cites them ("According to Chunk 4, …"); it also
+writes ordered lists. `numeric_grounding_check` counted those as ungrounded
+values, which alone accounted for a false-positive rate of 39.5% on
+HotpotQA/Claude (6.0% after excluding them via `content_numbers()`). The same
+contamination is in the falsification sample: `build_number_case` picks the
+first grounded number, and that is a citation or list marker in **9.5%** of
+HotpotQA/Claude and **5.0%** of NQ/Claude cases. Case construction was
+deliberately NOT changed — every scorer must see the same cases — so
+`perturb_report.by_value_role` reports the delta split by what the falsified
+value actually is.
+
+### Code moves and reporting changes of 2026-09-01
+
+- **`src/metrics.py` is now `src/legacy/rfg.py`.** The gap metric is retired
+  (paper §III-C). `assemble_results` writes the `RFG`/`nRFG` columns only under
+  `run_pipeline --legacy-rfg`; `robustness_analysis` and the nRFG rows of
+  `hypothesis_summary` skip themselves when the columns are absent.
+- **H1 is deleted from `hypothesis_summary`.** It fed two UNPAIRED groups
+  (different models aligned by DataFrame row order) into
+  `bootstrap_significance`, which pairs by index; the assert passed only
+  because the lengths matched.
+- **`compare_evaluators` now Holm-corrects the table it prints** and reports
+  each p as extreme/total resamples. **This changes a documented conclusion**:
+  the two p-values that made the two disagreeing cells depend on the
+  abstention source (0.0481 and 0.0487) are **0.2886 after Holm**, so the
+  verdict flip disappears and the spine result is stable to that choice. The
+  headline is p = 0.0005 (5/10,000 resamples), **p_holm = 0.0040**, and 2 of 4
+  cells still break under AlignScore. The paragraph in §2 above and the
+  corresponding hedge in the paper are superseded.
+- New: `src/abstention.py`, `src/perturb_report.py` (Table III with n per row,
+  the single-assertion identity check, the value-role breakdown),
+  `src/markdown_check.py`. `perturbation_check` gains `--scorer nli_concat`
+  (premise-granularity diagnostic) and `--scorer numeric` (deterministic value
+  grounding), a floor-anchored detection gate, Wilson CIs on every detection
+  rate, and rejection of random-context donors that support the answer.
+
 **Still open:**
-21. ❌ **The experiments in `PAPER_TODO.md` §3** — LLM judge (~$32, top item),
-   open-weight generator (free), claim-level over the full grid (free),
-   literal value grounding (not built), C1/C2 (~$3–4), QASPER (~$5),
+21. ❌ **The experiments in `PAPER_TODO.md` §3** — LLM judge ✅ done 2026-08-30,
+   open-weight generator (free), claim-level over the full grid (free — still
+   only the perturbation subset is scored, which is why the evaluator table is
+   a family of 8 and not 12), literal value grounding ✅ built and measured
+   2026-09-01 (`--scorer numeric`, see B19), C1/C2 (~$3–4), QASPER (~$5),
    ESA/re-ranking (decision pending with Berend). Shapley/`doc_utility.py`
    is **dropped** at Berend's explicit direction.
 22. ❌ **Paper update** — v6 exists but references are **unverified** (five were
