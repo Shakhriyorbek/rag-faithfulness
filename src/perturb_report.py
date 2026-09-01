@@ -126,7 +126,15 @@ def identity_check(cells_nli, cells_claim, answers, tol=1e-6):
             a = answers.get((*key, r['query_id']))
             if a is None:
                 continue
-            if len(cf.split_claims(a)) != 1 or cf.strip_markdown(a) != a.strip():
+            claims = cf.split_claims(a)
+            # The condition is not merely "one claim": it is "the single claim
+            # IS the answer". A numbered-list answer can yield one claim while
+            # the splitter drops the lead-in and the short list items, in which
+            # case the two aggregates are legitimately scoring different
+            # strings and the identity does not apply. That case is a finding
+            # in its own right (see the ordered-list note in the report), not a
+            # violation of this check.
+            if len(claims) != 1 or claims[0] != cf.strip_markdown(a).strip():
                 continue
             c = claim_rows.get(r['query_id'])
             if c is None:
