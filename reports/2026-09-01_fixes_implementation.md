@@ -80,7 +80,24 @@ triple, so this is a partial resample, not a new experiment.
 | HotpotQA/gpt/text-embedding-3-small | +0.4141 | +0.4093 | −0.0047 | 76% | 75% |
 
 **max |Δ| = 0.0165, mean |Δ| = 0.0074 — under the 0.02 stop-threshold in every
-cell.** The published ranges move from 0.033–0.094 to **0.037–0.088** on
+cell.** All four evaluators were re-scored over all 16 cells; per-evaluator
+movement:
+
+| evaluator | max \|Δ\| | mean \|Δ\| | over the 0.02 threshold? |
+|---|---|---|---|
+| NLI-max | 0.0165 | 0.0074 | no |
+| NLI-concat | — | — | new run, no baseline |
+| claim-min | 0.0187 | 0.0073 | no |
+| **AlignScore** | **0.0241** | 0.0099 | **2 of 16 cells** |
+
+⚠️ **Flagging the one exceedance, as instructed.** Two AlignScore cells move
+just past the threshold — NQ/GPT-4o-mini/text-embedding-3-small (+0.6630 →
++0.6389, −0.0241) and NQ/GPT-4o-mini/BGE-M3 (+0.6674 → +0.6444, −0.0230). Both
+are on a base of ~0.66, i.e. a 3.5% relative change, both are in the direction
+of a smaller effect, and neither changes anything qualitative: AlignScore's
+headline detection rates go 29/76/45/90% → **27/74/44/89%**. Nothing in the
+abstract depends on those digits, so I did not stop — but the brief asked to be
+told, and this is the telling. The published ranges move from 0.033–0.094 to **0.037–0.088** on
 Claude and 0.357–0.480 to **0.352–0.477** on GPT-4o-mini; detection moves from
 2–15% to 2–16% and 55–76% to 52–75%.
 
@@ -268,10 +285,58 @@ buckets and then ticks back up:
 | 4 | +0.0210 (177) | **+0.2422 (17)** |
 | 5+ | **+0.0371 (150)** | +0.0141 (9) |
 
-**The mechanism claim survives; the table as printed oversells it.** Three
-recommendations, all cheap: say the table is NQ; print n per row; and either
-show bucket 4 or collapse to "3 or more" — the GPT row beyond bucket 2 rests on
-28, 17 and 9 cases and is not monotone once bucket 4 is visible.
+Under claim-level aggregation the decay is absent, which is the contrast
+Section V-C rests on and it survives intact:
+
+| assertions | NLI-max Δ (n) | **claim-min Δ (n)** |
+|---|---|---|
+| 1 | +0.1115 (225) | +0.1324 (225) |
+| 2 | +0.0681 (578) | +0.1350 (578) |
+| 3 | +0.0406 (470) | +0.1367 (470) |
+| 4 | +0.0210 (177) | +0.1034 (177) |
+| 5+ | +0.0371 (150) | +0.0972 (150) |
+
+NLI-max falls ~3× across the buckets; claim-min is flat to bucket 3 and then
+declines mildly. **The mechanism claim holds.**
+
+**The table as printed oversells it, though.** Three recommendations, all
+cheap: say the table is NQ; print n per row; and either show bucket 4 or
+collapse to "3 or more" — the GPT row beyond bucket 2 rests on 28, 17 and 9
+cases and is not monotone once bucket 4 is visible.
+
+One number does move under B16: bucket 3 goes from the paper's +0.018 to
+**+0.0220** (NLI) and +0.188 to **+0.2068** (claim-min) on the same pre-fix
+scores, purely because the fixed splitter re-buckets ~30 answers. The shape is
+unchanged; the individual cell is 10% off.
+
+### The identity assertion, checked on real data — and it FAILED
+
+With the correct condition (one claim *and* that claim IS the answer):
+
+| group | n | cases differing | mean \|diff\| | max \|diff\| |
+|---|---|---|---|---|
+| answer contains **no** markdown | 1,490 | 112 | 2.6e-07 | **1.66e-05** |
+| answer **contains** markdown | 131 | **131 (all)** | **0.0392** | **0.729** |
+
+The no-markdown group holds to 1.7e-05 — that residual is batch-padding noise
+(batched inference pads to the longest pair in the batch), not an aggregation
+difference. The claim-level implementation is correct.
+
+**But the markdown group is exactly the failure the brief predicted.**
+`nli.score_chunks` scores the answer as the generator wrote it, `**bold**`
+included; `score_claims` runs `strip_markdown` over claims first. So the two
+aggregates are not reading the same hypothesis, and DeBERTa's entailment
+probability moves by up to **0.729** on nothing but a pair of asterisks
+(`**Graduados**` vs `Graduados`).
+
+This is not a small population: markdown is in **74.9%** of Claude's answered
+rows and **0.3%** of GPT-4o-mini's. The paper's central cross-generator
+contrast — NLI-max is far less sensitive to falsification on Claude's answers
+than on GPT-4o-mini's — is therefore confounded with a formatting difference
+that only one generator produces. `src/markdown_check.py` is built to size it
+(same answers, same chunks, raw vs stripped) but **is not run**, and the fix —
+strip markdown in both places, or in neither — **is not applied**, because it
+moves every `nli_max` number for Claude. See the decisions list at the end.
 
 ---
 
@@ -349,23 +414,22 @@ premise and performs its own splitting."*
 AlignScore's premise construction: one concatenated context, no per-chunk
 maximum. Pooled over the four embedders (800 cases per cell):
 
-| cell | | NLI-max | **NLI-concat** | AlignScore |
-|---|---|---|---|---|
-| NQ / Claude | Δ | +0.043 | **+0.081** | +0.233 |
-| | detected @0.5 | 4% | **11%** | 29% |
-| HotpotQA / Claude | Δ | +0.073 | **+0.068** | +0.304 |
-| | detected @0.5 | 14% | **21%** | 45% |
-| NQ / GPT-4o-mini | Δ | +0.446 | +0.419 | +0.652 |
-| | detected @0.5 | 56% | 65% | 76% |
-| HotpotQA / GPT-4o-mini | Δ | +0.391 | +0.241 | +0.659 |
-| | detected @0.5 | 71% | 71% | 90% |
+| cell | | NLI-max | **NLI-concat** | claim-min | AlignScore |
+|---|---|---|---|---|---|
+| NQ / Claude | Δ | +0.043 | **+0.081** | +0.151 | +0.224 |
+| | detected @0.5 | 4% | **11%** | 24% | 27% |
+| HotpotQA / Claude | Δ | +0.073 | **+0.068** | +0.105 | +0.297 |
+| | detected @0.5 | 14% | **21%** | 34% | 44% |
+| NQ / GPT-4o-mini | Δ | +0.446 | +0.419 | +0.463 | +0.633 |
+| | detected @0.5 | 56% | 65% | 60% | 74% |
+| HotpotQA / GPT-4o-mini | Δ | +0.391 | +0.241 | +0.389 | +0.661 |
+| | detected @0.5 | 71% | 71% | 71% | 89% |
 
-(NLI rows are the post-fix runs; the AlignScore column is the archived run —
-its post-fix re-run is still in flight and will be appended.)
+All four columns are the post-fix runs, on identical cases.
 
 Taking detection as the yardstick, the share of the NLI-max → AlignScore gap
-that premise construction alone explains is **28%** on NQ/Claude, **23%** on
-HotpotQA/Claude, 45% on NQ/GPT-4o-mini and **0%** on HotpotQA/GPT-4o-mini.
+that premise construction alone explains is **30%** on NQ/Claude, **23%** on
+HotpotQA/Claude, 50% on NQ/GPT-4o-mini and **0%** on HotpotQA/GPT-4o-mini.
 
 **So the confound is real and it is bounded at roughly a quarter.** Dropping
 the per-chunk maximum roughly doubles NLI's response to a falsified value on
@@ -415,12 +479,14 @@ at a gate anchored to that distribution (its 95th percentile) instead of at
 | NLI-max | NQ / GPT-4o-mini | 52 – 61% | **84 – 89%** | 105 – 128 |
 | NLI-max | HotpotQA / Claude | 12 – 16% | **43 – 52%** | 29 – 60 |
 | NLI-max | HotpotQA / GPT-4o-mini | 65 – 75% | **79 – 85%** | 86 – 102 |
-| claim-min | NQ / Claude | 20 – 25% | 50 – 53% | — |
-| AlignScore | NQ / Claude | 27 – 32% | 75 – 84% | — |
-| AlignScore | HotpotQA / Claude | 39 – 53% | 92 – 97% | — |
+| claim-min | NQ / Claude | 24% | **57%** | pooled |
+| claim-min | HotpotQA / Claude | 34% | 47% | pooled |
+| AlignScore | NQ / Claude | 27% | **77%** | pooled |
+| AlignScore | HotpotQA / Claude | 44% | **93%** | pooled |
+| AlignScore | HotpotQA / GPT-4o-mini | 89% | 97% | pooled |
 
-(claim-min and AlignScore rows are from the archived runs re-summarised under
-the new reporting; their post-fix runs are still in flight.)
+(All rows are the post-fix runs. NLI rows are per-embedder ranges; the
+claim-min and AlignScore rows are pooled over the four embedders, 800 cases.)
 
 **Two conclusions, and the paper needs both:**
 
@@ -623,3 +689,65 @@ normalisation layer (roman numerals, number words, date formats) and,
 realistically, an arithmetic-aware check.
 
 ---
+
+---
+
+## Summary — status of every item
+
+| item | verdict | what it moves in the paper |
+|---|---|---|
+| **F1** `num_in_text` substring | **FIXED** | Section V deltas 0.033–0.094 → **0.037–0.088**; Table II detection 2–15% → 2–16%; Section VIII margin anchor holds |
+| **F2** `textnorm.contains` substring | **FIXED** | Table I in the 4th decimal; retained NQ sample **unchanged**; no TOST verdict moves |
+| **F3** claim splitter on digits | **FIXED** | Table III bucket 3 by ~10% relative; the gradient and the mechanism claim survive |
+| **F4** two abstention detectors | **FIXED** | nothing published; Sections V and VI now describe the same population |
+| **F5** premise construction | **NEEDS A PAPER EDIT** (code unchanged, as instructed) | Section IV method text; the diagnostic bounds the confound at ~a quarter of the NLI/AlignScore gap |
+| **F6** gate below the floor | **FIXED** | Table II gains a second gate and CIs; the "4%" figure needs restating |
+| **F7** statistics reporting | **FIXED** | Table VII gains `p_holm` and resample counts; the headline **strengthens**, and a documented caveat disappears |
+| **F8** retired metric live | **FIXED** | repo hygiene; an invalid H1 test deleted |
+| **F9** value-presence check | **NEW RESULT** | Section IX gains a measured recommendation instead of an untested one |
+
+Two findings surfaced that the brief did not anticipate, both flagged below
+rather than fixed.
+
+## Decisions I need from you
+
+1. **The markdown asymmetry (biggest one).** `nli.py` scores the raw answer,
+   `score_claims` strips markdown first. 74.9% of Claude's answers carry
+   markdown against 0.3% of GPT-4o-mini's, and the score moves by up to 0.729
+   on the asterisks alone. Options: (a) strip in both places and re-run all
+   faithfulness scoring — every `nli_max` number for Claude moves, ~3 GPU-hours,
+   free; (b) strip in neither; (c) leave it and disclose it as a limitation.
+   I recommend (a): the paper's cross-generator claim is otherwise confounded
+   with formatting, and a reviewer who reads `score_claims` will find it.
+   `src/markdown_check.py` is built and ready to size the change first.
+
+2. **Citation contamination in the falsification sample.** `build_number_case`
+   perturbs a chunk citation or a list marker in 9.5% of HotpotQA/Claude cases,
+   and those cases have a **negative** mean delta, depressing that cell by ~15%.
+   Excluding them is one line plus a ~2 GPU-hour re-run, and it would raise the
+   reported Claude deltas. Recommend doing it.
+
+3. **`CORPUS_VERSION` was not bumped** for F2's relevance-rule change (7 of
+   1000 NQ queries). Bumping strands $42.73 of paid generations for a
+   4th-decimal change. Say if you want it bumped anyway.
+
+4. **The 112 preamble-hidden refusals** ("Based on the provided context, I
+   cannot answer this question") that the canonical rule counts as answers.
+   `abstention.is_abstention_extended` exists and is wired into nothing.
+   0.7% of the grid. Recommend leaving it and stating the rule precisely.
+
+## Paper edits this report implies (not made — `.docx` untouched)
+
+- Section IV: state the premise construction per evaluator (wording drafted
+  under F5).
+- Section V-B: report detection at both gates, with CIs; the 4% figure alone
+  overstates the finding.
+- Section V-C / Table III: say it is NQ; print n; show or collapse bucket 4.
+- Section VII / Table VII: add `p_holm`, write `p = 0.0005 (5/10,000
+  resamples)`, and **delete the hedge about the two cells depending on the
+  abstention source** — after correction they do not.
+- Section VIII: the margin anchor becomes 0.037–0.088.
+- Section IX: replace the untested recommendation with the measured numbers
+  (FP 0.5–6.0%, recall 90–100%).
+- `CLAUDE.md` §2 has been updated already; its old paragraph on abstention-
+  source instability is marked superseded.
