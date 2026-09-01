@@ -34,8 +34,32 @@ keeps the field-standard SQuAD normalization (which deletes punctuation and
 drops articles) for EM and token-F1.
 """
 import re
+import string
 
 _NONWORD = re.compile(r'[^\w\s]', re.UNICODE)
+_ARTICLES = re.compile(r'\b(a|an|the)\b', re.UNICODE)
+_PUNCT_TABLE = str.maketrans('', '', string.punctuation)
+
+
+def squad_normalize(s: str) -> str:
+    """SQuAD/NQ normalization: lowercase, DELETE punctuation, drop articles.
+
+    Distinct from squash() on purpose. This is the field-standard rule for EM
+    and token-F1, where both sides get the same treatment, and it is also what
+    the abstention test runs on. squash() replaces punctuation with a space
+    instead, because for a containment test deleting punctuation glues
+    neighbouring tokens together and invents matches.
+
+    Lives here rather than in correctness.py so abstention.py can use it
+    without importing the correctness module. correctness.normalize_answer is
+    an alias for it.
+    """
+    if s is None:
+        return ''
+    s = s.lower()
+    s = s.translate(_PUNCT_TABLE)
+    s = _ARTICLES.sub(' ', s)
+    return ' '.join(s.split())
 
 
 def squash(s: str) -> str:
@@ -45,16 +69,42 @@ def squash(s: str) -> str:
     return ' '.join(_NONWORD.sub(' ', s.lower()).split())
 
 
+def _pad(s: str) -> str:
+    """Space-pad so a token-sequence test can be written as a substring test."""
+    return f' {s} '
+
+
 def contains(haystack: str, needle: str) -> bool:
-    """True if `needle` appears in `haystack` under squash() normalization.
+    """True if `needle` appears in `haystack` as a whole token sequence.
+
+    MATCHING IS ON TOKENS, NOT CHARACTERS (fixed 2026-09-01). squash() already
+    reduces both sides to space-separated tokens, but the test used to be a raw
+    substring test on the result, which matched inside words and inside longer
+    numbers:
+
+        contains('the budget was 10000 dollars', '1000')          -> True
+        contains('he was born in 19051 census district', '1905')  -> True
+        contains('Alice went to Paris', 'Ali')                    -> True
+
+    Every false positive here is load-bearing: in the NQ loader it retains a
+    query whose answer is not really in its own window, in build_qrels it marks
+    a chunk relevant that does not carry the gold span (the B6 bug this module
+    exists to prevent), and in correctness.contains_answer it grades an answer
+    correct on a coincidental substring. Short gold answers — years, counts,
+    single tokens — are exactly the ones that matched spuriously.
+
+    Padding both sides with a space turns the substring test into a
+    token-sequence test while keeping the NQ tokenisation behaviour the module
+    docstring documents: gold "Röntgen's" squashes to `röntgen s` and the
+    context's "Röntgen 's" squashes to `röntgen s`, so it still matches.
 
     An empty needle is never contained: callers treat "no gold span" as
     "cannot be verified", never as a trivially satisfied match.
     """
     n = squash(needle)
-    return bool(n) and n in squash(haystack)
+    return bool(n) and _pad(n) in _pad(squash(haystack))
 
 
 def contains_any(haystack: str, needles) -> bool:
-    h = squash(haystack)
-    return any(n and n in h for n in (squash(x) for x in needles or ()))
+    h = _pad(squash(haystack))
+    return any(n and _pad(n) in h for n in (squash(x) for x in needles or ()))

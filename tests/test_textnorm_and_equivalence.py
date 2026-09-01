@@ -58,17 +58,53 @@ class TestTextNorm:
         assert textnorm.contains_any('a b c', ['zz', 'b'])
         assert not textnorm.contains_any('a b c', ['zz', 'yy'])
         assert not textnorm.contains_any('a b c', [])
+
+    def test_match_is_on_tokens_not_characters(self):
+        """
+        squash() normalises correctly, but the test used to be a raw substring
+        test on the result, so a gold answer matched inside a longer word or a
+        longer number. Every false positive is load-bearing: it retains an NQ
+        query whose answer is not in its own window, marks a chunk relevant
+        that does not carry the gold span (the B6 bug), and grades an answer
+        correct on a coincidence. Short answers — years, counts, single
+        tokens — are the ones that matched spuriously.
+        """
+        assert not textnorm.contains('the budget was 10000 dollars', '1000')
+        assert not textnorm.contains('he was born in 19051 census district',
+                                     '1905')
+        assert not textnorm.contains('Alice went to Paris', 'Ali')
+        assert not textnorm.contains('the state artifact', 'art')
+
+    def test_token_boundary_does_not_break_the_nq_tokenisation_case(self):
+        """The behaviour the module exists for must survive the fix."""
+        assert textnorm.contains('wilhelm conrad röntgen s', 'Röntgen')
+
+    def test_contains_any_matches_on_tokens_too(self):
+        assert not textnorm.contains_any('the budget was 10000 dollars',
+                                         ['1000'])
+        assert textnorm.contains_any('the budget was 10000 dollars', ['10000'])
+
+    def test_squad_normalize_is_shared_with_correctness(self):
+        """One SQuAD normalizer, so abstention.py can use it without
+        importing correctness."""
+        import correctness
+        assert correctness.normalize_answer is textnorm.squad_normalize
+        assert textnorm.squad_normalize("The Röntgen's!") == 'röntgens'
         assert not textnorm.contains_any('a b c', None)
 
-    def test_substring_of_word_still_matches(self):
-        """Documented behaviour: this is substring, not token, containment.
+    def test_substring_of_a_word_is_not_a_match(self):
+        """Changed 2026-09-01. This test used to assert the opposite.
 
-        Kept deliberately — gold spans are frequently sub-token ("Ren" in
-        "Kylo Ren") and requiring token alignment loses more than it saves.
-        The cost is over-matching on very short spans, which is why
-        containment is reported as an UPPER bound on accuracy.
+        The old rule was character-level containment on the squashed string,
+        justified as "gold spans are frequently sub-token". They are not:
+        squash() splits on punctuation, so the sub-token cases that actually
+        occur ("Ren" in "Kylo Ren", "Röntgen" in "Röntgen 's") are separate
+        TOKENS and still match. What character containment additionally bought
+        was `nation` inside `international` and `1000` inside `10000`, which
+        is a false positive everywhere the function is used.
         """
-        assert textnorm.contains('international', 'nation')
+        assert not textnorm.contains('international', 'nation')
+        assert textnorm.contains('Kylo Ren fought back', 'Ren')
 
 
 # ── correctness uses the same rule ────────────────────────────────

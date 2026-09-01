@@ -47,6 +47,77 @@ class TestNumberRegex:
         assert found == ['1,000']
 
 
+class TestNumInText:
+    """
+    Boundary matching. The original test was a raw `in`, so a number matched
+    as a digit substring of a bigger one and both eligibility rules broke:
+    rule (a) admitted answers whose value was never grounded (their delta is
+    ~0 by construction, which drags the headline mean down), rule (b)
+    discarded eligible cases.
+    """
+
+    def test_substring_of_a_longer_number_is_not_a_match(self):
+        assert not pc.num_in_text('1000', 'the total was 10000 USD')
+        assert not pc.num_in_text('150', 'the price is 1500 dollars')
+        assert not pc.num_in_text('5', 'chapter 51 discusses this')
+
+    def test_thousands_separator_variant_still_matches(self):
+        assert pc.num_in_text('1000', 'the total was 1,000 USD')
+        assert pc.num_in_text('1,020', 'weighs 1020 kg')
+
+    def test_year_inside_a_longer_year_is_not_a_match(self):
+        assert not pc.num_in_text('20', 'in 2019 the figure rose')
+
+    def test_digits_glued_to_letters_are_not_a_quantity(self):
+        assert not pc.num_in_text('7', 'model B7 was tested')
+
+    def test_decimal_prefix_is_not_a_match(self):
+        assert not pc.num_in_text('3.5', 'grew by 3.55 percent')
+        assert not pc.num_in_text('5', 'the value is 5.5')
+
+    def test_sentence_final_and_punctuated_forms_match(self):
+        assert pc.num_in_text('1,000', 'the budget is $1,000.')
+        assert pc.num_in_text('1901', 'awarded in 1901, in Munich')
+
+    def test_empty_inputs_are_never_grounded(self):
+        assert not pc.num_in_text('', 'anything')
+        assert not pc.num_in_text('5', '')
+
+
+class TestNumericGroundingCheck:
+    """F9: the deterministic value-presence check the paper recommends."""
+
+    def test_all_values_present_is_grounded(self):
+        assert pc.numeric_grounding_check(
+            'The budget is $1,000 and 12 people signed.',
+            ['the total was 1,000 USD', 'a team of 12'])
+
+    def test_one_absent_value_fails(self):
+        assert not pc.numeric_grounding_check('The budget is $1,500.',
+                                              ['the total was 1,000 USD'])
+
+    def test_substring_grounding_does_not_count(self):
+        """The whole point: 1,000 in the context does not ground 100."""
+        assert not pc.numeric_grounding_check('It costs 100.',
+                                              ['the total was 1,000 USD'])
+
+    def test_answer_without_numbers_is_vacuously_grounded(self):
+        assert pc.numeric_grounding_check('Roentgen won it.', ['some context'])
+
+    def test_no_context_is_not_grounded(self):
+        assert not pc.numeric_grounding_check('It is 5.', [])
+
+
+class TestWilsonCI:
+    def test_interval_brackets_the_estimate_and_stays_in_range(self):
+        lo, hi = pc._wilson_ci(8, 200)
+        assert 0.0 <= lo < 0.04 < hi <= 1.0
+
+    def test_zero_events_gives_a_non_negative_lower_bound(self):
+        lo, hi = pc._wilson_ci(0, 200)
+        assert lo == 0.0 and hi > 0.0
+
+
 class TestPerturbNumber:
     def test_thousand_is_a_quantity_not_a_year(self):
         """1000 -> 1501 (magnitude), never 1007 (year shift)."""
@@ -121,8 +192,37 @@ class TestEntityCase:
 
 
 class TestAbstention:
-    def test_abstentions_are_excluded(self):
+    def test_the_detector_is_the_shared_one(self):
+        """
+        There used to be two: a substring-anywhere rule here and an anchored
+        rule in correctness.py. They disagreed on 365 of 16,000 rows, so the
+        falsification sample and the conditional analysis called different
+        populations "answered".
+        """
+        import abstention
+        import correctness
+        assert pc.is_abstention is abstention.is_abstention
+        assert correctness.is_abstention is abstention.is_abstention
+
+    def test_anchored_refusals_are_excluded(self):
         """An abstention has no grounded claim to falsify."""
         assert pc.is_abstention('I cannot answer based on the provided context.')
-        assert pc.is_abstention('The context does not contain this information.')
         assert not pc.is_abstention('The budget is $1,000.')
+
+    def test_a_mid_answer_hedge_is_still_an_answer(self):
+        """
+        The old substring rule dropped this row from the sample while the
+        conditional analysis counted it as answered.
+        """
+        assert not pc.is_abstention(
+            'The budget is $1,000, though the context does not contain the date.')
+
+
+class TestDonorSelection:
+    def test_a_donor_supporting_the_answer_is_rejected(self):
+        answer = 'The budget is 1,000 USD.'
+        donor = {'retrieved_texts': ['the invoice total was 1,000 USD']}
+        clean = {'retrieved_texts': ['unrelated text about penguins']}
+        nums = pc.answer_numbers(answer)
+        assert pc._donor_supports(donor, nums)
+        assert not pc._donor_supports(clean, nums)

@@ -30,8 +30,6 @@ quality (Berend's branch A).
 from __future__ import annotations
 
 import argparse
-import re
-import string
 import sys
 from collections import Counter
 from pathlib import Path
@@ -39,6 +37,7 @@ from typing import Dict, Iterable, List, Optional, Sequence
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+import abstention
 import config
 import textnorm
 from utils import load_checkpoint, save_checkpoint
@@ -54,18 +53,11 @@ CORRECT_F1_THRESHOLD = 0.6
 CORRECT_MODES = ('contains', 'f1', 'em')
 CORRECT_MODE = 'contains'
 
-_ARTICLES = re.compile(r'\b(a|an|the)\b', re.UNICODE)
-_PUNCT_TABLE = str.maketrans('', '', string.punctuation)
-
-
-def normalize_answer(s: str) -> str:
-    """SQuAD/NQ normalization: lowercase, strip punctuation, articles, extra ws."""
-    if s is None:
-        return ''
-    s = s.lower()
-    s = s.translate(_PUNCT_TABLE)
-    s = _ARTICLES.sub(' ', s)
-    return ' '.join(s.split())
+# The SQuAD normalizer now lives in textnorm alongside squash(), so
+# abstention.py can share it without importing this module. Re-exported here
+# because EM, token-F1 and every caller of correctness.normalize_answer expect
+# it at this name.
+normalize_answer = textnorm.squad_normalize
 
 
 def exact_match(pred: str, golds: Sequence[str]) -> bool:
@@ -168,28 +160,13 @@ def _gold_answers(record: Dict) -> List[str]:
     return []
 
 
-# Abstentions are model behaviour, not failures: the closed-book prompt (C1)
-# explicitly offers "I do not know", and the RAG prompt offers "I cannot answer
-# based on the provided context". Both are INCORRECT for grading purposes, but
-# they are a different phenomenon from a confident wrong answer and the C1
-# floor is uninterpretable without separating them.
-# Written as the prompts write them; normalized below so the comparison is
-# apples to apples. normalize_answer() strips articles, so a literal
-# "...the provided context" would never match its own normalized form.
-_ABSTENTION_PHRASES = (
-    'I do not know',
-    "I don't know",
-    'I cannot answer based on the provided context',
-    "I can't answer based on the provided context",
-)
-
-
-def is_abstention(pred: str) -> bool:
-    """True when the answer is a refusal/abstention rather than an attempt."""
-    if not pred:
-        return False
-    p = normalize_answer(pred)
-    return any(p.startswith(normalize_answer(m)) for m in _ABSTENTION_PHRASES)
+# THE refusal rule — one definition, shared with perturbation_check.py, which
+# used to carry a second and looser one (substring match over 9 phrases,
+# anywhere in the answer). The two disagreed on 365 of 16,000 rows, so
+# Section V's "answered" population was not Section VI's. See abstention.py
+# for the measurement and for why this anchored rule is the canonical one.
+_ABSTENTION_PHRASES = abstention.ABSTENTION_PHRASES
+is_abstention = abstention.is_abstention
 
 
 def is_ungradable(record: Dict) -> bool:

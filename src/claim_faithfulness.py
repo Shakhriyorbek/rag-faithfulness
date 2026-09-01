@@ -93,7 +93,15 @@ def split_claims(answer: str) -> List[str]:
             if re.fullmatch(_ABBREV, tok, re.I) or re.fullmatch(r'[A-Z]', tok):
                 continue                      # abbreviation or initial
             nxt = block[m.end():m.end() + 1]
-            if nxt and not (nxt.isupper() or nxt in '"\'("'):
+            # `.isdigit()` is required: a sentence that OPENS with a number
+            # ("1,500 was requested by the team.") failed .isupper() and was
+            # silently merged into the previous claim. That undercount landed
+            # selectively on numeric-heavy answers — exactly the ones the
+            # falsification probe operates on — and inflated n_claims' own
+            # denominator. The character class also had a straight quote twice
+            # and no opening curly quote.
+            if nxt and not (nxt.isupper() or nxt.isdigit()
+                            or nxt in '"\'(“‘'):
                 continue                      # not a sentence start
             claims.append(block[start:m.end()].strip())
             start = m.end()

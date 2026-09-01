@@ -42,6 +42,7 @@ from pathlib import Path
 
 import numpy as np
 
+import abstention
 import config
 from utils import checkpoint_exists, load_checkpoint, save_checkpoint
 
@@ -71,16 +72,16 @@ ENT_STOP = {
     'Provided', 'Given', 'Cannot', 'Unfortunately', 'Note', 'Some', 'One',
 }
 
-ABSTAIN_MARKERS = (
-    'cannot answer', 'can not answer', 'do not know', "don't know",
-    'not provided in the context', 'no information', 'unable to answer',
-    'does not contain', 'not mentioned in the context',
-)
-
-
-def is_abstention(answer: str) -> bool:
-    a = (answer or '').lower()
-    return any(m in a for m in ABSTAIN_MARKERS)
+# Refusals are excluded from the falsification sample: an abstention has no
+# grounded claim to falsify. The rule is now the SHARED one in abstention.py.
+#
+# It used to be a local list of 9 phrases matched as a substring ANYWHERE in
+# the answer, which excluded 365 substantive answers over the 16,000-row grid
+# — answers that carry a mid-text hedge ("...However, the context does not
+# contain their ages.") while asserting plenty. Those rows counted as
+# `answered` in the conditional analysis, so Section V and Section VI were
+# describing different populations with the same word.
+is_abstention = abstention.is_abstention
 
 
 def _num_variants(s: str):
@@ -98,8 +99,35 @@ def _num_variants(s: str):
     return out
 
 
+# One quantity, matched at numeric/word boundaries. A raw `in` test made
+# num_in_text('1000', 'the total was 10000 USD') True, and both eligibility
+# rules run through this function: false positives on rule (a) admitted answers
+# whose value was never grounded (perturbing them cannot lower entailment, so
+# they entered the sample with a near-zero delta and dragged the mean toward
+# the reported conclusion), and false positives on rule (b) silently discarded
+# eligible cases.
+#
+# The boundary mirrors NUM_RE rather than \b: `\b` treats ',' and '.' as
+# boundaries, which reintroduces the bug on '1,000' and '3.55'. A digit glued
+# to letters is an identifier, not a quantity ('model B7' does not ground 7),
+# so the left side excludes \w as NUM_RE does.
+_BOUNDARY_CACHE = {}
+
+
+def _boundary_re(v: str):
+    rx = _BOUNDARY_CACHE.get(v)
+    if rx is None:
+        rx = re.compile(rf'(?<![\w.,]){re.escape(v)}(?![\w.,]?\d)')
+        _BOUNDARY_CACHE[v] = rx
+    return rx
+
+
 def num_in_text(numstr: str, text: str) -> bool:
-    return any(v in text for v in _num_variants(numstr))
+    """True if `numstr` (in any of its surface forms) occurs in `text` as a
+    standalone quantity rather than as a digit substring of a larger one."""
+    if not numstr or not text:
+        return False
+    return any(_boundary_re(v).search(text) for v in _num_variants(numstr))
 
 
 def perturb_number(numstr: str):
@@ -206,12 +234,24 @@ def _bootstrap_ci(deltas, n_boot=10000, seed=SEED):
             float(np.percentile(means, 97.5)))
 
 
+def answer_numbers(answer: str):
+    """Every quantity NUM_RE finds in an answer, in order of appearance."""
+    return [m.group(1) for m in NUM_RE.finditer(answer or '')]
+
+
+def _donor_supports(other, numbers) -> bool:
+    """True if a candidate random context carries any of the answer's values."""
+    ctx = ' '.join((other.get('retrieved_texts') or [])[:config.TOP_K])
+    return any(num_in_text(n, ctx) for n in numbers)
+
+
 def build_cases(generations, limit):
     """Eligible perturbation cases from one generation checkpoint."""
     donors = _collect_donor_entities(generations)
     rng = random.Random(SEED)
     pool = [g for g in generations if g.get('retrieved_texts')]
     cases = []
+    n_donor_fallback = 0
     for g in generations:
         answer = g.get('generated_answer') or ''
         chunks = (g.get('retrieved_texts') or [])[:config.TOP_K]
@@ -222,12 +262,24 @@ def build_cases(generations, limit):
         if num_case is None:
             continue
         ent_case = build_entity_case(answer, context, donors)
+        # The `random` condition is the floor of the scale, so a donor context
+        # that happens to support the answer inflates that floor and makes the
+        # floor-anchored gate too permissive. Rejecting on the answer's
+        # quantities is the cheap half of "unrelated context": same 10-try
+        # loop, falling back to the old behaviour (any non-self donor) when
+        # nothing passes, with the fallbacks counted rather than hidden.
+        numbers = answer_numbers(answer)
         other = rng.choice(pool) if pool else None
         tries = 0
         while (other is not None and len(pool) > 1 and tries < 10
-               and other.get('query_id') == g.get('query_id')):
+               and (other.get('query_id') == g.get('query_id')
+                    or _donor_supports(other, numbers))):
             other = rng.choice(pool)
             tries += 1
+        if (other is not None and len(pool) > 1
+                and (other.get('query_id') == g.get('query_id')
+                     or _donor_supports(other, numbers))):
+            n_donor_fallback += 1
         cases.append({
             'query_id': g.get('query_id'),
             'answer': answer,
@@ -244,7 +296,56 @@ def build_cases(generations, limit):
         })
         if len(cases) >= limit:
             break
+    if n_donor_fallback:
+        print(f'    [donor] {n_donor_fallback}/{len(cases)} random contexts '
+              f'kept despite supporting a value in the answer '
+              f'(no clean donor in 10 tries)')
     return cases
+
+
+def numeric_grounding_check(answer: str, chunks) -> bool:
+    """
+    Deterministic value grounding: does EVERY quantity in the answer occur in
+    the retrieved context?
+
+    Section IX of the paper recommends this check and notes it had not been
+    evaluated. It is the complement of the NLI evaluators rather than a rival:
+    it says nothing about whether the answer is entailed, only whether its
+    literal values are present, which is exactly what the invoice scenario
+    asks and exactly what a verbose answer hides from an entailment model.
+
+    False by construction on the falsified variant (the replacement is
+    rejected at case-construction time if it appears in the context), so the
+    informative number is not its recall but its FALSE-POSITIVE rate on the
+    untouched answers — a check that flags a third of correct answers is not
+    deployable however well it catches fabrications.
+    """
+    ctx = ' '.join(c for c in (chunks or []) if c)
+    if not ctx:
+        return False
+    return all(num_in_text(n, ctx) for n in answer_numbers(answer))
+
+
+def _wilson_ci(k: int, n: int, z: float = 1.96):
+    """95% Wilson interval for a proportion. Detection rates in Table II sit
+    on n≈200 with rates near 4%, where the normal approximation is useless
+    (it produces negative lower bounds) and the interval is ±2-3pp, which is
+    the same size as several of the differences being read off the table."""
+    if n <= 0:
+        return (float('nan'), float('nan'))
+    ph = k / n
+    d = 1 + z * z / n
+    centre = (ph + z * z / (2 * n)) / d
+    half = z * np.sqrt(ph * (1 - ph) / n + z * z / (4 * n * n)) / d
+    return (max(0.0, centre - half), min(1.0, centre + half))
+
+
+def _detection(orig, pert, gate):
+    """(rate, n_caught, n_eligible) at a gate: the untouched answer passes and
+    the falsified one does not."""
+    above = orig >= gate
+    caught = int((above & (pert < gate)).sum())
+    return (caught / max(1, int(above.sum())), caught, int(above.sum()))
 
 
 class _Scorer:
@@ -260,6 +361,8 @@ class _Scorer:
 
     def __init__(self, kind):
         self.kind = kind
+        if kind == 'numeric':
+            return                              # deterministic, no model
         if kind == 'align':
             from alignscore import AlignScore
             import os
@@ -280,8 +383,19 @@ class _Scorer:
     def score(self, chunks, answer):
         if self.kind == 'nli':
             return self.m.score_chunks(chunks, answer)['nli_max']
+        if self.kind == 'nli_concat':
+            # F5 diagnostic: the SAME NLI model on the SAME answer, but with
+            # AlignScore's premise construction — one concatenated context,
+            # no per-chunk maximum. NLI-max scores 6 premises (5 chunks + the
+            # concatenation) and takes the best; AlignScore receives one
+            # premise and splits it itself. Part of the NLI/AlignScore
+            # difference could therefore be premise granularity rather than
+            # evaluator sensitivity, and this bounds how much.
+            return self.m.entailment_prob(' '.join(chunks), answer)
         if self.kind == 'claim':
             return self.cf.score_claims(chunks, answer, self.m)['claim_min']
+        if self.kind == 'numeric':
+            return 1.0 if numeric_grounding_check(answer, chunks) else 0.0
         # AlignScore takes the whole context as one premise.
         return float(self.m.score(contexts=[' '.join(chunks)],
                                   claims=[answer])[0])
@@ -330,6 +444,27 @@ def run_check(model, ds_name, gen, limit, nli):
     return rows
 
 
+def floor_gate(rows, pct: float = 95.0):
+    """
+    A gate anchored to the random-context floor of THIS cell and evaluator.
+
+    GATE = 0.5 is a module constant while the floor is measured per cell: on
+    NQ/Claude the mean random-context nli_max is 0.522, so an answer scored
+    against an unrelated context already clears the fixed gate. A detection
+    rate read at 0.5 there partly reflects a compressed scale rather than
+    blindness to falsification, and rates are not comparable across evaluators
+    whose floors differ. The 95th percentile of the random distribution is the
+    score an unrelated context beats only 5% of the time, so "above the gate"
+    means "better supported than an unrelated document", which is the same
+    statement on every scale.
+    """
+    rnd = np.array([r['random'] for r in rows if r.get('random') is not None],
+                   dtype=float)
+    if rnd.size < 20:
+        return float('nan')
+    return float(np.percentile(rnd, pct))
+
+
 def summarise(rows, label):
     orig = np.array([r['orig'] for r in rows], dtype=float)
     num = np.array([r['number'] for r in rows], dtype=float)
@@ -344,8 +479,14 @@ def summarise(rows, label):
     # Detection = the untouched answer passed the gate and the falsified one
     # does not. That is the operational question a grounding gate answers; a
     # small mean delta can still catch nothing at any usable threshold.
-    above = orig >= GATE
-    det_num = float((above & (num < GATE)).sum() / max(1, above.sum()))
+    det_num, k_num, n_num = _detection(orig, num, GATE)
+    ci_det = _wilson_ci(k_num, n_num)
+    gate_f = floor_gate(rows)
+    if gate_f == gate_f:
+        det_num_f, k_f, n_f = _detection(orig, num, gate_f)
+        ci_det_f = _wilson_ci(k_f, n_f)
+    else:
+        det_num_f, k_f, n_f, ci_det_f = (float('nan'),) * 3 + ((float('nan'),) * 2,)
 
     print(f'\n--- {label} (n={len(rows)}) ---')
     print(f'  orig                       {orig.mean():.4f}')
@@ -355,8 +496,7 @@ def summarise(rows, label):
     if ent.size:
         d_ent = ent_o - ent
         ci_ent = _bootstrap_ci(d_ent)
-        above_e = ent_o >= GATE
-        det_ent = float((above_e & (ent < GATE)).sum() / max(1, above_e.sum()))
+        det_ent, k_e, n_e = _detection(ent_o, ent, GATE)
         print(f'  entity-perturbed (n={ent.size})    {ent.mean():.4f}   '
               f'delta {d_ent.mean():+.4f}  '
               f'95% CI [{ci_ent[0]:+.4f}, {ci_ent[1]:+.4f}]')
@@ -366,9 +506,16 @@ def summarise(rows, label):
         mean_d_ent = float('nan')
         print('  entity-perturbed           (no eligible cases)')
     if rnd.size:
-        print(f'  random context             {rnd.mean():.4f}   <- floor')
-    print(f'  detection @ gate {GATE}:  number {det_num:.1%}   '
+        print(f'  random context             {rnd.mean():.4f}   <- floor '
+              f'(p95 {gate_f:.4f})')
+    # Both gates, both with a binomial CI: at n=200 a 4% rate carries roughly
+    # +/-2.7pp, which several of the differences read off Table II do not clear.
+    print(f'  detection @ fixed gate {GATE}:      number {det_num:.1%} '
+          f'[{ci_det[0]:.1%}, {ci_det[1]:.1%}]  ({k_num}/{n_num})   '
           f'entity {det_ent:.1%}')
+    if gate_f == gate_f:
+        print(f'  detection @ floor gate {gate_f:.3f}:    number {det_num_f:.1%} '
+              f'[{ci_det_f[0]:.1%}, {ci_det_f[1]:.1%}]  ({k_f}/{n_f})')
 
     # Broken out because a year shifted by 7 and a quantity scaled by 1.5 are
     # not the same test. The invoice case is the magnitude row.
@@ -377,13 +524,15 @@ def summarise(rows, label):
         sub = [r for r in rows if r.get('num_kind') == kind]
         o = np.array([r['orig'] for r in sub], dtype=float)
         nu = np.array([r['number'] for r in sub], dtype=float)
-        ab = o >= GATE
-        det = float((ab & (nu < GATE)).sum() / max(1, ab.sum()))
+        det, k, nn = _detection(o, nu, GATE)
+        lo, hi = _wilson_ci(k, nn)
         by_kind[kind] = {'n': len(sub), 'orig': float(o.mean()),
                          'number': float(nu.mean()),
-                         'delta': float((o - nu).mean()), 'det': det}
+                         'delta': float((o - nu).mean()), 'det': det,
+                         'det_ci': (lo, hi), 'det_k': k, 'det_n': nn}
         print(f'    [{kind:<9} n={len(sub):>4}]  {o.mean():.4f} -> '
-              f'{nu.mean():.4f}   delta {(o - nu).mean():+.4f}   det {det:.1%}')
+              f'{nu.mean():.4f}   delta {(o - nu).mean():+.4f}   '
+              f'det {det:.1%} [{lo:.1%}, {hi:.1%}]')
 
     return {
         'label': label, 'n': len(rows),
@@ -392,9 +541,69 @@ def summarise(rows, label):
         'entity': float(ent.mean()) if ent.size else float('nan'),
         'delta_entity': mean_d_ent,
         'random': float(rnd.mean()) if rnd.size else float('nan'),
-        'det_number': det_num, 'det_entity': det_ent,
+        'det_number': det_num, 'det_number_ci': ci_det,
+        'det_number_k': k_num, 'det_number_n': n_num,
+        'gate_floor': gate_f, 'det_number_floor': det_num_f,
+        'det_number_floor_ci': ci_det_f,
+        'det_entity': det_ent,
         'by_kind': by_kind,
     }
+
+
+def summarise_numeric(rows, label):
+    """
+    Deterministic value-grounding check, scored as a falsification DETECTOR.
+
+    Each case contributes two instances: the untouched answer (negative — a
+    flag here is a false positive) and the falsified one (positive). Recall is
+    near-perfect by construction, so the deployable-or-not number is the
+    false-positive rate on `orig`, reported first.
+    """
+    o = np.array([r['orig'] for r in rows], dtype=float)
+    n = np.array([r['number'] for r in rows], dtype=float)
+    tp = int((n < 0.5).sum())
+    fn = int((n >= 0.5).sum())
+    fp = int((o < 0.5).sum())
+    tn = int((o >= 0.5).sum())
+    prec = tp / max(1, tp + fp)
+    rec = tp / max(1, tp + fn)
+    f1 = 2 * prec * rec / max(1e-12, prec + rec)
+    fpr = fp / max(1, fp + tn)
+    ci_fpr = _wilson_ci(fp, fp + tn)
+    ci_rec = _wilson_ci(tp, tp + fn)
+    print(f'\n--- {label} (n={len(rows)}) — numeric grounding check ---')
+    print(f'  false-positive rate on untouched answers  {fpr:.1%} '
+          f'[{ci_fpr[0]:.1%}, {ci_fpr[1]:.1%}]  ({fp}/{fp + tn})')
+    print(f'  recall on falsified answers               {rec:.1%} '
+          f'[{ci_rec[0]:.1%}, {ci_rec[1]:.1%}]  ({tp}/{tp + fn})')
+    print(f'  precision {prec:.3f}   F1 {f1:.3f}')
+    by_kind = {}
+    for kind in sorted({r.get('num_kind') for r in rows if r.get('num_kind')}):
+        sub = [r for r in rows if r.get('num_kind') == kind]
+        so = np.array([r['orig'] for r in sub], dtype=float)
+        sn = np.array([r['number'] for r in sub], dtype=float)
+        k_tp = int((sn < 0.5).sum())
+        k_fp = int((so < 0.5).sum())
+        k_rec = k_tp / max(1, len(sub))
+        k_fpr = k_fp / max(1, len(sub))
+        by_kind[kind] = {'n': len(sub), 'recall': k_rec, 'fpr': k_fpr,
+                         'recall_ci': _wilson_ci(k_tp, len(sub)),
+                         'fpr_ci': _wilson_ci(k_fp, len(sub))}
+        print(f'    [{kind:<9} n={len(sub):>4}]  recall {k_rec:.1%}   '
+              f'false-positive {k_fpr:.1%}')
+    return {'label': label, 'n': len(rows), 'scorer': 'numeric',
+            'precision': prec, 'recall': rec, 'f1': f1, 'fpr': fpr,
+            'fpr_ci': ci_fpr, 'recall_ci': ci_rec,
+            'tp': tp, 'fn': fn, 'fp': fp, 'tn': tn,
+            'orig': float(o.mean()), 'number': float(n.mean()),
+            'delta_number': float((o - n).mean()),
+            'delta_entity': float('nan'),
+            'random': float(np.mean([r['random'] for r in rows
+                                     if r.get('random') is not None]))
+                       if any(r.get('random') is not None for r in rows)
+                       else float('nan'),
+            'det_number': rec, 'det_entity': float('nan'),
+            'by_kind': by_kind}
 
 
 def main():
@@ -408,10 +617,15 @@ def main():
                     help='max cases per (model, dataset, generator)')
     ap.add_argument('--scope-n', type=int, default=None,
                     help='checkpoint scope N (default: config default)')
-    ap.add_argument('--scorer', default='nli', choices=['nli', 'claim', 'align'],
+    ap.add_argument('--scorer', default='nli',
+                    choices=['nli', 'nli_concat', 'claim', 'align', 'numeric'],
                     help='nli = whole-answer max over chunks (the current '
-                         'metric); claim = min over claims of max over chunks; '
-                         'align = AlignScore (needs PYTHONPATH=~/align_env)')
+                         'metric); nli_concat = the same model on the '
+                         'concatenated premise only, no per-chunk max (the F5 '
+                         'premise-granularity diagnostic); claim = min over '
+                         'claims of max over chunks; align = AlignScore (needs '
+                         'PYTHONPATH=~/align_env); numeric = deterministic '
+                         'value-presence check, no model required')
     args = ap.parse_args()
 
     if args.scope_n:
@@ -433,7 +647,9 @@ def main():
             for model in models:
                 rows = run_check(model, ds, gen, args.limit, nli)
                 if rows:
-                    summaries.append(summarise(rows, f'{ds}/{gen}/{model}'))
+                    fn = (summarise_numeric if args.scorer == 'numeric'
+                          else summarise)
+                    summaries.append(fn(rows, f'{ds}/{gen}/{model}'))
 
     if not summaries:
         print('\nNo eligible cases anywhere — check the scope and checkpoints.')
@@ -442,12 +658,24 @@ def main():
     print('\n' + '=' * 82)
     print('SUMMARY — delta = fall in nli_max when a grounded value is falsified')
     print('=' * 82)
-    print(f'{"condition":<40}{"n":>5}{"orig":>8}{"num":>8}'
-          f'{"d_num":>9}{"d_ent":>9}{"det":>6}')
-    for s in summaries:
-        print(f'{s["label"]:<40}{s["n"]:>5}{s["orig"]:>8.3f}{s["number"]:>8.3f}'
-              f'{s["delta_number"]:>+9.4f}{s["delta_entity"]:>+9.4f}'
-              f'{s["det_number"]:>6.0%}')
+    if args.scorer == 'numeric':
+        print(f'{"condition":<40}{"n":>5}{"recall":>9}{"fpr":>9}'
+              f'{"prec":>8}{"F1":>8}')
+        for s in summaries:
+            print(f'{s["label"]:<40}{s["n"]:>5}{s["recall"]:>9.1%}'
+                  f'{s["fpr"]:>9.1%}{s["precision"]:>8.3f}{s["f1"]:>8.3f}')
+    else:
+        print(f'{"condition":<40}{"n":>5}{"orig":>8}{"num":>8}'
+              f'{"d_num":>9}{"d_ent":>9}{"det":>6}{"det 95% CI":>16}'
+              f'{"gate_f":>8}{"det_f":>7}')
+        for s in summaries:
+            lo, hi = s.get('det_number_ci', (float('nan'), float('nan')))
+            print(f'{s["label"]:<40}{s["n"]:>5}{s["orig"]:>8.3f}'
+                  f'{s["number"]:>8.3f}{s["delta_number"]:>+9.4f}'
+                  f'{s["delta_entity"]:>+9.4f}{s["det_number"]:>6.0%}'
+                  f'{("[%.1f%%, %.1f%%]" % (lo * 100, hi * 100)):>16}'
+                  f'{s.get("gate_floor", float("nan")):>8.3f}'
+                  f'{s.get("det_number_floor", float("nan")):>7.0%}')
     d = np.array([s['delta_number'] for s in summaries])
     de = np.array([s['delta_entity'] for s in summaries])
     de = de[~np.isnan(de)]
