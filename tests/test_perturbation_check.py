@@ -108,6 +108,32 @@ class TestNumericGroundingCheck:
         assert not pc.numeric_grounding_check('It is 5.', [])
 
 
+class TestValueRole:
+    """
+    Not every number in an answer is a claim about the world. Both generators
+    cite the prompt's chunk numbering and write ordered lists; counting those
+    as ungrounded values took the numeric check's false-positive rate on
+    untouched HotpotQA/Claude answers from 6.0% to 39.5%.
+    """
+
+    def test_chunk_citation_is_not_content(self):
+        a = 'According to Chunk 4, the total is 1,000.'
+        assert pc.content_numbers(a) == ['1,000']
+
+    def test_ordered_list_marker_is_not_content(self):
+        a = 'The members are:\n1. Royce da 5 (Bad)\n2. Eminem (Evil)'
+        assert '1' not in pc.content_numbers(a)
+        assert '2' not in pc.content_numbers(a)
+
+    def test_grounding_check_ignores_citations_and_markers(self):
+        a = 'According to Chunk 4, the total is 1,000.\n1. First\n2. Second'
+        assert pc.numeric_grounding_check(a, ['the total was 1,000 USD'])
+
+    def test_a_content_number_still_has_to_be_grounded(self):
+        a = 'According to Chunk 4, the total is 1,500.'
+        assert not pc.numeric_grounding_check(a, ['the total was 1,000 USD'])
+
+
 class TestWilsonCI:
     def test_interval_brackets_the_estimate_and_stays_in_range(self):
         lo, hi = pc._wilson_ci(8, 200)

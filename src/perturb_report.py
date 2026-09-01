@@ -98,6 +98,43 @@ def gradient(cells, answers, scorer):
     return out
 
 
+def by_value_role(cells, answers, scorer):
+    """
+    The falsified value split by what it is: a fact, a chunk citation, or an
+    ordered-list marker.
+
+    `build_number_case` takes the first GROUNDED number in the answer, and
+    both generators emit numbers that are not claims about the world — chunk
+    citations ("According to Chunk 4, ...") and list numbering. Perturbing
+    "Chunk 4" to "Chunk 7" is not a falsification, and its near-zero delta
+    enters the mean as if it were one. Measured on 200 eligible answers per
+    cell, the falsified value is a citation or a list marker in 9.5% of
+    HotpotQA/Claude cases and 5.0% of NQ/Claude ones (GPT-4o-mini: 0-1%), so
+    this table says how much that costs.
+    """
+    import perturbation_check as pc
+    acc = defaultdict(lambda: defaultdict(list))
+    for (ds, gen, m), rows in cells.items():
+        for r in rows:
+            a = answers.get((ds, gen, m, r['query_id']))
+            if a is None or r.get('number') is None or not r.get('num_from'):
+                continue
+            role = 'content'
+            for mm in pc.NUM_RE.finditer(a):
+                if mm.group(1) == r['num_from']:
+                    role = pc.value_role(a, mm.start(1), mm.end(1))
+                    break
+            acc[(ds, gen)][role].append(float(r['orig']) - float(r['number']))
+    print(f'\n--- drop by what the falsified value IS, scorer={scorer} ---')
+    print(f'{"cell":<26}{"role":>13}{"n":>7}{"mean delta":>12}')
+    for cell in sorted(acc):
+        for role in ('content', 'citation', 'list-marker'):
+            v = np.asarray(acc[cell].get(role, []), dtype=float)
+            if v.size == 0:
+                continue
+            print(f'{("%s/%s" % cell):<26}{role:>13}{v.size:>7}{v.mean():>+12.4f}')
+
+
 def claim_counts(answers):
     """Mean assertions per answer, per generator and dataset."""
     acc = defaultdict(list)
@@ -200,6 +237,7 @@ def main():
             continue
         loaded[s] = cells
         gradient(cells, answers, s)
+        by_value_role(cells, answers, s)
 
     if 'nli' in loaded and 'claim' in loaded:
         identity_check(loaded['nli'], loaded['claim'], answers)

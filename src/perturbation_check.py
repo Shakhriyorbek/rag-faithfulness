@@ -303,6 +303,35 @@ def build_cases(generations, limit):
     return cases
 
 
+# A number in an answer is not always a claim about the world. Both generators
+# cite the prompt's own chunk numbering ("According to Chunk 4, ...") and write
+# ordered lists ("1. Royce ... 2. Eminem"). Neither value is asserted of the
+# world and neither can be expected to appear in the retrieved text, so
+# counting them as ungrounded is a defect in the check rather than a finding
+# about the answer. Measured on 200 eligible answers per cell, excluding them
+# takes the check's false-positive rate on untouched answers from 39.5% to
+# 6.0% (HotpotQA/Claude) and 8.0% to 2.5% (NQ/Claude).
+_CITATION_LEFT = re.compile(
+    r'(?:chunks?|passages?|documents?|sources?|contexts?)\s*#?\s*$', re.I)
+_LINE_START = re.compile(r'(?:^|\n)\s*$')
+
+
+def value_role(answer: str, start: int, end: int) -> str:
+    """'citation' | 'list-marker' | 'content' for the number at [start, end)."""
+    left = answer[:start]
+    if _CITATION_LEFT.search(left[-30:]):
+        return 'citation'
+    if _LINE_START.search(left[-12:]) and answer[end:end + 2] in ('. ', ') '):
+        return 'list-marker'
+    return 'content'
+
+
+def content_numbers(answer: str):
+    """Quantities the answer actually asserts — no citations, no list markers."""
+    return [m.group(1) for m in NUM_RE.finditer(answer or '')
+            if value_role(answer, m.start(1), m.end(1)) == 'content']
+
+
 def numeric_grounding_check(answer: str, chunks) -> bool:
     """
     Deterministic value grounding: does EVERY quantity in the answer occur in
@@ -319,11 +348,15 @@ def numeric_grounding_check(answer: str, chunks) -> bool:
     informative number is not its recall but its FALSE-POSITIVE rate on the
     untouched answers — a check that flags a third of correct answers is not
     deployable however well it catches fabrications.
+
+    Only CONTENT numbers are checked: see content_numbers() for why chunk
+    citations and ordered-list markers are excluded, and by how much it
+    matters.
     """
     ctx = ' '.join(c for c in (chunks or []) if c)
     if not ctx:
         return False
-    return all(num_in_text(n, ctx) for n in answer_numbers(answer))
+    return all(num_in_text(n, ctx) for n in content_numbers(answer))
 
 
 def _wilson_ci(k: int, n: int, z: float = 1.96):
