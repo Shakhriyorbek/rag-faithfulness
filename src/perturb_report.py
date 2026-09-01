@@ -116,10 +116,23 @@ def claim_counts(answers):
 
 def identity_check(cells_nli, cells_claim, answers, tol=1e-6):
     """
-    Single-assertion, markdown-free answers must score identically under
-    whole-answer and claim-level aggregation.
+    A single-assertion answer must score identically under whole-answer and
+    claim-level aggregation — IF both aggregates are handed the same string.
+
+    Split into two groups on purpose, because they answer different questions:
+
+      no markdown   the claim IS the answer, byte for byte. The identity is a
+                    correctness check on the claim-level implementation and
+                    must hold to float tolerance.
+      markdown      the claim is the answer with `**`/`*`/backticks removed,
+                    because score_claims runs strip_markdown on claims and
+                    NOT on the whole-answer hypothesis. The two scorers are
+                    then reading different strings, and the size of the
+                    difference measures how much the evaluator reacts to
+                    formatting characters alone.
     """
-    diffs, n_checked, worst = [], 0, (0.0, None)
+    groups = {'no markdown': [], 'markdown': []}
+    worst = {'no markdown': (0.0, None), 'markdown': (0.0, None)}
     for key, rows in cells_nli.items():
         claim_rows = {r['query_id']: r for r in cells_claim.get(key, [])}
         for r in rows:
@@ -127,36 +140,37 @@ def identity_check(cells_nli, cells_claim, answers, tol=1e-6):
             if a is None:
                 continue
             claims = cf.split_claims(a)
+            stripped = cf.strip_markdown(a).strip()
             # The condition is not merely "one claim": it is "the single claim
-            # IS the answer". A numbered-list answer can yield one claim while
-            # the splitter drops the lead-in and the short list items, in which
-            # case the two aggregates are legitimately scoring different
-            # strings and the identity does not apply. That case is a finding
-            # in its own right (see the ordered-list note in the report), not a
-            # violation of this check.
-            if len(claims) != 1 or claims[0] != cf.strip_markdown(a).strip():
+            # IS the answer, up to markdown". A numbered-list answer can yield
+            # one claim while the splitter drops the lead-in and the short list
+            # items, in which case the two aggregates are legitimately scoring
+            # different content and the identity does not apply.
+            if len(claims) != 1 or claims[0] != stripped:
                 continue
             c = claim_rows.get(r['query_id'])
             if c is None:
                 continue
-            n_checked += 1
+            g = 'no markdown' if stripped == a.strip() else 'markdown'
             d = abs(float(r['orig']) - float(c['orig']))
-            diffs.append(d)
-            if d > worst[0]:
-                worst = (d, (key, r['query_id']))
+            groups[g].append(d)
+            if d > worst[g][0]:
+                worst[g] = (d, (key, r['query_id']))
     print('\n--- single-assertion identity check (claim_min == whole_max) ---')
-    if not diffs:
-        print('  no eligible cases (need both the nli and claim runs)')
-        return
-    diffs = np.asarray(diffs)
-    print(f'  cases checked           {n_checked}')
-    print(f'  max |difference|        {diffs.max():.6g}')
-    print(f'  cases beyond {tol:g}      {(diffs > tol).sum()}')
-    if diffs.max() > tol:
-        print(f'  worst: {worst[1]}  -> strip_markdown is changing the '
-              f'hypothesis for one scorer only')
-    else:
-        print('  identity holds — the two aggregates see the same hypothesis')
+    for g, diffs in groups.items():
+        if not diffs:
+            print(f'  [{g}] no eligible cases')
+            continue
+        d = np.asarray(diffs)
+        print(f'  [{g}] n={d.size}   beyond {tol:g}: {(d > tol).sum()}   '
+              f'mean |diff| {d.mean():.4f}   max {d.max():.4f}')
+        if g == 'no markdown' and (d > tol).any():
+            print(f'      VIOLATION — worst {worst[g][1]}; the claim-level '
+                  f'implementation is not reducing to the whole-answer metric')
+        elif g == 'markdown' and (d > tol).any():
+            print(f'      worst {worst[g][1]} — this is strip_markdown '
+                  f'applied to one hypothesis and not the other, not a bug in '
+                  f'the aggregation')
 
 
 def main():

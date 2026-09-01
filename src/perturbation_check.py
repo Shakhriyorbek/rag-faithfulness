@@ -497,11 +497,13 @@ def summarise(rows, label):
         d_ent = ent_o - ent
         ci_ent = _bootstrap_ci(d_ent)
         det_ent, k_e, n_e = _detection(ent_o, ent, GATE)
+        ci_det_e = _wilson_ci(k_e, n_e)
         print(f'  entity-perturbed (n={ent.size})    {ent.mean():.4f}   '
               f'delta {d_ent.mean():+.4f}  '
               f'95% CI [{ci_ent[0]:+.4f}, {ci_ent[1]:+.4f}]')
         mean_d_ent = float(d_ent.mean())
     else:
+        ci_det_e = (float('nan'), float('nan'))
         det_ent = float('nan')
         mean_d_ent = float('nan')
         print('  entity-perturbed           (no eligible cases)')
@@ -512,7 +514,7 @@ def summarise(rows, label):
     # +/-2.7pp, which several of the differences read off Table II do not clear.
     print(f'  detection @ fixed gate {GATE}:      number {det_num:.1%} '
           f'[{ci_det[0]:.1%}, {ci_det[1]:.1%}]  ({k_num}/{n_num})   '
-          f'entity {det_ent:.1%}')
+          f'entity {det_ent:.1%} [{ci_det_e[0]:.1%}, {ci_det_e[1]:.1%}]')
     if gate_f == gate_f:
         print(f'  detection @ floor gate {gate_f:.3f}:    number {det_num_f:.1%} '
               f'[{ci_det_f[0]:.1%}, {ci_det_f[1]:.1%}]  ({k_f}/{n_f})')
@@ -545,7 +547,7 @@ def summarise(rows, label):
         'det_number_k': k_num, 'det_number_n': n_num,
         'gate_floor': gate_f, 'det_number_floor': det_num_f,
         'det_number_floor_ci': ci_det_f,
-        'det_entity': det_ent,
+        'det_entity': det_ent, 'det_entity_ci': ci_det_e,
         'by_kind': by_kind,
     }
 
