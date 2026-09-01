@@ -73,6 +73,10 @@ def main():
                     help='phase `cond`: where `correct` comes from — judge, '
                          'contains, em or f1. "judge" falls back to '
                          'containment per row and prints the coverage')
+    ap.add_argument('--legacy-rfg', action='store_true',
+                    help='also compute the RETIRED gap metric (RFG/nRFG, '
+                         'paper Section III-C; src/legacy/rfg.py). Off by '
+                         'default: the tables are produced without it.')
     ap.add_argument('--yes', action='store_true',
                     help=f'authorize the paid phases {sorted(PAID_PHASES)}')
     args = ap.parse_args()
@@ -167,7 +171,7 @@ def main():
     if 'rerank' in phases:
         from rerank import run_rerank_experiment
         from results import assemble_results
-        df = assemble_results()
+        df = assemble_results(legacy_rfg=True)   # picks the model to re-rank
         claude_rows = df[df['generator'] == 'claude']
         worst = claude_rows.groupby('model')['nRFG'].mean().idxmax()
         print(f'worst model by nRFG: {worst}')
@@ -176,11 +180,12 @@ def main():
         from figures import export_all
         from results import (assemble_results, hypothesis_summary,
                              robustness_analysis)
-        df = assemble_results(force=True)
+        df = assemble_results(force=True, legacy_rfg=args.legacy_rfg)
         print('\n=== per-model summary (claude) ===')
         claude_rows = df[df['generator'] == 'claude']
-        print(claude_rows.groupby(['model', 'paradigm'])[
-            ['NDCG@5', 'faithfulness', 'RFG', 'nRFG']].mean().round(3))
+        cols = [c for c in ('NDCG@5', 'faithfulness', 'nli_max', 'align_score',
+                            'RFG', 'nRFG') if c in claude_rows.columns]
+        print(claude_rows.groupby(['model', 'paradigm'])[cols].mean().round(3))
         robustness_analysis(df)
         print('\n=== hypotheses ===')
         print(hypothesis_summary(df).to_string(index=False))

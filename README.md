@@ -12,6 +12,25 @@ answers, same test. That sensitivity is now the paper. See
 with the earlier single-evaluator read in
 [`reports/2026-08-14_rung2_results.md`](reports/2026-08-14_rung2_results.md).
 
+### Which four embedders the results cover
+
+`config.EMBEDDING_MODELS` lists **seven** models; every reported result uses
+**four**:
+
+| in the paper | why |
+|---|---|
+| `all-mpnet-base-v2` (contrastive) | the widely-deployed baseline |
+| `BGE-M3` (multilingual) | a different pretraining paradigm |
+| `E5-large-instruct` (instruction-tuned) | the paradigm H1 was about |
+| `text-embedding-3-small` (contrastive, API) | a closed-source arm |
+
+`GTE-large`, `Instructor-XL` and `jina-embeddings-v3` are configured and
+runnable but were **never run at n=1000**. The grid is a testbed for the
+evaluator comparison rather than a survey of embedders, and each extra model
+adds a full generation pass over both datasets and both generators (~$3.40 of
+API spend) without changing what the evaluator comparison can show. This is a
+coverage decision, not an omission: `--models` runs any of the seven.
+
 - **Moving to a new machine (SSH keys first)** → [`DEVICE_MIGRATION.md`](DEVICE_MIGRATION.md)
 - **What still has to change to finish the paper** → [`PAPER_TODO.md`](PAPER_TODO.md)
 - **Project context, decisions, and every bug not to reintroduce** → [`CLAUDE.md`](CLAUDE.md)

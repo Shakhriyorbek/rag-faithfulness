@@ -1,6 +1,14 @@
 """
-metrics.py — RFG, nRFG, and robustness analysis.
-Implements Eq. (2) RFG, Eq. (3) nRFG, and the 9-variant robustness matrix.
+legacy/rfg.py — RFG, nRFG, and the 9-variant robustness matrix.
+
+⚠️ RETIRED METRIC. Section III-C of the paper retires the gap metric; this file
+was `src/metrics.py` and is kept only so the superseded results remain
+reproducible. Nothing on the v6 path imports it: `results.assemble_results`
+writes the RFG/nRFG columns only under `--legacy-rfg`, and the two consumers
+that need those columns (`robustness_analysis`, the nRFG rows of
+`hypothesis_summary`) skip themselves when the columns are absent.
+
+Implements Eq. (2) RFG and Eq. (3) nRFG of the v5 draft.
 """
 import numpy as np
 from itertools import product

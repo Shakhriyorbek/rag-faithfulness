@@ -156,19 +156,19 @@ def test_conditional_faithfulness_split_is_computable():
 
 # ── audit S1-1: nan must propagate through rfg/nrfg ──────────────────────────
 def test_rfg_propagates_nan():
-    import metrics
+    from legacy import rfg as metrics
     assert math.isnan(metrics.rfg(0.9, float('nan')))
     assert math.isnan(metrics.rfg(float('nan'), 0.9))
 
 
 def test_nrfg_propagates_nan_and_none():
-    import metrics
+    from legacy import rfg as metrics
     assert math.isnan(metrics.nrfg(0.9, float('nan')))
     assert math.isnan(metrics.nrfg(0.9, None))
 
 
 def test_rfg_normal_values_unchanged():
-    import metrics
+    from legacy import rfg as metrics
     assert metrics.rfg(0.9, 0.78) == pytest.approx(0.12)
     # Berend's discriminating example must still separate
     assert metrics.nrfg(0.9, 0.85) == pytest.approx(0.0556, abs=1e-4)

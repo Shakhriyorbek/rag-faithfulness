@@ -252,7 +252,7 @@ def c_rfg_nan_guard():
     Audit S1-1: a nan faithfulness must not be silently clamped to 0.0 by
     max(0.0, f) — that turns a missing measurement into a real one.
     """
-    import metrics
+    from legacy import rfg as metrics
     nan = float('nan')
     out = metrics.rfg(0.9, nan)
     import math

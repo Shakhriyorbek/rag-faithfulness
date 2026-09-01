@@ -6,10 +6,14 @@ Replaces the notebook's undefined SIMULATED_RESULTS (audit B2): everything
 downstream (figures, tables) reads the DataFrame assembled here from real
 checkpoints.
 
-Metric conventions (CLAUDE.md §5):
-  - nRFG is the PRIMARY metric; raw RFG is a secondary diagnostic and is
-    always reported alongside absolute faithfulness so both-low stays visible.
-  - RFG/nRFG reuse src/metrics.py (rfg, nrfg, robustness grid).
+Metric conventions:
+  - The gap metric is RETIRED (paper Section III-C). RFG/nRFG now live in
+    src/legacy/rfg.py and reach this module only when `legacy_rfg=True` is
+    passed to assemble_results (`run_pipeline --legacy-rfg`). Everything on
+    the v6 path reads absolute faithfulness per evaluator instead.
+  - The consumers that need those columns — robustness_analysis and the nRFG
+    rows of hypothesis_summary — skip themselves when the columns are absent
+    rather than raising.
 """
 from typing import Dict, List
 
@@ -18,8 +22,8 @@ import pandas as pd
 
 import config
 from correctness import load_correctness
-from metrics import (compute_rfg_variants, nrfg, rfg,
-                     robustness_correlation_matrix, summarize_robustness)
+from legacy.rfg import (compute_rfg_variants, nrfg, rfg,
+                        robustness_correlation_matrix, summarize_robustness)
 from utils import checkpoint_exists, load_checkpoint, save_checkpoint
 
 # Order matters only for display. 'claude' stays the reference arm because it
@@ -43,7 +47,8 @@ def bootstrap_significance(scores_a: List[float], scores_b: List[float],
     # compared the un-centered distribution against the observed diff, which
     # makes p ~= 0.5 for any true effect — nothing could ever be significant.)
     centered = diffs - diffs.mean()
-    p_value = float(np.mean(np.abs(centered) >= np.abs(observed)))
+    n_extreme = int(np.sum(np.abs(centered) >= np.abs(observed)))
+    p_value = float(n_extreme / n_bootstrap)
     ci_low, ci_high = np.percentile(diffs, [2.5, 97.5])
     return {
         'observed_diff': round(float(observed), 4),
@@ -51,6 +56,11 @@ def bootstrap_significance(scores_a: List[float], scores_b: List[float],
         'significant': p_value < alpha,
         'ci_95': (round(float(ci_low), 4), round(float(ci_high), 4)),
         'n_bootstrap': n_bootstrap,
+        # A resampling p-value has a resolution floor: with 10,000 resamples
+        # the smallest attainable non-zero value is 1e-4, and 0.0005 means
+        # 5/10,000, not a clamped minimum. Reported so the paper can say which.
+        'n_extreme': n_extreme,
+        'p_resolution': 1.0 / n_bootstrap,
     }
 
 
@@ -87,7 +97,8 @@ def permutation_test(scores_a, scores_b, n_iter: int = 10_000,
     for i in range(n_iter):
         perm = rng.permutation(pooled)
         null[i] = perm[:n_a].mean() - perm[n_a:].mean()
-    p_value = float(np.mean(np.abs(null) >= abs(observed)))
+    n_extreme = int(np.sum(np.abs(null) >= abs(observed)))
+    p_value = float(n_extreme / n_iter)
 
     # CI on the effect itself, by resampling each group independently.
     ia = rng.integers(0, n_a, size=(n_iter, n_a))
@@ -101,6 +112,8 @@ def permutation_test(scores_a, scores_b, n_iter: int = 10_000,
         'n_a': n_a, 'n_b': len(b),
         'ci_95': (round(float(lo), 4), round(float(hi), 4)),
         'n_iter': n_iter,
+        'n_extreme': n_extreme,
+        'p_resolution': 1.0 / n_iter,
     }
 
 
@@ -356,10 +369,15 @@ def _mean(scores, key):
     return float(np.mean(vals)) if vals else None
 
 
-def assemble_results(force: bool = False) -> pd.DataFrame:
+def assemble_results(force: bool = False,
+                     legacy_rfg: bool = False) -> pd.DataFrame:
     """
-    One row per model × dataset × generator with retrieval quality,
-    faithfulness (NLI + AlignScore), RFG and nRFG.
+    One row per model × dataset × generator with retrieval quality and
+    faithfulness (NLI + AlignScore).
+
+    `legacy_rfg=True` additionally writes the retired RFG/nRFG columns
+    (paper Section III-C, src/legacy/rfg.py). Off by default so the pipeline
+    that produces the tables does not compute a metric the paper retires.
     """
     if not force and checkpoint_exists('final_results_df'):
         return load_checkpoint('final_results_df')
@@ -387,7 +405,7 @@ def assemble_results(force: bool = False) -> pd.DataFrame:
                 signals = [v for v in (align, nli_max) if v is not None]
                 faith_mean = float(np.mean(signals))
 
-                rows.append({
+                row = {
                     'model': model,
                     'paradigm': paradigm.get(model, '?'),
                     'dataset': ds_name,
@@ -399,9 +417,11 @@ def assemble_results(force: bool = False) -> pd.DataFrame:
                     'nli_mean_agg': _mean(nli_scores, 'nli_mean'),
                     'align_score': align,
                     'faithfulness': faith_mean,
-                    'RFG': rfg(rq['NDCG@5'], faith_mean),
-                    'nRFG': nrfg(rq['NDCG@5'], faith_mean),
-                })
+                }
+                if legacy_rfg:
+                    row['RFG'] = rfg(rq['NDCG@5'], faith_mean)
+                    row['nRFG'] = nrfg(rq['NDCG@5'], faith_mean)
+                rows.append(row)
 
     df = pd.DataFrame(rows)
     if df.empty:
@@ -415,8 +435,19 @@ def robustness_analysis(df: pd.DataFrame) -> str:
     """
     Berend point 3: 3 retrieval × 3 faithfulness metrics = 9 RFG variants,
     Spearman correlation of the model rankings they induce. Reuses
-    metrics.py. Uses GPT-4o-mini rows (full 7-model coverage).
+    src/legacy/rfg.py.
+
+    ⚠️ LEGACY — the gap metric is retired (paper Section III-C). Runs only when
+    assemble_results was called with legacy_rfg=True.
+
+    Uses the CLAUDE rows. (The docstring used to say GPT-4o-mini while the
+    code filtered claude; claude is correct — it is the reference arm.)
     """
+    if 'nRFG' not in df.columns:
+        msg = ('robustness_analysis skipped: RFG/nRFG columns absent '
+               '(retired metric — re-run with --legacy-rfg to compute it)')
+        print(msg)
+        return msg
     sub = df[df['generator'] == 'claude']
     per_model = {}
     for model, g in sub.groupby('model'):
@@ -447,20 +478,18 @@ def hypothesis_summary(df: pd.DataFrame) -> pd.DataFrame:
     out = []
     claude_rows = df[df['generator'] == 'claude']
 
-    # H1: instruction-tuned < contrastive (nRFG)
-    inst = claude_rows[claude_rows['paradigm'] == 'instruction-tuned']['nRFG'].tolist()
-    cont = claude_rows[claude_rows['paradigm'] == 'contrastive']['nRFG'].tolist()
-    if inst and cont:
-        n = min(len(inst), len(cont))
-        h1 = bootstrap_significance(cont[:n], inst[:n])
-        out.append({
-            'hypothesis': 'H1 instruction-tuned < contrastive (nRFG)',
-            'observed': h1['observed_diff'], 'p': h1['p_value'],
-            'supported': bool(h1['significant'] and h1['observed_diff'] > 0),
-        })
+    # H1 IS GONE. It fed two UNPAIRED groups — `cont[:n]` and `inst[:n]`, which
+    # are different models aligned only by DataFrame row order — into
+    # bootstrap_significance, which pairs by index and asserts equal lengths.
+    # The assert passed because the lengths happened to match, so the test ran
+    # and returned a p-value for a comparison it had not made. It was dead
+    # relative to v6 (H1 is reported as not supported, on the per-evaluator
+    # spreads, not on nRFG), and an invalid test must not ship even dead.
 
-    # H2: HotpotQA has the highest nRFG
-    by_ds = claude_rows.groupby('dataset')['nRFG'].mean()
+    has_rfg = 'nRFG' in claude_rows.columns
+
+    # H2: HotpotQA has the highest nRFG  [LEGACY — retired metric]
+    by_ds = claude_rows.groupby('dataset')['nRFG'].mean() if has_rfg else []
     if len(by_ds) > 1:
         out.append({
             'hypothesis': 'H2 HotpotQA highest nRFG (multi-hop)',
@@ -516,7 +545,9 @@ def hypothesis_summary(df: pd.DataFrame) -> pd.DataFrame:
         })
 
         # The nRFG version, kept as a diagnostic and labelled when it is just
-        # the retrieval ranking wearing a different name.
+        # the retrieval ranking wearing a different name. [LEGACY]
+        if not has_rfg:
+            continue
         n_a = rows_a[rows_a['model'].isin(shared)].groupby('model')['nRFG'].mean()
         n_b = rows_b[rows_b['model'].isin(shared)].groupby('model')['nRFG'].mean()
         rho_n, p_n = spearmanr(n_a[shared], n_b[shared])
@@ -559,7 +590,13 @@ def hypothesis_summary(df: pd.DataFrame) -> pd.DataFrame:
                 'supported': diff > 0,
             })
 
-    # H5: re-ranking cuts worst model's RFG by >= 15% relative
+    # H5: re-ranking cuts worst model's RFG by >= 15% relative  [LEGACY —
+    # stated in terms of the retired gap metric, and never run: there are no
+    # reranked_* checkpoints. Skipped entirely without the legacy columns.]
+    if not has_rfg:
+        hyp_df = pd.DataFrame(out)
+        save_checkpoint('hypothesis_summary', hyp_df)
+        return hyp_df
     worst = claude_rows.groupby('model')['nRFG'].mean().idxmax()
     base = claude_rows[claude_rows['model'] == worst]
     deltas = []

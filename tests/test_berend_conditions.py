@@ -80,13 +80,13 @@ def test_nrfg_zero_retrieval_quality_is_nan_not_huge():
     mean containing it. RQ=0 is common per query — every query whose top-5
     misses all gold chunks — and the conditional analysis works per query.
     """
-    import metrics
+    from legacy import rfg as metrics
     assert math.isnan(metrics.nrfg(0.0, 0.78))
     assert math.isnan(metrics.nrfg(0.0, 0.0))
 
 
 def test_nrfg_still_separates_berends_example():
-    import metrics
+    from legacy import rfg as metrics
     assert metrics.nrfg(0.9, 0.85) == pytest.approx(0.0556, abs=1e-4)
     assert metrics.nrfg(0.3, 0.25) == pytest.approx(0.1667, abs=1e-4)
     assert metrics.rfg(0.9, 0.85) == metrics.rfg(0.3, 0.25)   # RFG cannot

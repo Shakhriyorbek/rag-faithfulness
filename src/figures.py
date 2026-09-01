@@ -158,8 +158,13 @@ def export_all(df: pd.DataFrame):
     out = config.OUTPUT_DIR
     out.mkdir(parents=True, exist_ok=True)
     plot_rfg_scatter(df, str(out / 'fig1_rfg_scatter.pdf'))
-    plot_rfg_heatmap(df, str(out / 'fig2_rfg_heatmap.pdf'))
-    plot_paradigm_rfg(df, str(out / 'fig3_paradigm_rfg.pdf'))
-    plot_robustness_matrix(str(out / 'fig4_robustness_matrix.pdf'))
+    # Figures 2-4 are all in terms of the retired gap metric (Section III-C).
+    # They are drawn only when assemble_results ran with legacy_rfg=True.
+    if 'nRFG' in df.columns:
+        plot_rfg_heatmap(df, str(out / 'fig2_rfg_heatmap.pdf'))
+        plot_paradigm_rfg(df, str(out / 'fig3_paradigm_rfg.pdf'))
+        plot_robustness_matrix(str(out / 'fig4_robustness_matrix.pdf'))
+    else:
+        print('  [legacy] fig2-4 skipped: RFG/nRFG columns absent')
     df.to_csv(out / 'full_results.csv', index=False)
     print(f'exports written to {out}')
