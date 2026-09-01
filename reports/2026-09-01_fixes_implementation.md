@@ -19,7 +19,8 @@ flattens under F3, or if the Section V deltas move by more than ~0.02 under F1.
   per-generator means the paper quotes move from **2.992 → 2.996** (Claude/NQ)
   and **1.176 → 1.176** (GPT/NQ). The mechanism claim in Section V-C stands.
 - **F1 moves the Section V sample, not (by more than 0.02) the deltas.**
-  <!--F1-DELTA-VERDICT-->
+  Re-scored, all 16 cells: **max |Δ| = 0.0165, mean 0.0074**, under the
+  threshold everywhere. The published anchor 0.033–0.094 becomes 0.037–0.088.
 
 The two substring blockers were both real and both are fixed. Their downstream
 effect is much smaller than their severity suggested, and in one case runs the
@@ -27,6 +28,96 @@ opposite way from the brief's prediction — details per item.
 
 ---
 
+
+## F1 — `num_in_text` matched numbers as substrings — **FIXED, stop-condition did not fire**
+
+Reproduced exactly as reported; all five listed calls returned True. Fixed by
+matching at numeric/word boundaries.
+
+**The brief's proposed regex does not satisfy its own test table.** Its
+lookbehind is `(?<![\d.,])`, which lets `B` through, so
+`num_in_text('7', 'model B7 was tested')` stays True. The implemented boundary
+mirrors `NUM_RE` instead — `(?<![\w.,])…(?![\w.,]?\d)` — which excludes a
+digit glued to letters, exactly as `NUM_RE` already does for `B12` and
+`28.0.0.137`. All six of the brief's cases now pass and are pinned as tests.
+
+### Eligible cases, attributed to each fix
+
+| cell | as published | + F1 boundary | + F4 refusal rule |
+|---|---|---|---|
+| NQ / Claude | 1,893 | 1,994 | **2,052** |
+| NQ / GPT-4o-mini | 845 | 892 | 893 |
+| HotpotQA / Claude | 1,554 | 1,599 | **1,694** |
+| HotpotQA / GPT-4o-mini | 831 | 886 | 893 |
+| **total** | **5,123** | **5,371** | **5,532** |
+
+The sample grew, which is the opposite of what the severity ordering suggests
+but is the right direction: rule (b) — "the replacement must not appear in the
+context" — was throwing away more eligible cases than rule (a) was letting
+bad ones in. Within the 200 cases each cell actually scores, 87–95% of query
+IDs are unchanged and 81–91% are the identical (query, value, replacement)
+triple, so this is a partial resample, not a new experiment.
+
+### Deltas and detection, before and after — all 16 cells re-scored
+
+| cell | Δ before | Δ after | change | det. before | det. after |
+|---|---|---|---|---|---|
+| NQ/claude/all-mpnet | +0.0338 | +0.0367 | +0.0029 | 3% | 3% |
+| NQ/claude/BGE-M3 | +0.0379 | +0.0405 | +0.0025 | 2% | 2% |
+| NQ/claude/E5-large-instruct | +0.0508 | +0.0555 | +0.0046 | 6% | 7% |
+| NQ/claude/text-embedding-3-small | +0.0302 | +0.0377 | +0.0076 | 3% | 4% |
+| NQ/gpt/all-mpnet | +0.4797 | +0.4768 | −0.0029 | 62% | 61% |
+| NQ/gpt/BGE-M3 | +0.4474 | +0.4309 | −0.0165 | 58% | 54% |
+| NQ/gpt/E5-large-instruct | +0.4353 | +0.4281 | −0.0071 | 55% | 52% |
+| NQ/gpt/text-embedding-3-small | +0.4624 | +0.4460 | −0.0164 | 58% | 55% |
+| HotpotQA/claude/all-mpnet | +0.0594 | +0.0636 | +0.0042 | 9% | 12% |
+| HotpotQA/claude/BGE-M3 | +0.0737 | +0.0619 | −0.0118 | 14% | 14% |
+| HotpotQA/claude/E5-large-instruct | +0.0872 | +0.0875 | +0.0004 | 15% | 16% |
+| HotpotQA/claude/text-embedding-3-small | +0.0936 | +0.0804 | −0.0132 | 13% | 13% |
+| HotpotQA/gpt/all-mpnet | +0.3948 | +0.4056 | +0.0109 | 70% | 73% |
+| HotpotQA/gpt/BGE-M3 | +0.3573 | +0.3516 | −0.0057 | 65% | 65% |
+| HotpotQA/gpt/E5-large-instruct | +0.4046 | +0.3973 | −0.0073 | 71% | 69% |
+| HotpotQA/gpt/text-embedding-3-small | +0.4141 | +0.4093 | −0.0047 | 76% | 75% |
+
+**max |Δ| = 0.0165, mean |Δ| = 0.0074 — under the 0.02 stop-threshold in every
+cell.** The published ranges move from 0.033–0.094 to **0.037–0.088** on
+Claude and 0.357–0.480 to **0.352–0.477** on GPT-4o-mini; detection moves from
+2–15% to 2–16% and 55–76% to 52–75%.
+
+**Section VIII's TOST anchor survives**: "one falsified fact moves NLI-max by
+0.033–0.094" becomes **0.037–0.088**, so ±0.05 is still about the size of one
+fabrication and the margin curve needs no re-derivation.
+
+### The sample contamination this exposed — worth a sentence in the paper
+
+`build_number_case` takes the first **grounded** number in the answer, and not
+every number in an answer is a claim about the world. Splitting the new runs by
+what the falsified value actually is:
+
+| cell | role | n | mean Δ |
+|---|---|---|---|
+| HotpotQA / Claude | content | 730 | **+0.0850** |
+| | chunk citation | 61 | **−0.0625** |
+| | list marker | 9 | +0.0501 |
+| NQ / Claude | content | 747 | **+0.0442** |
+| | chunk citation | 6 | +0.0154 |
+| | list marker | 47 | +0.0203 |
+| NQ / GPT-4o-mini | content | 789 | +0.4492 |
+| | list marker | 11 | +0.1749 |
+| HotpotQA / GPT-4o-mini | content | 784 | +0.3907 |
+
+Falsifying *"According to Chunk 4"* into *"According to Chunk 7"* is not a
+factual falsification, and on HotpotQA/Claude those 61 cases have a **negative**
+mean delta — the score goes UP. They are 7.6% of that cell and they pull its
+mean down by about 15% (content-only +0.0850 against +0.0734 pooled).
+
+Case construction was deliberately **not** changed, because every scorer has to
+see the same cases and three scorer runs were already in flight. The
+recommendation is to exclude citation and list-marker values from
+`build_number_case` and re-run the probe once — it is one line and ~2 GPU-hours
+— which would raise the reported Claude deltas rather than lower them.
+
+---
 
 ## F2 — `textnorm.contains` substring defect — **FIXED, and it moves almost nothing**
 
@@ -143,7 +234,44 @@ Table III is not an artifact of it.**
 curly-quote class, and the identity assertion — with one claim and no markdown,
 `claim_min` must equal `whole_max` to float tolerance. It is pinned as a unit
 test against a deterministic per-pair NLI stub, and checked on real data by
-`src/perturb_report.py --scorers nli,claim`.
+`src/perturb_report.py`.
+
+### Table III rebuilt, with n — and it is an NQ-only table
+
+`src/perturb_report.py` rebuilds the by-assertion-count table with a
+denominator and a bootstrap CI on every row. Restricted to NQ it reproduces the
+published Table III to three decimals, including the 0.4922 figure:
+
+| assertions | paper | rebuild (NQ, pre-fix) | n |
+|---|---|---|---|
+| 1 | +0.086 | **+0.0860** | 92 |
+| 2 | +0.056 | **+0.0555** | 298 |
+| 3 | +0.018 | +0.0220 | 193 |
+| 4 | *(not shown)* | +0.0106 | 104 |
+| 5+ | +0.007 | **+0.0067** | 113 |
+| GPT, 1 assertion | +0.492 | **+0.4922** | 675 |
+
+**So Table III is the NQ half of the experiment, and the paper does not say
+so.** On HotpotQA the same decay exists for Claude but sits higher
+(+0.1227 / +0.0928 / +0.0570 / +0.0282 / +0.0460, n = 137/292/274/68/29), and
+GPT-4o-mini has **n = 1, 0, 0** in buckets 3, 4 and 5+ — there is no HotpotQA
+gradient to report for that generator at all.
+
+Over the full grid after the fixes, Claude decays monotonically through four
+buckets and then ticks back up:
+
+| assertions | Claude Δ (n) | GPT-4o-mini Δ (n) |
+|---|---|---|
+| 1 | +0.1115 (225) | +0.4452 (1404) |
+| 2 | +0.0681 (578) | +0.2561 (126) |
+| 3 | +0.0406 (470) | +0.0382 (28) |
+| 4 | +0.0210 (177) | **+0.2422 (17)** |
+| 5+ | **+0.0371 (150)** | +0.0141 (9) |
+
+**The mechanism claim survives; the table as printed oversells it.** Three
+recommendations, all cheap: say the table is NQ; print n per row; and either
+show bucket 4 or collapse to "3 or more" — the GPT row beyond bucket 2 rests on
+28, 17 and 9 cases and is not monotone once bucket 4 is visible.
 
 ---
 
@@ -216,6 +344,73 @@ extracted claim; AlignScore receives the concatenated context as a single
 premise and performs its own splitting."*
 
 <!--F5-DIAGNOSTIC-->
+
+---
+
+## F6 — detection threshold below the random-context floor — **FIXED (all three parts), and it reframes Table II**
+
+### 1. Donor rejection
+
+`build_cases` now rejects a random-context donor whose text contains any
+quantity from the answer, keeping the 10-try loop and falling back to the old
+behaviour with a printed count. Fallbacks: **16–21 of 200 (8–10.5%)** on
+NQ/Claude, **4–6 (2–3%)** on NQ/GPT-4o-mini, **0** on both HotpotQA cells. The
+floor moves only slightly (NQ/Claude 0.504 → 0.489, 0.522 → 0.497), which
+says the accidental support was real but not the main driver of the floor.
+
+### 2. The floor-anchored gate — the substantive result
+
+The brief is right and the effect is larger than stated. The random-context
+distribution is not merely close to the 0.5 gate, it is **heavy-tailed**:
+
+| cell | mean random score | **p95 random score** |
+|---|---|---|
+| NQ / Claude | 0.489 – 0.527 | **0.985 – 0.990** |
+| NQ / GPT-4o-mini | 0.484 – 0.531 | 0.974 – 0.979 |
+| HotpotQA / Claude | 0.440 – 0.477 | 0.990 – 0.994 |
+| HotpotQA / GPT-4o-mini | 0.180 – 0.223 | 0.939 – 0.954 |
+
+So under NLI-max an answer scored against a **completely unrelated context**
+beats 0.5 about half the time, and beats 0.94 five percent of the time. Read
+at a gate anchored to that distribution (its 95th percentile) instead of at
+0.5:
+
+| evaluator | cell | det. @ 0.5 | **det. @ floor gate** | n at the gate |
+|---|---|---|---|---|
+| NLI-max | NQ / Claude | 2 – 7% | **43 – 46%** | 83 – 135 |
+| NLI-max | NQ / GPT-4o-mini | 52 – 61% | **84 – 89%** | 105 – 128 |
+| NLI-max | HotpotQA / Claude | 12 – 16% | **43 – 52%** | 29 – 60 |
+| NLI-max | HotpotQA / GPT-4o-mini | 65 – 75% | **79 – 85%** | 86 – 102 |
+| claim-min | NQ / Claude | 20 – 25% | 50 – 53% | — |
+| AlignScore | NQ / Claude | 27 – 32% | 75 – 84% | — |
+| AlignScore | HotpotQA / Claude | 39 – 53% | 92 – 97% | — |
+
+(claim-min and AlignScore rows are from the archived runs re-summarised under
+the new reporting; their post-fix runs are still in flight.)
+
+**Two conclusions, and the paper needs both:**
+
+- **The evaluator ordering is unchanged** — AlignScore > claim-min > NLI-max in
+  every cell, at either gate. The paper's spine does not depend on the gate.
+- **The magnitudes do.** "NLI-max catches 4% of falsified values" is a
+  statement about a compressed scale as much as about blindness; on the same
+  cases at a floor-anchored gate it catches 43–46%. The cross-generator gap
+  narrows from roughly 10× (2–16% vs 52–75%) to under 2× (43–52% vs 79–89%).
+  **Section V-B should report both numbers**, because the 4% figure as
+  currently written overstates what was measured.
+
+The floor-anchored gate is a **comparison device, not an operating point**: it
+sits at 0.94–0.99, above the mean untouched answer, so only 29–135 of 200
+untouched answers clear it. A product cannot deploy it. That is precisely why
+it belongs beside the fixed gate rather than replacing it.
+
+### 3. Binomial CIs
+
+Wilson 95% intervals are now printed on every detection rate — overall, by
+perturbation kind, and for the entity condition — and carried in the summary
+dict. At n = 200 the 3% cell is [1.5%, 6.9%] and the 61% cell is [53.8%, 67.9%],
+so several of the between-embedder differences readable off Table II are inside
+their own intervals.
 
 ---
 
