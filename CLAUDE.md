@@ -49,7 +49,7 @@ are configured but were never run.
 | Area | Status |
 |------|--------|
 | Paper draft (IEEE format) | ✅ Complete, all supervisor feedback addressed |
-| References verified | ⚠️ 5 wrong attributions fixed (see §6), but ref **[8] cites a non-existent "jina-embeddings-v5-text"** — must become jina-embeddings-v3 (arXiv:2409.10173) in the next paper pass |
+| References verified | ✅ **All 24 verified 2026-09-03** against arXiv/ACL Anthology (see §6 and §6b). 5 wrong authors fixed earlier, 4 wrong *titles* found in the B3 pass; the jina "v5-text" entry is resolved (now [24], jina-embeddings-v3, arXiv:2409.10173) |
 | Pipeline code | ✅ All of §8 built in `src/`; notebook is a reference artifact only |
 | Server access | ✅ Granted by Berend. **Fedora is now the only machine that can deploy** — the Windows laptop's key was revoked on both hosts 2026-08-28 |
 | Experiments | ✅ **Rung 2 done** — 16,000 real generations, NLI + AlignScore + claim-level, perturbation probe, TOST margin sweep |
@@ -275,11 +275,31 @@ Five references in the original draft had fabricated or wrong author attribution
 |-----|-------------|--------------|
 | [5] Semantic Illusion | "Zhang, T. et al." | **Sinha, D.** — arXiv:2512.15068 |
 | [6] ReDeEP | "Wu, Z. et al." | **Sun, Z. et al.** — ICLR 2025 |
-| [7] Each to Their Own | "Chen, J.", arXiv:2507.xxxxx | **Chen, S.** — arXiv:**2507.17442** |
-| [9] FaithJudge | "Es, S. et al." | **Tamber, M. S. et al.** — EMNLP 2025 Industry Track |
+| [7] "Each to Their Own" | "Chen, J.", arXiv:2507.xxxxx | **the title was also wrong — see §6b** |
+| [9] FaithJudge | "Es, S. et al." | **Tamber, M. S. et al.** — EMNLP 2025 Industry Track (**title also wrong — see §6b**) |
 | [13] CTRL-RAG | "Luo, X.", arXiv:2602.xxxxx, "contrastive likelihood training" | **Tan, Z. et al.** — arXiv:**2603.04406**, "Contrastive Likelihood **Reward Based Reinforcement Learning**" |
 
 In-text mentions were updated too (Zhang→Sinha, Wu→Sun, Es→Tamber, Luo→Tan).
+
+### 6b. Four MORE wrong entries found 2026-09-03 (revisions B3) — bibliography rebuilt
+
+The §6 pass fixed *authors*. It did not check *titles*, and four were wrong. Every
+one of the 24 entries has now been verified against arXiv/ACL Anthology directly
+(ID resolves, venue and status confirmed, abstract read to confirm it says what
+it is cited for). The paper's bibliography is the verified list; this table is
+what changed.
+
+| Ref | Was (WRONG) | Is (CORRECT, verified) |
+|-----|-------------|------------------------|
+| [13] (was [7]) | "Each to Their Own: Matching Retrievers to Generators", Chen, S. | **arXiv:2507.17442 is a different paper entirely**: S. Chen, Z. Zhao, J. Chen, "Confident RAG: … Mathematics Question Answering through Multi-Embedding and Confidence Scoring". The ID was right, the title was invented. In-text description corrected and now names the maths-QA domain |
+| [4] (was [9]) | "FaithJudge" as the paper title | FaithJudge is the **framework**, not the title. Paper: Tamber, Kazi, Sourabh, Lin, **"Benchmarking LLM Faithfulness in RAG with Evolving Leaderboards"**, EMNLP 2025 Industry Track, pp. 799-811, arXiv:2505.04847 |
+| [12] (was [6]) | "The Semantic Illusion in Retrieval-Augmented Generation" | Full title: **"The Semantic Illusion: Certified Limits of Embedding-Based Hallucination Detection in RAG Systems"**, D. Sinha, arXiv:2512.15068 |
+| [14] (was [11]) | DeBERTa — He, Liu, Gao, Chen, ICLR 2021 | The scorer is `nli-deberta-**v3**-large`, a different paper: **DeBERTaV3**, He, Gao, Chen, ICLR 2023, arXiv:2111.09543 |
+
+Also confirmed correct and unchanged: [11] ReDeEP (Sun et al., ICLR 2025,
+arXiv:2410.11414 — full title adds "via Mechanistic Interpretability") and
+[24] jina-embeddings-v3 (Sturua et al., arXiv:2409.10173), which closes the
+"jina-embeddings-v5-text" item flagged in §2.
 
 ---
 
@@ -630,6 +650,80 @@ HotpotQA/Claude and **5.0%** of NQ/Claude cases. Case construction was
 deliberately NOT changed — every scorer must see the same cases — so
 `perturb_report.by_value_role` reports the delta split by what the falsified
 value actually is.
+
+### The four open decisions — RESOLVED 2026-09-03
+
+`reports/2026-09-01_fixes_implementation.md` closed with four decisions. All
+four are now taken. Two required re-running the falsification probe and the
+evaluator comparison; they were made together and re-run **once**, because both
+change which cases exist.
+
+**D1 — markdown is now stripped for EVERY evaluator, and it cost a cell.**
+`nli.score_chunks` scored the answer as written, `**bold**` included, while
+`claim_faithfulness` stripped it first, so the two aggregates read different
+hypotheses. Sized first with `markdown_check` (n=300/cell): stripping lowers
+Claude's `nli_max` by 0.005-0.012 on NQ and 0.021-0.043 on HotpotQA, moving
+>0.05 on 4.7-9.7% and 17.7-19.3% of answers respectively.
+
+`strip_markdown` moved to **`textnorm`** (`claim_faithfulness` imports `nli`,
+so `nli` cannot import it back — same reason `squad_normalize` moved in B17)
+and is applied in `nli.score_chunks`, in the AlignScore arm of
+`faithfulness.py`, and once at `_Scorer.score` in `perturbation_check` —
+that last one matters, because `nli_concat` and `align` call their models
+directly and would otherwise still read the raw string. It is idempotent.
+
+**⚠️ THE HEADLINE IS NOW 1 OF 4 CELLS, NOT 2.** NQ/Claude under AlignScore goes
+from spread 0.0179 / p_holm 0.0040 to **0.0114 / p_holm 0.0567** — significant
+uncorrected (p=0.0081), not after Holm. Only HotpotQA/GPT-4o-mini survives
+(p_holm 0.0040). That cell's apparent evaluator-dependence was substantially a
+formatting artifact from one generator. Written up as **Section VII-B**, a
+correction reported as a finding, at the author's direction.
+
+The single-assertion identity confirms the fix: the markdown group went from
+**131 of 131 differing, max 0.729** to **7 of 140, max 1.5e-05** — the same
+batch-padding noise as the unformatted group. Table III's single-assertion row
+is now numerically equal under both aggregates (+0.102 Claude, +0.485 GPT).
+
+**Do not un-strip one arm without re-running phases D and E and the whole
+probe.** Superseded checkpoints: `checkpoints/n1000_v3/superseded_2026-09-03_markdown/`.
+
+**D2 — case construction is now content-only.** `build_number_case` took the
+first GROUNDED number, which is a chunk citation or ordered-list marker in 9.5%
+of HotpotQA/Claude cases; falsifying "Chunk 4" into "Chunk 7" is not a
+falsification and those cases carried a **negative** mean delta (-0.0625). It
+now takes the first CONTENT number (`value_role() == 'content'`). Filtering the
+old rows showed the direction in advance: HotpotQA/Claude +0.0734 -> +0.0850,
+NQ/Claude +0.0426 -> +0.0442, GPT cells unmoved. The re-run restores n to 200
+per cell instead of dropping 6.6-8.8% of Claude's sample.
+
+**D3 — `CORPUS_VERSION` stays at v3. This is a deliberate, documented deviation
+from the §8 convention**, which says to bump whenever corpus or relevance
+semantics change. The F2 fix changed the chunk-relevance rule for **7 of 1000**
+NQ queries; NDCG moves in the 4th decimal and **no TOST verdict moves**. The
+corpus, the chunks and the retained samples are byte-identical. Bumping re-keys
+`checkpoints/n{N}_{CORPUS_VERSION}` and would strand 16,000 paid generations
+plus the judge run — **$42.73 re-spent to change a 4th decimal**. The old
+qrels/per-query/aggregate checkpoints are archived at
+`checkpoints/n1000_v3/superseded_2026-09-01/`. If the relevance rule changes
+again for a reason that moves a reported number, bump then.
+
+**D4 — the canonical refusal rule now strips the preamble.** Both generators
+prepend "Based on the provided context," to everything, refusals included, so
+the bare anchored rule graded genuine refusals as attempts. `is_abstention` now
+strips a leading "Based on ...," / "According to ...," before the anchored test,
+over the wider phrase list. **Audited over all 16,000 generations before
+adoption: 107 rows move from attempt to refusal (0.67%), ALL Claude's — 80
+HotpotQA, 27 NQ, none GPT-4o-mini.** 105 open with "I cannot answer this
+question". Mid-answer hedges are still answers. The pre-change rule survives as
+`is_abstention_bare` so the difference stays measurable. This moves the
+answered-only population behind Sections V-VIII, which is why the probe and
+`compare_evaluators` were re-run rather than carried over.
+
+(The report's count for D4 was 112; the audit measures **107**. The difference
+is rows excluded as `[ERROR]`/None before the rule is applied. 107 is the
+number produced by running the adopted code over the grid.)
+
+---
 
 ### Code moves and reporting changes of 2026-09-01
 

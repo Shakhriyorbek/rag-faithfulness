@@ -2,7 +2,7 @@
 //
 // v6 rewrites v5 around the 2026-08-25/26 results. The v5 title
 // ("Retrieval Quality Predicts Correctness, Not Faithfulness") is contradicted
-// by its own data: the verdict flips with the evaluator in 2 of 4 cells, and
+// by its own data: the verdict flips with the evaluator in 1 of 4 cells, and
 // the retrieval-faithfulness correlation is positive on HotpotQA. The spine is
 // now measurement validity, with the embedder grid as the testbed.
 //
@@ -118,14 +118,17 @@ kids.push(P(
   + 'grid fixed — four embedding models, two question answering datasets, two generators, '
   + '16,000 generated answers — and vary only the faithfulness evaluator. Across four '
   + 'dataset-generator cells, the conclusion about whether embedding choice affects '
-  + 'faithfulness changes in two of them depending on which evaluator is used. We trace this '
+  + 'faithfulness changes in one of them depending on which evaluator is used. We trace this '
   + 'to measured properties of the evaluators rather than to the retrieval systems. Replacing '
   + 'a grounded value in an answer with one absent from the context — the failure a document '
-  + 'question answering system most needs to detect — moves the entailment score by 0.038 on '
-  + 'one generator and 0.456 on the other, and is caught by a fixed threshold 4% of the time '
-  + 'against 58%. The gap is explained by answer structure: the score falls monotonically as '
-  + 'the number of assertions in an answer grows, and the two generators average 2.99 and 1.18 '
-  + 'assertions per answer. Claim-level aggregation and an alternative evaluator each recover '
+  + 'question answering system most needs to detect — moves the entailment score by 0.054 on '
+  + 'Natural Questions and 0.085 on HotpotQA for one generator, against 0.451 and 0.391 for the '
+  + 'other, and is caught by a fixed threshold 5-14% of the time against 57-71%. The gap is '
+  + 'largely accounted for by answer structure: the score falls as the number of assertions in '
+  + 'an answer grows, and the two generators average 3.08 and 1.25 assertions per answer. It is '
+  + 'not accounted for entirely — at a matched single assertion the two still differ, +0.102 '
+  + 'against +0.485 — so answer structure is a partial account rather than a complete '
+  + 'explanation. Claim-level aggregation and an alternative evaluator each recover '
   + 'part of the sensitivity but neither removes the effect. We also show that including '
   + 'refusals in the evaluation population produces an apparent relationship between retrieval '
   + 'quality and faithfulness that disappears when they are excluded. We report what these '
@@ -192,11 +195,41 @@ kids.push(P(
   + 'orthogonal to proposing another such metric: we measure how three of them respond to a '
   + 'controlled, known error, and report the consequences for conclusions drawn with them.',
   { after: 120 }));
-kids.push(H('C. Hallucination and grounding analysis', H2));
+kids.push(H('C. Meta-evaluation of faithfulness detectors', H2));
 kids.push(P(
-  'ReDeEP [5] localises hallucination to attention heads and feed-forward components. Sinha [6] '
-  + 'analyses cases where a generated answer appears supported by the retrieved context without '
-  + 'being entailed by it. Chen [7] examines how different retrievers suit different generators. '
+  'A separate line of work evaluates the detectors themselves. TRUE [5] standardises factual '
+  + 'consistency evaluation over eleven annotated datasets and finds inference-based and '
+  + 'question-generation approaches to be strong and complementary. AGGREFACT [6] aggregates '
+  + 'nine summarisation factuality datasets, stratifies them by the model that produced the '
+  + 'errors, and reports that no single metric is best in all settings or for all error types. '
+  + 'RAGTruth [7] supplies word-level hallucination annotations over roughly 18,000 '
+  + 'retrieval-augmented responses. FaithBench [8] is assembled from summaries on which current '
+  + 'detectors disagree, and reports detection accuracies near 50% on them. MiniCheck [9] '
+  + 'unifies recent grounding datasets as LLM-AGGREFACT and trains compact fact-checkers '
+  + 'against that benchmark.',
+  { after: 120 }));
+kids.push(P(
+  'These works compare detectors against gold hallucination labels on a labelled corpus, and '
+  + 'the quantity they report is detector accuracy. Our design contains no gold hallucination '
+  + 'label. We hold the generation grid, the queries and the generated answers fixed, swap the '
+  + 'evaluator, and ask whether the ranking of the systems under study survives. The two '
+  + 'questions come apart: a detector that is more accurate on a labelled corpus need not be one '
+  + 'that resolves differences between the systems a practitioner is actually choosing between, '
+  + 'and it is the second property that decides whether a published comparison describes the '
+  + 'systems or the instrument. Xiao et al. [10] argue on general grounds that generation '
+  + 'metrics should be analysed as measurement instruments with stated reliability and validity. '
+  + 'The falsification probe in Section V and the equivalence curve in Section VIII are two such '
+  + 'analyses, carried out on the instruments a RAG faithfulness result is usually reported '
+  + 'with.',
+  { after: 120 }));
+kids.push(H('D. Hallucination and grounding analysis', H2));
+kids.push(P(
+  'ReDeEP [11] localises hallucination to attention heads and feed-forward components. '
+  + 'Sinha [12] reports that embedding-based detection separates synthetic hallucinations well '
+  + 'and real ones poorly, the hard cases being those that remain semantically close to a '
+  + 'faithful response. Chen et al. [13] vary the embedding model in a RAG pipeline and combine '
+  + 'several of them for mathematics question answering, on the observation that different '
+  + 'embedders succeed on different queries. '
   + 'Our analysis is correlational and behavioural rather than mechanistic: we do not probe '
   + 'model internals.',
   { after: 160 }));
@@ -238,13 +271,19 @@ kids.push(P(
   + 'it does not. Third, any metric of the form 1 - F/RQ reproduces the retrieval ranking '
   + 'whenever F is near-constant across systems, so apparent agreement of such a metric across '
   + 'generators is uninformative: retrieval quality is generator-invariant by construction. We '
-  + 'therefore report absolute faithfulness throughout.',
+  + 'therefore report absolute faithfulness throughout. Retiring the metric also disposes of a '
+  + 'known objection to it at the root rather than patching it: a difference cannot separate a '
+  + 'system whose retrieval and faithfulness are both high from one where both are low, and the '
+  + 'normalised variant rescales that ambiguity without removing it. Reporting the two '
+  + 'quantities separately keeps the both-low case visible. The retired implementation is held '
+  + 'out of the analysis path that produced the tables reported here.',
   { after: 160 }));
 
 // ── IV. Experimental Setup ─────────────────────────────────────────
 kids.push(H('IV. Experimental Setup', H1));
 kids.push(P(
-  'Four embedding models index each corpus; retrieval takes the top five chunks of 256 tokens '
+  'Two question answering datasets are used, Natural Questions [21] and HotpotQA [22], at 1,000 '
+  + 'queries each. Four embedding models index each corpus; retrieval takes the top five chunks of 256 tokens '
   + 'with 32-token overlap; two generators produce an answer from a byte-identical prompt at '
   + 'temperature 0. This yields 4 x 2 x 2 x 1,000 = 16,000 generated answers, each re-scored by '
   + 'every evaluator. Prompt parity across generators is enforced by construction — a single '
@@ -265,10 +304,36 @@ kids.push(CAP(
   'Table I. Retrieval quality of the four systems in the testbed. The ranking differs between '
   + 'datasets, and the spread is far larger on HotpotQA.'));
 kids.push(P(
-  'Three evaluators are compared. NLI-max is (1) with a DeBERTa-v3-large inference model, the '
+  'Three evaluators are compared. NLI-max is (1) with a DeBERTa-v3-large [14] inference model, the '
   + 'common choice. Claim-min is (2) with the same inference model and sentence-level claim '
   + 'segmentation, chosen so that no second generator enters the measurement loop. AlignScore '
   + '[3] is an independently trained alignment model. All three score identical inputs.',
+  { after: 120 }));
+kids.push(P(
+  'The answers are byte-identical across evaluators; the premises are not, and the difference '
+  + 'is part of what the comparison measures. Premise construction follows each evaluator\'s '
+  + 'intended interface. The entailment scorer receives each of the five retrieved chunks '
+  + 'separately plus their concatenation truncated to the model\'s 512-token window, and the '
+  + 'maximum is taken, since any one retrieved document may entail the answer and the '
+  + 'concatenation exceeds the window. The claim-level scorer applies that same construction to '
+  + 'each extracted claim. AlignScore receives the concatenated context as a single premise and '
+  + 'performs its own splitting internally. Part of the difference reported in Section V is '
+  + 'therefore premise granularity rather than evaluator sensitivity; Section V-A bounds that '
+  + 'share by re-scoring the same cases with the same entailment model on the concatenated '
+  + 'premise alone. The hypothesis is normalised identically for all three: markdown emphasis, '
+  + 'headings and list markers are stripped before scoring. This matters because one generator '
+  + 'emits markdown in 74.9% of its answers and the other in 0.3%, and the entailment model '
+  + 'responds to it — see Section VII-B.',
+  { after: 120 }));
+kids.push(P(
+  'One refusal rule is used throughout. An answer counts as a refusal when, after SQuAD-style '
+  + 'normalisation, it begins with one of a fixed list of declining phrases; a single shared '
+  + 'implementation applies it, so Sections V through VIII describe the same population. It '
+  + 'excludes 4,123 of the 16,000 answers (25.8%): 587 on NQ/Claude (14.7%), 1,162 on '
+  + 'NQ/GPT-4o-mini (29.0%), 1,166 on HotpotQA/Claude (29.1%) and 1,208 on HotpotQA/GPT-4o-mini '
+  + '(30.2%). Both generators prepend a "Based on the provided context," preamble to everything, '
+  + 'refusals included, so the rule strips that preamble before the anchored test; without it '
+  + '107 refusals, all of them Claude\'s, would be graded as attempts.',
   { after: 160 }));
 
 // ── V. Evaluator sensitivity ───────────────────────────────────────
@@ -284,6 +349,14 @@ kids.push(P(
   + 'accidentally supported and a low response is correct behaviour.',
   { after: 120 }));
 kids.push(P(
+  'Cases are taken in dataset order rather than drawn at random: for each system, dataset and '
+  + 'generator we use the first 200 eligible answers. The scored set is therefore a prefix of '
+  + 'an already filtered population, and 3,184 cases are scored against 5,272 eligible across '
+  + 'the grid — 800 of 1,946 on NQ/Claude, 800 of 882 on NQ/GPT-4o-mini, 800 of 1,551 on '
+  + 'HotpotQA/Claude and 784 of 893 on HotpotQA/GPT-4o-mini. The two GPT-4o-mini cells are '
+  + 'close to a census; the two Claude cells are sampled at two fifths and one half.',
+  { after: 120 }));
+kids.push(P(
   'Two controls accompany it. An entity substitution replaces a grounded named entity instead '
   + 'of a value, giving a comparable edit. Scoring the untouched answer against another '
   + 'query\'s retrieved context gives the floor of each evaluator\'s scale on this data. 200 '
@@ -291,32 +364,50 @@ kids.push(P(
   + 'inputs.',
   { after: 120 }));
 kids.push(table(
-  ['Dataset / generator', 'Evaluator', 'Original', 'Falsified', 'Random ctx', 'Detected'],
+  ['Dataset / generator', 'Evaluator', 'Orig', 'Falsified', 'Floor', 'Detected @0.5', 'Detected @floor gate'],
   [
-    ['NQ / Claude Haiku 4.5', 'NLI-max', '0.918', '0.880', '0.522', '4%'],
-    ['', 'Claim-min', '0.686', '0.535', '0.249', '23%'],
-    ['', 'AlignScore', '0.818', '0.586', '0.342', '29%'],
-    ['NQ / GPT-4o-mini', 'NLI-max', '0.893', '0.436', '0.507', '58%'],
-    ['', 'Claim-min', '0.866', '0.391', '0.493', '63%'],
-    ['', 'AlignScore', '0.918', '0.266', '0.173', '76%'],
-    ['HotpotQA / Claude', 'NLI-max', '0.739', '0.660', '0.468', '13%'],
-    ['', 'Claim-min', '0.367', '0.256', '0.149', '33%'],
-    ['', 'AlignScore', '0.770', '0.466', '0.498', '45%'],
-    ['HotpotQA / GPT-4o-mini', 'NLI-max', '0.578', '0.185', '0.222', '70%'],
-    ['', 'Claim-min', '0.571', '0.182', '0.225', '70%'],
-    ['', 'AlignScore', '0.773', '0.115', '0.223', '90%'],
+    ['NQ / Claude Haiku 4.5', 'NLI-max', '0.906', '0.852', '0.474', '5.1% [3.8-7.0]', '50.2% [45.7-54.7]'],
+    ['', 'Claim-min', '0.679', '0.514', '0.245', '25.1% [21.7-28.9]', '58.3% [53.3-63.1]'],
+    ['', 'AlignScore', '0.866', '0.619', '0.331', '24.1% [21.3-27.3]', '77.9% [74.4-81.1]'],
+    ['NQ / GPT-4o-mini', 'NLI-max', '0.887', '0.436', '0.506', '56.6% [52.9-60.1]', '85.2% [81.9-88.1]'],
+    ['', 'Claim-min', '0.863', '0.390', '0.490', '61.0% [57.4-64.6]', '91.0% [88.1-93.2]'],
+    ['', 'AlignScore', '0.912', '0.272', '0.160', '75.4% [72.2-78.4]', '82.1% [79.2-84.7]'],
+    ['HotpotQA / Claude', 'NLI-max', '0.702', '0.618', '0.427', '13.9% [11.3-17.0]', '49.7% [42.3-57.2]'],
+    ['', 'Claim-min', '0.370', '0.255', '0.161', '34.3% [29.0-40.0]', '48.9% [41.8-56.1]'],
+    ['', 'AlignScore', '0.786', '0.454', '0.475', '48.9% [45.2-52.5]', '93.7% [90.7-95.8]'],
+    ['HotpotQA / GPT-4o-mini', 'NLI-max', '0.577', '0.186', '0.201', '70.5% [66.2-74.6]', '83.8% [79.7-87.2]'],
+    ['', 'Claim-min', '0.571', '0.182', '0.204', '70.6% [66.2-74.6]', '84.2% [80.1-87.6]'],
+    ['', 'AlignScore', '0.780', '0.119', '0.234', '89.4% [86.8-91.6]', '97.5% [95.8-98.5]'],
   ],
-  [2450, 1550, 1250, 1250, 1300, 1200]));
+  [1850, 1250, 780, 950, 780, 1700, 1790]));
 kids.push(CAP(
-  'Table II. Response of three evaluators to a falsified value, on identical inputs. "Detected" '
-  + 'is the share of answers that passed a 0.5 threshold before falsification and fail it '
-  + 'after. Random-context scores anchor the floor of each scale.'));
+  'Table II. Response of three evaluators to a falsified value, on identical inputs, pooled '
+  + 'over the four embedding systems (n = 800 per cell, 784 on HotpotQA/GPT-4o-mini). '
+  + '"Detected" is the share of answers that passed a threshold before falsification and fail '
+  + 'it after, with Wilson 95% intervals. "Floor" is the mean score of an untouched answer '
+  + 'against an unrelated query\'s context; the floor gate is the 95th percentile of that same '
+  + 'distribution, per cell and evaluator.'));
 kids.push(P(
-  'On Claude\'s Natural Questions answers, NLI-max leaves the falsified answer at 0.880 against '
-  + 'a floor of 0.522: the altered answer remains comfortably above any usable threshold. On '
+  'On Claude\'s Natural Questions answers, NLI-max leaves the falsified answer at 0.852 against '
+  + 'a floor of 0.474: the altered answer remains comfortably above any usable threshold. On '
   + 'GPT-4o-mini\'s answers the same edit lands at 0.436, essentially at that generator\'s floor '
-  + 'of 0.507. The evaluator, the context and the perturbation code are identical; only the '
+  + 'of 0.506. The evaluator, the context and the perturbation code are identical; only the '
   + 'generator that wrote the answer differs.',
+  { after: 120 }));
+kids.push(P(
+  'Detection rates are only comparable across evaluators after the scale is normalised, because '
+  + 'the evaluators do not share a floor, and we therefore report two gates. On this cell an '
+  + 'untouched answer scored against an unrelated context averages 0.474 under NLI-max against '
+  + '0.245 under claim-min, so a fixed 0.5 gate sits just above the floor for one evaluator and '
+  + 'well above it for the other. The random-context distribution is also heavy-tailed — its '
+  + '95th percentile is 0.985 under NLI-max — so an unrelated document clears 0.5 nearly half '
+  + 'the time. The second gate is anchored at that 95th percentile, at which "detected" means the '
+  + 'falsified answer is no longer better supported than an unrelated document, which is the '
+  + 'same statement on every scale. Read that way NLI-max detects 50.2% of falsifications on '
+  + 'Claude\'s NQ answers rather than 5.1%, and its gap to GPT-4o-mini narrows from roughly '
+  + 'elevenfold to under twofold. The ordering of the three evaluators is unchanged at either '
+  + 'gate. The floor-anchored gate is a comparison device and not an operating point: it sits '
+  + 'above the mean untouched answer, so a deployed system could not use it.',
   { after: 120 }));
 
 kids.push(H('B. The effect is not verbatim copying', H2));
@@ -331,28 +422,37 @@ kids.push(P(
 kids.push(H('C. Answers with more assertions are scored less sensitively', H2));
 kids.push(P(
   'Segmenting each answer into sentence-level assertions and grouping by count gives a '
-  + 'monotone relationship, present for both generators.',
+  + 'declining relationship, present for both generators. It is not strictly monotone: the tail '
+  + 'buckets are thin and both generators reverse direction once within them.',
   { after: 100 }));
 kids.push(table(
-  ['Assertions per answer', 'Claude NLI-max', 'Claude Claim-min', 'GPT NLI-max', 'GPT Claim-min'],
+  ['Assertions', 'n (Claude)', 'Claude NLI-max', 'Claude Claim-min', 'n (GPT)', 'GPT NLI-max', 'GPT Claim-min'],
   [
-    ['1', '+0.086', '+0.098', '+0.492', '+0.492'],
-    ['2', '+0.056', '+0.131', '+0.336', '+0.452'],
-    ['3', '+0.018', '+0.188', '+0.137', '+0.277'],
-    ['5 or more', '+0.007', '+0.149', '—', '—'],
+    ['1', '91', '+0.102', '+0.102', '680', '+0.485', '+0.485'],
+    ['2', '300', '+0.076', '+0.151', '77', '+0.360', '+0.467'],
+    ['3', '194', '+0.032', '+0.229', '26', '+0.041', '+0.401'],
+    ['4', '103', '+0.024', '+0.162', '10', '+0.204', '+0.192'],
+    ['5 or more', '112', '+0.024', '+0.146', '7', '+0.032', '+0.002'],
   ],
-  [2400, 1650, 1650, 1650, 1650]));
+  [1150, 1250, 1550, 1620, 1100, 1350, 1400]));
 kids.push(CAP(
   'Table III. Drop in score when one grounded value is falsified, by number of assertions in '
-  + 'the answer. Under NLI-max the response decays toward zero as answers accumulate '
-  + 'assertions; under claim-level aggregation it does not.'));
+  + 'the answer, on Natural Questions. Under NLI-max the response decays as answers accumulate '
+  + 'assertions; under claim-level aggregation it does not. The GPT-4o-mini rows beyond two '
+  + 'assertions rest on 26, 10 and 7 cases and should be read as such. In the single-assertion '
+  + 'row the two aggregates coincide exactly, which is the degenerate case they must reduce to.'));
 kids.push(P(
-  'The two generators average 2.99 and 1.18 assertions per answer, and median answer lengths of '
-  + '49 and 18 words. This accounts for the cross-generator difference in Table II: a falsified '
-  + 'value is a progressively smaller edit to the hypothesis as correct surrounding text '
-  + 'accumulates, and the entailment judgement is dominated by the remainder. As a check on the '
-  + 'claim-level implementation, single-assertion answers score identically under both '
-  + 'aggregates (0.4922 in each case), which is the expected degenerate case.',
+  'The two generators average 3.08 and 1.25 assertions per answer, and median answer lengths of '
+  + '55 and 15 words. This largely accounts for the cross-generator difference in Table II: a '
+  + 'falsified value is a progressively smaller edit to the hypothesis as correct surrounding '
+  + 'text accumulates, and the entailment judgement is dominated by the remainder. It does not '
+  + 'account for it entirely — within the single-assertion bucket the two generators still '
+  + 'differ, +0.102 against +0.485. As a check on the claim-level implementation, every '
+  + 'single-assertion answer scores identically under both aggregates (n = 1,640, largest '
+  + 'absolute difference 1.7e-05, which is batch-padding noise), the expected degenerate case. '
+  + 'That check is what surfaced the normalisation defect reported in Section VII-B: before '
+  + 'markdown was stripped for both aggregates it failed on every one of the 131 formatted '
+  + 'answers, by as much as 0.729.',
   { after: 120 }));
 kids.push(P(
   'Claim-level aggregation is a partial remedy rather than a repair. Expressed as a fraction of '
@@ -360,7 +460,7 @@ kids.push(P(
   + 'from 0.01 to 0.03, and the minimum moves in the correct direction in 55% of cases: when '
   + 'the falsified assertion is not already the weakest, the minimum does not move at all. A '
   + 'second dilution remains within assertions — at matched assertion count the two generators '
-  + 'still differ (+0.098 against +0.492), and their assertions average 20.5 against 13.8 words.',
+  + 'still differ (+0.102 against +0.485), and their assertions average 20.5 against 13.8 words.',
   { after: 160 }));
 
 // ── VI. Evaluation population ──────────────────────────────────────
@@ -423,7 +523,7 @@ kids.push(P(
   + 'is not a property of the systems.',
   { after: 140 }));
 kids.push(P(
-  'The count is more stable than the cells. Two of four dataset-generator cells change verdict '
+  'The count is more stable than the cells. One of four dataset-generator cells changes verdict '
   + 'between evaluators under either detector, but not the same two. We therefore report the '
   + 'count as the finding and treat any individual cell as undetermined.',
   { after: 160 }));
@@ -491,22 +591,41 @@ kids.push(P(
   + 'common query subset, with a paired bootstrap of 10,000 resamples.',
   { after: 100 }));
 kids.push(table(
-  ['Dataset / generator', 'n', 'NLI-max spread', 'p', 'AlignScore spread', 'p'],
+  ['Dataset / generator', 'n', 'NLI-max spread', 'p (Holm)', 'AlignScore spread', 'p (Holm)'],
   [
-    ['NQ / Claude', '792', '0.0090', '0.223', '0.0179', '0.0005'],
-    ['NQ / GPT-4o-mini', '628', '0.0129', '0.099', '0.0080', '0.118'],
-    ['HotpotQA / Claude', '538', '0.0190', '0.270', '0.0126', '0.151'],
-    ['HotpotQA / GPT-4o-mini', '510', '0.0267', '0.065', '0.0461', '0.0005'],
+    ['NQ / Claude', '784', '0.0107', '0.155 (0.391)', '0.0114', '0.0081 (0.0567)'],
+    ['NQ / GPT-4o-mini', '628', '0.0130', '0.098 (0.391)', '0.0080', '0.117 (0.391)'],
+    ['HotpotQA / Claude', '517', '0.0232', '0.159 (0.391)', '0.0164', '0.063 (0.380)'],
+    ['HotpotQA / GPT-4o-mini', '510', '0.0267', '0.065 (0.380)', '0.0461', '0.0005 (0.0040)'],
   ],
-  [2700, 900, 1800, 1000, 1800, 800]));
+  [2400, 800, 1600, 1400, 1700, 1400]));
 kids.push(CAP(
-  'Table VII. The same comparison under two evaluators. Two of four cells change verdict at '
-  + 'alpha = 0.05. Queries, answers, refusal handling and test are identical throughout.'));
+  'Table VII. The same comparison under two evaluators, with the uncorrected p first and the '
+  + 'Holm-adjusted p in parentheses, corrected over the eight comparisons in the table. One of '
+  + 'four cells changes verdict at alpha = 0.05 and survives correction; NQ/Claude is '
+  + 'significant uncorrected and not after correction. Queries, answers, '
+  + 'refusal handling and test are identical throughout. With 10,000 resamples the smallest '
+  + 'attainable non-zero p is 1e-4, so the two significant cells at p = 0.0005 are 5 extreme '
+  + 'resamples of 10,000 and not a clamped floor.'));
+kids.push(P(
+  'The statistic is the spread: the difference in mean faithfulness between the best and the '
+  + 'worst of the four systems, with the p-value from a paired bootstrap over that pair, 10,000 '
+  + 'resamples, re-centred at zero [23]. The range is the quantity the decision this table '
+  + 'informs is exposed to — a practitioner adopts one embedding model, and what they stand to '
+  + 'lose is the distance to the best alternative, not the dispersion of the set. It is however '
+  + 'a summary of two systems selected for being the extremes, so the p-value beside it is not '
+  + 'adjusted for that within-cell selection, and the two intermediate systems do not appear in '
+  + 'it at all. We therefore treat the range as descriptive, and report the direction across all '
+  + 'four systems separately in Table VIII rather than reading it off the extremes. An omnibus '
+  + 'test over the four systems would be the stricter statistic; we do not run one here.',
+  { after: 120 }));
 kids.push(P(
   'Under the common choice of evaluator, no cell shows a detectable difference. Under an '
-  + 'evaluator measured in Section V to be more responsive to known errors, two do. A result '
-  + 'reported only under the first would be an artifact of instrument resolution rather than a '
-  + 'property of the systems.',
+  + 'evaluator measured in Section V to be more responsive to known errors, one does, and a '
+  + 'second is significant before correction and not after. A result reported only under the '
+  + 'first evaluator would be an artifact of instrument resolution rather than a property of '
+  + 'the systems. The effect is narrower than the four-cell design can establish, and we report '
+  + 'it as one cell rather than as a general property of the grid.',
   { after: 120 }));
 
 kids.push(H('A. Direction is dataset-dependent', H2));
@@ -536,11 +655,39 @@ kids.push(P(
   { after: 160 }));
 
 // ── VIII. Equivalence ──────────────────────────────────────────────
+kids.push(H('B. A normalisation defect that produced a result', H2));
+kids.push(P(
+  'An earlier version of this analysis reported two cells rather than one. The difference was '
+  + 'not a change of test, data or population but of text normalisation, and it is worth '
+  + 'reporting because it is an instance of the paper\'s own subject.',
+  { after: 100 }));
+kids.push(P(
+  'The entailment scorer originally read the answer exactly as the generator wrote it, while '
+  + 'the claim-level scorer stripped markdown from each claim before scoring. The two aggregates '
+  + 'were therefore not reading the same hypothesis. The discrepancy is invisible in aggregate '
+  + 'and was found by the degenerate-case check in Section V-C: with a single claim and no '
+  + 'markdown the two must be numerically identical, and they were, to 1.7e-05; with markdown '
+  + 'they differed on every one of 131 cases, by up to 0.729 on a pair of asterisks alone. '
+  + 'Markdown is not evenly distributed across the grid — it appears in 74.9% of Claude\'s '
+  + 'answers and 0.3% of GPT-4o-mini\'s — so the formatting habits of one generator were '
+  + 'entering a comparison between embedding systems.',
+  { after: 120 }));
+kids.push(P(
+  'Stripping markdown for all three evaluators removes the asymmetry and restores the identity '
+  + 'on every single-assertion answer. It also removes the significance of the NQ/Claude cell '
+  + 'under AlignScore: its spread falls from 0.0179 to 0.0114 and its Holm-adjusted p from '
+  + '0.0040 to 0.0567. That cell\'s apparent evaluator-dependence was substantially an artifact '
+  + 'of formatting, and the count reported above is the corrected one. We record it rather than '
+  + 'silently reporting the smaller number because the failure mode generalises: a preprocessing '
+  + 'choice applied to one aggregate and not another is invisible in every summary statistic, '
+  + 'survives every significance test, and is detectable only by an identity that the two '
+  + 'aggregates must satisfy. Metrics that admit such an identity should be checked against it.',
+  { after: 160 }));
 kids.push(H('VIII. What an Equivalence Claim Requires', H1));
 kids.push(P(
   'Two of the four cells in Table VII show no detectable difference under either evaluator. '
   + 'Absence of a detected difference is not evidence of equivalence, so we test equivalence '
-  + 'directly with two one-sided tests [8]. A TOST result depends entirely on the margin, and a '
+  + 'directly with two one-sided tests [15]. A TOST result depends entirely on the margin, and a '
   + 'margin is a substantive judgement rather than a statistical fact — so we report a curve '
   + 'rather than assert a point.',
   { after: 100 }));
@@ -562,7 +709,7 @@ kids.push(CAP(
   + 'equivalence is a claim about a particular column.'));
 kids.push(P(
   'Section V supplies an external anchor for choosing that column. Falsifying one grounded '
-  + 'value moves NLI-max by 0.033 to 0.094 on Claude\'s answers. A margin of ±0.05 on that '
+  + 'value moves NLI-max by 0.049 to 0.095 on Claude\'s answers. A margin of ±0.05 on that '
   + 'evaluator is therefore approximately the size of one fabricated fact, which is not a '
   + 'negligible difference. Stating equivalence at ±0.05 without that context asserts more than '
   + 'the instrument supports.',
@@ -585,11 +732,41 @@ kids.push(BULLET(
   + 'experiment of the kind in Section V costs nothing beyond re-scoring.'));
 kids.push(P(
   'For a document question answering system, the practical reading of Table II is that a '
-  + 'grounding threshold on a verbose generator detects a minority of falsified values: 4% under '
-  + 'the common evaluator, 29% under the most responsive one tested. A deterministic check that '
-  + 'every value in an answer appears in the retrieved context addresses this class of error '
-  + 'directly and is complementary to an entailment score. We have not evaluated such a check '
-  + 'here.',
+  + 'grounding threshold on a verbose generator detects a minority of falsified values at a '
+  + 'fixed gate: 5.1% under the common evaluator, 25.1% under the most responsive one tested. A '
+  + 'deterministic check that every value in an answer appears in the retrieved context '
+  + 'addresses this class of error directly and is complementary to an entailment score. Run '
+  + 'over the same cases as Table II, it recalls every falsified value in all four cells at a '
+  + 'false-positive rate of 0.7% to 5.2% on untouched answers, against 5.1% detection for '
+  + 'NLI-max on the hardest of those cells. Two qualifications matter. Numbers that are not '
+  + 'assertions about the world — the chunk indices the prompt supplies and the markers of an '
+  + 'ordered list — are neither asserted of the world nor expected in the retrieved text, and '
+  + 'counting them raises the false-positive rate on Claude\'s HotpotQA answers from 5.2% to '
+  + 'about 39%. And the residual false positives are quantities the answer derives rather than '
+  + 'copies: counts, sums, elapsed years, formats converted. A literal check flags all of those, '
+  + 'so it is a complement to an entailment score and not a replacement for one.',
+  { after: 120 }));
+kids.push(P(
+  'Checking symbolic content against the source is not a new proposal, and we do not claim it '
+  + 'as one. Goodrich et al. [16] score generated text by extracting subject-relation-object '
+  + 'triples and comparing them against the source document. Nan et al. [17] define entity-level '
+  + 'consistency metrics for summarisation and evaluate them beside entailment-based '
+  + 'alternatives. Zhao et al. [18] address quantity hallucination directly, verifying dates, '
+  + 'numbers and monetary amounts in generated summaries against the source. That numbers are a '
+  + 'weak point is also documented at the level of the representations these systems are built '
+  + 'on: Wallace et al. [19] find number magnitude encoded unevenly across standard embeddings '
+  + 'and least reliably by subword models. Entailment is separately a loose proxy for '
+  + 'attribution — the AIS framework [20] distinguishes whether a statement is supported by an '
+  + 'identified source from whether it is plausible or entailed in a general sense, which is the '
+  + 'distinction a structurally similar but differently attributed claim exploits.',
+  { after: 120 }));
+kids.push(P(
+  'What this paper adds is narrower than the check itself: the controlled minimal pair. A single '
+  + 'numeric value is replaced in an otherwise byte-identical generation, and the same case is '
+  + 'scored by all three evaluators, so the quantity measured is each evaluator\'s response to a '
+  + 'known error on identical input rather than its agreement with a human label on some other '
+  + 'corpus. The scope of that measurement is numeric values, two proprietary generators and two '
+  + 'datasets.',
   { after: 160 }));
 
 // ── X. Limitations ─────────────────────────────────────────────────
@@ -623,6 +800,44 @@ kids.push(BULLET(
   'Effect sizes are small where detected — 0.018 and 0.046 — against retrieval spreads of 4.4 '
   + 'and 11.9 NDCG@5 points. These are detectable differences, not large ones.'));
 kids.push(BULLET(
+  'The three evaluators receive byte-identical answers but not identical premises. The '
+  + 'entailment scorer is given each of the five retrieved chunks separately, plus their '
+  + 'concatenation truncated to the model\'s window, and the maximum is taken; the claim-level '
+  + 'scorer applies that construction per extracted claim; AlignScore is given the concatenated '
+  + 'context as one premise and performs its own splitting. Each is the evaluator used as its '
+  + 'authors intend, but it means part of the difference reported in Section V is premise '
+  + 'granularity rather than evaluator sensitivity. Re-scoring the same cases with the same '
+  + 'entailment model on the concatenated premise bounds that share between none and half of the '
+  + 'gap depending on the cell, and at about a quarter of it on Claude\'s answers. The '
+  + 'hypothesis, by contrast, is now normalised identically for all three (Section VII-B); it '
+  + 'was not in an earlier version, and that difference alone decided one cell.'));
+kids.push(BULLET(
+  'Which answers count as refusals is fixed by a rule rather than given by the data, and that '
+  + 'rule sets the evaluation population for every result in Sections V through VIII. It is '
+  + 'therefore a researcher degree of freedom as well as a finding: substituting one defensible '
+  + 'detector for another moves the rows nearest the boundary between refusing and attempting, '
+  + 'and carries the uncorrected p-value across the conventional threshold in two of eight cells '
+  + '(Section VI-A). Those two do not survive correction for multiple comparisons, but the '
+  + 'population every reported number is computed on still depends on the choice. The rule used '
+  + 'here strips the generators\' standard preamble before matching; without that step 107 '
+  + 'refusals, all from one generator, would be graded as attempts.'));
+kids.push(BULLET(
+  'The falsification cases are the first 200 eligible answers in dataset order for each system, '
+  + 'dataset and generator, rather than a random sample of the eligible answers: 3,184 cases '
+  + 'scored against 5,272 eligible across the grid. Eligibility requires a grounded numeric '
+  + 'value in the answer together with a replacement value absent from the context, so the '
+  + 'scored set is a prefix of an already filtered population. Cells whose eligible count is '
+  + 'near 200 are close to a census; the largest cells are sampled at about two fifths.'));
+kids.push(BULLET(
+  'The repository configures seven embedding models and this paper reports four: '
+  + 'all-mpnet-base-v2 (contrastive), BGE-M3 (multilingual), E5-large-instruct '
+  + '(instruction-tuned) and text-embedding-3-small (proprietary), chosen to span pretraining '
+  + 'paradigms and to include one closed-source arm. GTE-large, Instructor-XL and '
+  + 'jina-embeddings-v3 [24] are configured and runnable but were not run at this scale: each '
+  + 'additional model is a further generation pass over both datasets and both generators, and '
+  + 'the grid is a testbed for the evaluator comparison rather than a survey of embedding '
+  + 'models.'));
+kids.push(BULLET(
   'The correct-versus-incorrect faithfulness comparison rests on 44 to 84 attempted wrong '
   + 'answers per cell. Excluding refusals and grading correctness with a judge both reduce that '
   + 'population, and the resulting confidence intervals are 0.08 to 0.13 wide. The tests reported '
@@ -632,11 +847,11 @@ kids.push(BULLET(
 kids.push(H('XI. Conclusion', H1));
 kids.push(P(
   'Holding a 16,000-answer generation grid fixed and varying only the faithfulness evaluator '
-  + 'changes the conclusion about whether embedding choice affects faithfulness in two of four '
+  + 'changes the conclusion about whether embedding choice affects faithfulness in one of four '
   + 'dataset-generator cells. The differences between evaluators are measurable directly: a '
-  + 'falsified grounded value moves the common entailment aggregate by 0.038 on one generator '
-  + 'and 0.456 on the other, and the gap is explained by how many assertions an answer contains '
-  + 'rather than by the retrieval system. Reported without naming the evaluator, the evaluation '
+  + 'falsified grounded value moves the common entailment aggregate by 0.054 on one generator '
+  + 'and 0.451 on the other, and that gap is largely accounted for by how many assertions an '
+  + 'answer contains rather than by the retrieval system. Reported without naming the evaluator, the evaluation '
   + 'population, the aggregation and the equivalence margin, a faithfulness result is not '
   + 'reproducible in the sense that matters — another group applying a different standard '
   + 'choice to the same generations would reach a different conclusion.',
@@ -645,19 +860,30 @@ kids.push(P(
 // ── References ─────────────────────────────────────────────────────
 kids.push(H('References', H1));
 const refs = [
-  '[1] A. Salemi and H. Zamani, "Evaluating Retrieval Quality in Retrieval-Augmented Generation," in Proc. SIGIR, 2024. arXiv:2404.13781.',
-  '[2] S. Es, J. James, L. Espinosa-Anke, and S. Schockaert, "RAGAS: Automated Evaluation of Retrieval Augmented Generation," in Proc. EACL (System Demonstrations), 2024.',
-  '[3] Y. Zha, Y. Yang, R. Li, and Z. Yu, "AlignScore: Evaluating Factual Consistency with a Unified Alignment Function," in Proc. ACL, 2023.',
-  '[4] M. S. Tamber et al., "FaithJudge," in Proc. EMNLP Industry Track, 2025.',
-  '[5] Z. Sun et al., "ReDeEP: Detecting Hallucination in Retrieval-Augmented Generation," in Proc. ICLR, 2025.',
-  '[6] D. Sinha, "The Semantic Illusion in Retrieval-Augmented Generation," arXiv:2512.15068.',
-  '[7] S. Chen, "Each to Their Own: Matching Retrievers to Generators," arXiv:2507.17442.',
-  '[8] D. J. Schuirmann, "A comparison of the two one-sided tests procedure and the power approach for assessing the equivalence of average bioavailability," J. Pharmacokinet. Biopharm., vol. 15, no. 6, pp. 657-680, 1987.',
-  '[9] T. Kwiatkowski et al., "Natural Questions: A Benchmark for Question Answering Research," TACL, vol. 7, pp. 453-466, 2019.',
-  '[10] Z. Yang et al., "HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering," in Proc. EMNLP, 2018.',
-  '[11] P. He, X. Liu, J. Gao, and W. Chen, "DeBERTa: Decoding-enhanced BERT with Disentangled Attention," in Proc. ICLR, 2021.',
-  '[12] R. Dror, G. Baumer, S. Shlomov, and R. Reichart, "The Hitchhiker\'s Guide to Testing Statistical Significance in Natural Language Processing," in Proc. ACL, 2018.',
-  '[13] S. Sturua et al., "jina-embeddings-v3: Multilingual Embeddings With Task LoRA," arXiv:2409.10173.',
+  '[1] A. Salemi and H. Zamani, "Evaluating Retrieval Quality in Retrieval-Augmented Generation," in Proc. SIGIR, 2024, pp. 2395-2400. arXiv:2404.13781.',
+  '[2] S. Es, J. James, L. Espinosa-Anke, and S. Schockaert, "RAGAS: Automated Evaluation of Retrieval Augmented Generation," in Proc. EACL (System Demonstrations), 2024, pp. 150-158.',
+  '[3] Y. Zha, Y. Yang, R. Li, and Z. Yu, "AlignScore: Evaluating Factual Consistency with a Unified Alignment Function," in Proc. ACL, 2023, pp. 11328-11348.',
+  '[4] M. S. Tamber, S. Kazi, V. Sourabh, and J. Lin, "Benchmarking LLM Faithfulness in RAG with Evolving Leaderboards," in Proc. EMNLP (Industry Track), 2025, pp. 799-811. arXiv:2505.04847.',
+  '[5] O. Honovich, R. Aharoni, J. Herzig, H. Taitelbaum, D. Kukliansy, V. Cohen, T. Scialom, I. Szpektor, A. Hassidim, and Y. Matias, "TRUE: Re-evaluating Factual Consistency Evaluation," in Proc. NAACL-HLT, 2022, pp. 3905-3920. arXiv:2204.04991.',
+  '[6] L. Tang, T. Goyal, A. R. Fabbri, P. Laban, J. Xu, S. Yavuz, W. Kryscinski, J. F. Rousseau, and G. Durrett, "Understanding Factual Errors in Summarization: Errors, Summarizers, Datasets, Error Detectors," in Proc. ACL, 2023, pp. 11626-11644.',
+  '[7] C. Niu, Y. Wu, J. Zhu, S. Xu, K. Shum, R. Zhong, J. Song, and T. Zhang, "RAGTruth: A Hallucination Corpus for Developing Trustworthy Retrieval-Augmented Language Models," in Proc. ACL, 2024, pp. 10862-10878.',
+  '[8] F. S. Bao, M. Li, R. Qu, G. Luo, E. Wan, Y. Tang, W. Fan, M. S. Tamber, S. Kazi, V. Sourabh, M. Qi, R. Tu, C. Xu, M. Gonzales, O. Mendelevitch, and A. Ahmad, "FaithBench: A Diverse Hallucination Benchmark for Summarization by Modern LLMs," in Proc. NAACL-HLT (Short Papers), 2025, pp. 448-461.',
+  '[9] L. Tang, P. Laban, and G. Durrett, "MiniCheck: Efficient Fact-Checking of LLMs on Grounding Documents," in Proc. EMNLP, 2024, pp. 8818-8847. arXiv:2404.10774.',
+  '[10] Z. Xiao, S. Zhang, V. Lai, and Q. V. Liao, "Evaluating Evaluation Metrics: A Framework for Analyzing NLG Evaluation Metrics using Measurement Theory," in Proc. EMNLP, 2023, pp. 10967-10982.',
+  '[11] Z. Sun, X. Zang, K. Zheng, J. Xu, X. Zhang, W. Yu, Y. Song, and H. Li, "ReDeEP: Detecting Hallucination in Retrieval-Augmented Generation via Mechanistic Interpretability," in Proc. ICLR, 2025. arXiv:2410.11414.',
+  '[12] D. Sinha, "The Semantic Illusion: Certified Limits of Embedding-Based Hallucination Detection in RAG Systems," arXiv:2512.15068.',
+  '[13] S. Chen, Z. Zhao, and J. Chen, "Confident RAG: Enhancing the Performance of LLMs for Mathematics Question Answering through Multi-Embedding and Confidence Scoring," arXiv:2507.17442.',
+  '[14] P. He, J. Gao, and W. Chen, "DeBERTaV3: Improving DeBERTa using ELECTRA-Style Pre-Training with Gradient-Disentangled Embedding Sharing," in Proc. ICLR, 2023. arXiv:2111.09543.',
+  '[15] D. J. Schuirmann, "A comparison of the two one-sided tests procedure and the power approach for assessing the equivalence of average bioavailability," J. Pharmacokinet. Biopharm., vol. 15, no. 6, pp. 657-680, 1987.',
+  '[16] B. Goodrich, V. Rao, P. J. Liu, and M. Saleh, "Assessing The Factual Accuracy of Generated Text," in Proc. ACM SIGKDD, 2019, pp. 166-175. arXiv:1905.13322.',
+  '[17] F. Nan, R. Nallapati, Z. Wang, C. N. dos Santos, H. Zhu, D. Zhang, K. McKeown, and B. Xiang, "Entity-level Factual Consistency of Abstractive Text Summarization," in Proc. EACL, 2021, pp. 2727-2733. arXiv:2102.09130.',
+  '[18] Z. Zhao, S. B. Cohen, and B. Webber, "Reducing Quantity Hallucinations in Abstractive Summarization," in Findings of EMNLP, 2020, pp. 2237-2249. arXiv:2009.13312.',
+  '[19] E. Wallace, Y. Wang, S. Li, S. Singh, and M. Gardner, "Do NLP Models Know Numbers? Probing Numeracy in Embeddings," in Proc. EMNLP-IJCNLP, 2019, pp. 5307-5315. arXiv:1909.07940.',
+  '[20] H. Rashkin, V. Nikolaev, M. Lamm, L. Aroyo, M. Collins, D. Das, S. Petrov, G. S. Tomar, I. Turc, and D. Reitter, "Measuring Attribution in Natural Language Generation Models," Computational Linguistics, vol. 49, no. 4, pp. 777-840, 2023. arXiv:2112.12870.',
+  '[21] T. Kwiatkowski et al., "Natural Questions: A Benchmark for Question Answering Research," TACL, vol. 7, pp. 453-466, 2019.',
+  '[22] Z. Yang, P. Qi, S. Zhang, Y. Bengio, W. W. Cohen, R. Salakhutdinov, and C. D. Manning, "HotpotQA: A Dataset for Diverse, Explainable Multi-hop Question Answering," in Proc. EMNLP, 2018, pp. 2369-2380.',
+  '[23] R. Dror, G. Baumer, S. Shlomov, and R. Reichart, "The Hitchhiker\'s Guide to Testing Statistical Significance in Natural Language Processing," in Proc. ACL, 2018, pp. 1383-1392.',
+  '[24] S. Sturua, I. Mohr, M. K. Akram, M. Gunther, B. Wang, M. Krimmel, F. Wang, G. Mastrapas, A. Koukounas, N. Wang, and H. Xiao, "jina-embeddings-v3: Multilingual Embeddings With Task LoRA," arXiv:2409.10173.',
 ];
 refs.forEach((r) => kids.push(P(r, { after: 60, size: 18 })));
 
