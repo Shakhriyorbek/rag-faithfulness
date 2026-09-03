@@ -184,6 +184,13 @@ def build_number_case(answer: str, context: str):
     """Pick one grounded number in `answer` and return the perturbed answer."""
     for m in NUM_RE.finditer(answer):
         numstr = m.group(1)
+        # A chunk citation or an ordered-list marker is not a claim about the
+        # world, so falsifying it is not a falsification. Measured on the
+        # 2026-09-01 runs, such values were 9.5% of HotpotQA/Claude cases and
+        # carried a NEGATIVE mean delta (-0.0625), depressing that cell's mean
+        # by ~15%. See value_role() below.
+        if value_role(answer, m.start(1), m.end(1)) != 'content':
+            continue                                # not an asserted quantity
         if not num_in_text(numstr, context):
             continue                                # not grounded -> uninformative
         pert = perturb_number(numstr)

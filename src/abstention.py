@@ -34,15 +34,30 @@ THE CANONICAL RULE
     calls a refusal was already a refusal on both sides.
 
     The extra phrases from perturbation_check were NOT kept. Classifying the
-    365 disagreements shows 253 (69%) are mid-answer hedges. The remaining
-    112 (31%) are genuine refusals that open with a preamble
-    ("Based on the provided context, I cannot answer this question."), which
-    the anchored rule misses — but that is a separate, measurable gap in the
-    phrase list, not a reason to match hedges anywhere in an answer. See
-    `is_abstention_extended()`, which is a DIAGNOSTIC only: turning it on
-    would move the abstention rate, the answered-only population, and with it
-    the paper's spine result, so it is not wired into any analysis.
+    365 disagreements shows 253 (69%) are mid-answer hedges, which is what a
+    substring rule buys you and why it is wrong.
+
+THE PREAMBLE GAP — CLOSED 2026-09-03
+    The remaining 112 (31%) are genuine refusals that open with a preamble
+    ("Based on the provided context, I cannot answer this question."), which a
+    bare anchored rule misses. That is a gap in the phrase list, not a reason
+    to match hedges anywhere in an answer, so it is fixed where it belongs:
+    the canonical rule now strips a leading "Based on ...," / "According to
+    ...," preamble before the anchored test, over a wider phrase list.
+
+    Audited over all 16,000 generations before adoption: 107 rows change from
+    attempt to refusal (0.67% of the grid), ALL of them Claude's — 80 on
+    HotpotQA, 27 on NQ, none on GPT-4o-mini. 105 of the 107 open with "I
+    cannot answer this question"; the other two are "The context does not
+    specify ..." and "I cannot determine ...". Every sampled row is a genuine
+    refusal that explains itself, e.g. "Based on the provided context, I
+    cannot answer this question. The context mentions that Home Alone 2 is set
+    in New York ... but it does not contain ...".
+
+    This moves the answered-only population behind Sections V through VIII, so
+    every affected analysis was re-run rather than carried over.
 """
+import re
 from typing import Tuple
 
 import textnorm
@@ -64,10 +79,11 @@ ABSTENTION_PHRASES: Tuple[str, ...] = (
 )
 
 # Preamble both generators prepend to everything, refusals included.
-# Used ONLY by is_abstention_extended().
+# Stripped by the canonical rule before the anchored test.
 _PREAMBLE = r'^\s*(?:based on|according to)[^,.:]{0,60}[,:]\s*'
+_PREAMBLE_RE = re.compile(_PREAMBLE, re.I)
 
-# Refusal openings the canonical list does not cover. DIAGNOSTIC ONLY.
+# Refusal openings the bare ABSTENTION_PHRASES list does not cover.
 _EXTENDED_PHRASES: Tuple[str, ...] = ABSTENTION_PHRASES + (
     'I cannot answer this question',
     'I cannot determine',
@@ -79,7 +95,29 @@ _EXTENDED_PHRASES: Tuple[str, ...] = ABSTENTION_PHRASES + (
 
 
 def is_abstention(pred: str) -> bool:
-    """True when the answer OPENS with a refusal rather than an attempt."""
+    """
+    THE canonical rule: True when the answer OPENS with a refusal.
+
+    A leading "Based on the provided context," / "According to the context,"
+    preamble is stripped first, because both generators prepend it to
+    everything including their refusals. The test is still anchored — a
+    caveat carried in the middle of a substantive answer is not a refusal.
+    """
+    if not pred:
+        return False
+    stripped = _PREAMBLE_RE.sub('', pred)
+    p = textnorm.squad_normalize(stripped)
+    return any(p.startswith(textnorm.squad_normalize(m))
+               for m in _EXTENDED_PHRASES)
+
+
+def is_abstention_bare(pred: str) -> bool:
+    """
+    The pre-2026-09-03 rule: anchored, no preamble strip, short phrase list.
+
+    Kept so the 107-row difference stays measurable and the older reported
+    numbers remain reproducible. Not used by any analysis.
+    """
     if not pred:
         return False
     p = textnorm.squad_normalize(pred)
@@ -87,19 +125,5 @@ def is_abstention(pred: str) -> bool:
                for m in ABSTENTION_PHRASES)
 
 
-def is_abstention_extended(pred: str) -> bool:
-    """
-    Anchored refusal detection after stripping a "Based on ...," preamble,
-    over a wider phrase list.
-
-    DIAGNOSTIC ONLY — not used by any analysis. It exists so the size of the
-    canonical rule's blind spot can be measured (112 of 16,000 rows on
-    n1000_v3) without silently changing which rows count as attempts.
-    """
-    import re
-    if not pred:
-        return False
-    stripped = re.sub(_PREAMBLE, '', pred, flags=re.I)
-    p = textnorm.squad_normalize(stripped)
-    return any(p.startswith(textnorm.squad_normalize(m))
-               for m in _EXTENDED_PHRASES)
+# Back-compat alias: the extended rule IS the canonical rule as of 2026-09-03.
+is_abstention_extended = is_abstention

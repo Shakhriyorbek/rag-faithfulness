@@ -243,6 +243,57 @@ class TestAbstention:
         assert not pc.is_abstention(
             'The budget is $1,000, though the context does not contain the date.')
 
+    def test_a_refusal_behind_a_preamble_is_a_refusal(self):
+        """
+        Adopted 2026-09-03. Both generators prepend "Based on the provided
+        context," to everything, refusals included; the bare anchored rule
+        therefore graded 107 genuine refusals as attempts (all Claude's).
+        """
+        assert pc.is_abstention(
+            'Based on the provided context, I cannot answer this question. '
+            'The context mentions Home Alone 2 but does not say where it is set.')
+        assert pc.is_abstention(
+            'According to the context, I cannot determine when Arsenal last won.')
+        # ...but the preamble strip must not turn a hedge into a refusal.
+        assert not pc.is_abstention(
+            'Based on the provided context, the members were A and B. '
+            'However, the context does not contain their ages.')
+
+    def test_the_bare_rule_is_kept_and_still_disagrees(self):
+        """The 107-row difference must stay measurable, not be erased."""
+        import abstention
+        preamble = 'Based on the provided context, I cannot answer this question.'
+        assert abstention.is_abstention(preamble)
+        assert not abstention.is_abstention_bare(preamble)
+
+
+class TestCaseConstructionIsContentOnly:
+    """
+    Decided 2026-09-03. build_number_case took the first GROUNDED number,
+    which on HotpotQA/Claude was a chunk citation or a list marker in 9.5% of
+    cases — values carrying a NEGATIVE mean delta (-0.0625), since falsifying
+    "Chunk 4" into "Chunk 7" is not a falsification.
+    """
+
+    def test_a_chunk_citation_is_not_chosen(self):
+        answer = 'According to Chunk 4, the budget was 1,000 USD.'
+        context = 'chunk 4 of 5 — the invoice total was 1,000 USD'
+        out = pc.build_number_case(answer, context)
+        assert out is not None
+        assert out[1] == '1,000', f'falsified the citation, not the value: {out[1]}'
+
+    def test_a_list_marker_is_not_chosen(self):
+        answer = '1. The population was 5,000 people.'
+        context = 'the town recorded 5,000 people in the census'
+        out = pc.build_number_case(answer, context)
+        assert out is not None
+        assert out[1] == '5,000', f'falsified the list marker: {out[1]}'
+
+    def test_a_plain_grounded_value_is_still_chosen(self):
+        out = pc.build_number_case('The budget is 1,000 USD.',
+                                   'the invoice total was 1,000 USD')
+        assert out is not None and out[1] == '1,000'
+
 
 class TestDonorSelection:
     def test_a_donor_supporting_the_answer_is_rejected(self):
