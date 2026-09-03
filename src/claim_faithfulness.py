@@ -44,6 +44,7 @@ from typing import Dict, List
 import numpy as np
 
 import config
+import textnorm
 from utils import checkpoint_exists, load_checkpoint, save_checkpoint
 
 GENERATORS = ['claude', 'gpt4omini', 'llama3', config.OPEN_MODEL_LABEL]
@@ -52,7 +53,6 @@ GENERATORS = ['claude', 'gpt4omini', 'llama3', config.OPEN_MODEL_LABEL]
 _ABBREV = (r'(?:Mr|Mrs|Ms|Dr|Prof|Inc|Ltd|Co|Corp|Jr|Sr|St|vs|etc|al|Fig|No'
            r'|Vol|pp|Ph\.D|U\.S|U\.K|e\.g|i\.e|approx|Gen|Sen|Rep|Mt)')
 
-_MD = re.compile(r'(\*\*|__|\*|`|#+\s*|^\s*[-•]\s*)', re.M)
 _WORD = re.compile(r'\w+', re.UNICODE)
 
 # Minimum content words for a span to be a claim. Kept deliberately low: a
@@ -63,9 +63,9 @@ _WORD = re.compile(r'\w+', re.UNICODE)
 MIN_CLAIM_WORDS = 3
 
 
-def strip_markdown(text: str) -> str:
-    """Claude emits **bold** and bullet lists; the NLI model should not see them."""
-    return _MD.sub('', text or '').strip()
+# Canonical since 2026-09-03: textnorm owns it, so nli.py can strip the same
+# way without importing this module (which imports nli).
+strip_markdown = textnorm.strip_markdown
 
 
 def split_claims(answer: str) -> List[str]:

@@ -44,6 +44,7 @@ import numpy as np
 
 import abstention
 import config
+import textnorm
 from utils import checkpoint_exists, load_checkpoint, save_checkpoint
 
 SEED = config.RANDOM_SEED if hasattr(config, 'RANDOM_SEED') else 42
@@ -421,6 +422,11 @@ class _Scorer:
                 self.cf = claim_faithfulness
 
     def score(self, chunks, answer):
+        # Every scorer reads the SAME hypothesis. score_chunks and
+        # score_claims strip internally; nli_concat and align call their
+        # models directly, so the strip has to happen here or those two would
+        # still see the raw string. Idempotent, so double-stripping is safe.
+        answer = textnorm.strip_markdown(answer)
         if self.kind == 'nli':
             return self.m.score_chunks(chunks, answer)['nli_max']
         if self.kind == 'nli_concat':

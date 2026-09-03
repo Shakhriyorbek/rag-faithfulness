@@ -19,6 +19,7 @@ from typing import Dict, List
 
 import numpy as np
 
+import textnorm
 import config
 from nli import NLIScorer
 from utils import checkpoint_exists, load_checkpoint, save_checkpoint
@@ -157,9 +158,14 @@ def run_phase_e(datasets: Dict, model_names: List[str] = None,
                          for g in generations
                          if not g['generated_answer'].startswith('[ERROR')]
                 print(f'  AlignScore [{gen}] [{model}] [{ds_name}]...')
+                # Same hypothesis as the NLI arms — see textnorm.strip_markdown.
+                # The paper states all three evaluators score identical inputs;
+                # before 2026-09-03 that was only true of the answer text as
+                # the generator wrote it, not as each evaluator read it.
                 raw = scorer.score(
                     contexts=[ctx for _, ctx in pairs],
-                    claims=[g['generated_answer'] for g, _ in pairs])
+                    claims=[textnorm.strip_markdown(g['generated_answer'])
+                            for g, _ in pairs])
                 scores = [
                     {'query_id': g['query_id'], 'align_score': float(s)}
                     for (g, _), s in zip(pairs, raw)

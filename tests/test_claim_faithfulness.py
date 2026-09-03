@@ -163,3 +163,46 @@ class TestScoreClaimsAggregation:
         nli = self.FakeNLI({answer: 0.9})
         out = cf.score_claims(['a', 'b'], answer, nli)
         assert 'best_chunk' in out['per_claim'][0]
+
+
+class TestMarkdownIsStrippedEverywhere:
+    """
+    Decided 2026-09-03. nli.score_chunks scored the answer as written while
+    score_claims stripped markdown first, so on the 74.9% of Claude's answers
+    that carry formatting the two aggregates read different hypotheses — the
+    single-assertion identity failed on 131 real cases by up to 0.729, and the
+    paper's cross-generator contrast was partly a formatting artifact.
+    """
+
+    def test_strip_markdown_has_one_owner(self):
+        import textnorm
+        import claim_faithfulness as cf
+        assert cf.strip_markdown is textnorm.strip_markdown
+
+    def test_strip_is_idempotent(self):
+        import textnorm
+        x = '**Graduados** was a `show`\n- one\n# head'
+        once = textnorm.strip_markdown(x)
+        assert textnorm.strip_markdown(once) == once
+
+    def test_nli_scores_the_stripped_hypothesis(self):
+        """The raw and the stripped answer must reach the model identically."""
+        import textnorm
+        pytest.importorskip('torch', reason='nli.py imports torch at module level')
+        from nli import NLIScorer
+
+        seen = []
+
+        class Stub(NLIScorer):
+            def __init__(self):
+                pass
+
+            def entailment_probs(self, pairs):
+                seen.append([h for _, h in pairs])
+                return [0.5] * len(pairs)
+
+        s = Stub()
+        s.score_chunks(['ctx'], '**Graduados** won')
+        s.score_chunks(['ctx'], 'Graduados won')
+        assert seen[0] == seen[1], f'markdown reached the model: {seen}'
+        assert seen[0][0] == textnorm.strip_markdown('**Graduados** won')

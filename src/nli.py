@@ -16,6 +16,7 @@ B5 — The notebook concatenated all 5 retrieved chunks (~1,280 tokens) into
 from typing import List, Tuple
 
 import numpy as np
+import textnorm
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
@@ -74,6 +75,12 @@ class NLIScorer:
         default is 'nli_max' = max(per-chunk max, concat) — "is the answer
         entailed by any part of the retrieved context".
         """
+        # Strip markdown so every evaluator reads the SAME hypothesis.
+        # Before 2026-09-03 only the claim-level scorer stripped, so nli_max
+        # and claim_min were not comparable on the 74.9% of Claude's answers
+        # that carry formatting, and the single-assertion identity failed on
+        # them by up to 0.729. See textnorm.strip_markdown.
+        hypothesis = textnorm.strip_markdown(hypothesis)
         pairs = [(c, hypothesis) for c in chunks]
         concat = ' '.join(chunks)  # tokenizer truncates at 512
         pairs.append((concat, hypothesis))

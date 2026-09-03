@@ -108,3 +108,21 @@ def contains(haystack: str, needle: str) -> bool:
 def contains_any(haystack: str, needles) -> bool:
     h = _pad(squash(haystack))
     return any(n and _pad(n) in h for n in (squash(x) for x in needles or ()))
+
+# ── markdown ───────────────────────────────────────────────────────────────
+# Claude emits **bold**, headings and bullet lists; GPT-4o-mini essentially
+# never does (74.9% of Claude's answered rows carry markdown against 0.3% of
+# GPT-4o-mini's, measured on n1000_v3). Formatting is not content, and an
+# entailment model reacts to it: on single-claim answers the same hypothesis
+# scored raw vs stripped differs by up to 0.729.
+#
+# This lives here, not in claim_faithfulness, because every evaluator must
+# strip identically — claim_faithfulness imports nli, so nli cannot import it
+# back. Adopted 2026-09-03; before that only the claim-level scorer stripped,
+# which meant the two NLI aggregates read different hypotheses.
+_MD = re.compile(r'(\*\*|__|\*|`|#+\s*|^\s*[-•]\s*)', re.M)
+
+
+def strip_markdown(text: str) -> str:
+    """Remove markdown emphasis, headings and bullet markers."""
+    return _MD.sub('', text or '').strip()
