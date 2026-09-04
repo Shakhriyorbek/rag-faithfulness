@@ -251,3 +251,78 @@ class TestOpenWeightGenerator:
             assert label in m.GENERATORS, mod
             checked += 1
         assert checked >= 2
+
+
+class TestLocalHFGenerateCall:
+    """
+    Drives LocalHFGenerator.generate with stubs instead of a 15 GB model.
+
+    This is the only arm that had never been run, and it did not work: in
+    transformers 4.x `apply_chat_template(return_tensors='pt')` returned a
+    bare tensor, in 5.x it returns a BatchEncoding, and the original code
+    passed that straight into model.generate() as the first positional
+    argument, where it died on `inputs_tensor.shape[0]`. A stub is enough to
+    catch that, and cheap enough to keep running everywhere.
+    """
+
+    def _gen(self, monkeypatch, n_prompt=5, n_new=3):
+        torch = pytest.importorskip('torch')
+        from generate import LocalHFGenerator
+
+        state = {}
+
+        class StubTok:
+            eos_token_id = 7
+
+            def apply_chat_template(self, conv, **kw):
+                state['prompt'] = conv[0]['content']
+                state['add_generation_prompt'] = kw.get('add_generation_prompt')
+                # The regression: the caller must ask for a dict explicitly
+                # rather than depend on a default that changed between majors.
+                assert kw.get('return_dict') is True
+                ids = torch.arange(n_prompt).unsqueeze(0)
+                return {'input_ids': ids,
+                        'attention_mask': torch.ones_like(ids)}
+
+            def decode(self, ids, skip_special_tokens=True):
+                return '  answer ' + ','.join(str(int(i)) for i in ids) + ' '
+
+        class StubModel:
+            device = 'cpu'
+
+            def generate(self, **kw):
+                state['kw'] = kw
+                # input_ids must arrive as a keyword tensor, not positionally
+                assert 'input_ids' in kw
+                total = kw['input_ids'].shape[1] + n_new
+                return torch.arange(total).unsqueeze(0)
+
+        g = object.__new__(LocalHFGenerator)
+        g.tokenizer, g.model, g.torch = StubTok(), StubModel(), torch
+        return g, state
+
+    def test_returns_only_the_new_tokens(self, monkeypatch):
+        """Slicing is by token count; a character slice would leak the prompt."""
+        g, _ = self._gen(monkeypatch, n_prompt=5, n_new=3)
+        out = g.generate('q?', ['c1', 'c2'])
+        assert out == 'answer 5,6,7'          # the 3 new ids, stripped
+
+    def test_prompt_parity_with_the_api_generators(self, monkeypatch):
+        """H3 compares generators, so the prompt must be build_prompt() exactly."""
+        from generate import build_prompt
+        g, state = self._gen(monkeypatch)
+        g.generate('who?', ['ctx a', 'ctx b'])
+        assert state['prompt'] == build_prompt('who?', ['ctx a', 'ctx b'])
+        assert state['add_generation_prompt'] is True
+
+    def test_decoding_is_greedy_and_unsampled(self, monkeypatch):
+        g, state = self._gen(monkeypatch)
+        g.generate('q?', ['c'])
+        assert state['kw']['do_sample'] is False
+        assert 'temperature' not in state['kw']
+        assert state['kw']['max_new_tokens'] == 256
+
+    def test_attention_mask_is_passed_through(self, monkeypatch):
+        g, state = self._gen(monkeypatch)
+        g.generate('q?', ['c'])
+        assert 'attention_mask' in state['kw']

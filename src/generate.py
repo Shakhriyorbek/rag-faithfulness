@@ -330,21 +330,30 @@ class LocalHFGenerator:
 
     def generate(self, question: str, chunks: List[str]) -> str:
         prompt = build_prompt(question, chunks)
-        # Instruct model -> chat template, not raw completion
-        input_ids = self.tokenizer.apply_chat_template(
+        # Instruct model -> chat template, not raw completion.
+        #
+        # `return_dict=True` is passed explicitly rather than relying on the
+        # default, which flipped: transformers 4.x returned a bare tensor here
+        # and 5.x returns a BatchEncoding, so the old code reached
+        # model.generate() with a dict as its first positional argument and
+        # died on `inputs_tensor.shape[0]`. Being explicit works on both, and
+        # it also gets us the attention mask instead of letting generate()
+        # infer one.
+        enc = self.tokenizer.apply_chat_template(
             [{'role': 'user', 'content': prompt}],
             add_generation_prompt=True, return_tensors='pt',
-            truncation=True, max_length=4096,
-        ).to(self.model.device)
+            truncation=True, max_length=4096, return_dict=True,
+        )
+        enc = {k: v.to(self.model.device) for k, v in enc.items()}
         with self.torch.no_grad():
             output = self.model.generate(
-                input_ids,
+                **enc,
                 max_new_tokens=256,
                 do_sample=False,  # C13: greedy — no temperature argument
                 pad_token_id=self.tokenizer.eos_token_id,
             )
         # C13: slice by token count, not character count
-        new_tokens = output[0][input_ids.shape[1]:]
+        new_tokens = output[0][enc['input_ids'].shape[1]:]
         return self.tokenizer.decode(new_tokens,
                                      skip_special_tokens=True).strip()
 
