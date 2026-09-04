@@ -139,6 +139,84 @@ def _report_source_sensitivity(rows, alpha: float = 0.05):
           % (len(moved), len(by)))
 
 
+def _report_holm_scope_sensitivity(rows, alpha=0.05):
+    """
+    How many cells break under AlignScore, as a function of the multiplicity
+    family — which is an analyst's choice and not a property of the data.
+
+    WHY THIS IS REPORTED RATHER THAN DECIDED SILENTLY
+        The headline count is "k of 4 nulls break under a more sensitive
+        evaluator". k is 1 under Holm over the whole printed table and 2 under
+        Holm within an evaluator, because NQ/Claude/align sits at p=0.0081 and
+        lands either side of 0.05 depending on whether it is corrected against
+        8 tests or 4. All three scopes below are defensible:
+
+          table-wide       every p printed in the table is one family. Most
+                           conservative, and the choice the paper made (A5)
+                           BEFORE this correction was applied.
+          within-evaluator the 4 NLI tests establish which cells are null;
+                           they are a precondition for the question, not
+                           competing discoveries. The claims at risk of being
+                           false positives are the 4 AlignScore rejections, so
+                           that is the family whose error rate needs control.
+          within-cell      each (dataset, generator) cell is asked one
+                           question — does the verdict change with the
+                           evaluator — over its 2 evaluators.
+
+        The paper keeps table-wide. Not because it is uniquely correct — the
+        within-evaluator argument is at least as strong on the statistics —
+        but because it was fixed in advance, and switching to a less
+        conservative family AFTER seeing that it restores a cell is a forking
+        path, whatever its a-priori merit. Reporting the sensitivity costs
+        nothing and is the same discipline the paper asks of its own
+        evaluators: a result that depends on an analysis choice should be
+        published with the choice attached, not with the choice hidden.
+    """
+    fams = {
+        'table-wide': [rows],
+        'within-evaluator': [[r for r in rows if r['metric'] == m]
+                             for m in sorted({r['metric'] for r in rows})],
+        'within-cell': [[r for r in rows
+                         if (r['dataset'], r['generator']) == c]
+                        for c in sorted({(r['dataset'], r['generator'])
+                                         for r in rows})],
+    }
+    print('\n' + '=' * 92)
+    print('MULTIPLICITY-SCOPE SENSITIVITY  (which family Holm corrects over)')
+    print('=' * 92)
+    hdr = '%-18s %6s %9s %s' % ('family', 'tests', 'breaks', 'cells')
+    print(hdr); print('-' * len(hdr))
+    swing = {}
+    for name, groups in fams.items():
+        breaks = []
+        sizes = []
+        for fam in groups:
+            if not fam:
+                continue
+            sizes.append(len(fam))
+            for r, a in zip(fam, holm_bonferroni([r['p_value'] for r in fam])):
+                swing.setdefault((r['dataset'], r['generator'], r['metric']),
+                                 {})[name] = a
+                if a < alpha:
+                    breaks.append('%s/%s/%s' % (r['dataset'], r['generator'],
+                                                r['metric']))
+        n = '+'.join(str(s) for s in sorted(set(sizes))) if sizes else '0'
+        print('%-18s %6s %9d %s'
+              % (name, n, len(breaks), ', '.join(breaks) or '—'))
+    moved = {k: v for k, v in swing.items()
+             if len({a < alpha for a in v.values()}) > 1}
+    if moved:
+        print('\n  cells whose verdict depends on the family:')
+        for k, v in sorted(moved.items()):
+            detail = '  '.join('%s p_holm=%.4f' % (n, a)
+                               for n, a in sorted(v.items()))
+            print('    %s/%s/%s   %s' % (*k, detail))
+        print('  -> the headline count is not invariant to this choice. The '
+              'paper reports table-wide, fixed in advance; see the docstring.')
+    else:
+        print('\n  no cell changes verdict — the count is stable to this choice')
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--datasets', default='NQ,HotpotQA')
@@ -260,6 +338,15 @@ def main():
         print('  %s / %s   [abstained by: %s]' % (ds, gen, src))
         for p in parts:
             print('      ' + p)
+
+    # One family per abstention source, for the same reason the Holm block
+    # corrects them separately: they are the same cells re-tested, not extra
+    # questions, so pooling them would inflate the family with duplicates.
+    for src in sources:
+        fam = [r for r in rows if r['correct_source'] == src]
+        if len(sources) > 1:
+            print('\n[abstained by: %s]' % src)
+        _report_holm_scope_sensitivity(fam)
     return 0
 
 
