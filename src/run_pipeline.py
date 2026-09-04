@@ -60,6 +60,10 @@ def main():
     ap.add_argument('--phases', default='a,b,c,d,report',
                     help=f'comma-separated subset of {ALL_PHASES} '
                          '(default: a,b,c,d,report — the CPU/API path)')
+    ap.add_argument('--open-subset', type=int, default=config.LLAMA_SUBSET,
+                    help='queries per dataset for the open-weight arm '
+                         f'(default {config.LLAMA_SUBSET}); pass --open-subset '
+                         '1000 for parity with the API arms')
     ap.add_argument('--models', default=None,
                     help='comma-separated model names (overrides mode default)')
     ap.add_argument('--datasets', default=None,
@@ -137,7 +141,14 @@ def main():
         run_phase_c_openai(datasets, models, project_to=project_to)
     if 'llama' in phases:
         from generate import run_phase_llama
-        run_phase_llama(datasets)
+        # models/subset are passed through rather than left to the defaults.
+        # The arm was designed as a 3-model, 300-query validation subset back
+        # when the open-weight model was assumed to need 8-bit and to be slow.
+        # Measured on this box it is 2.1 s/answer in fp16, so the full grid is
+        # ~4.7 h and free, and a third generator that shares the other two
+        # arms' models, queries and n is comparable in every table instead of
+        # being a footnote with its own scale.
+        run_phase_llama(datasets, models, subset=args.open_subset)
     if 'd' in phases:
         from faithfulness import run_phase_d
         run_phase_d(datasets, models)
