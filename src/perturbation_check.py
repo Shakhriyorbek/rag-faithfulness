@@ -660,7 +660,8 @@ def main():
     ap.add_argument('--datasets', default='NQ,HotpotQA')
     ap.add_argument('--models', default=None,
                     help='comma-separated; default = every configured model')
-    ap.add_argument('--generators', default='claude,gpt4omini')
+    ap.add_argument('--generators',
+                    default=','.join(config.ACTIVE_GENERATORS))
     ap.add_argument('--limit', type=int, default=300,
                     help='max cases per (model, dataset, generator)')
     ap.add_argument('--scope-n', type=int, default=None,

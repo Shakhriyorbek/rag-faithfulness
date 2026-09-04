@@ -220,7 +220,8 @@ def _report_holm_scope_sensitivity(rows, alpha=0.05):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--datasets', default='NQ,HotpotQA')
-    ap.add_argument('--generators', default='claude,gpt4omini')
+    ap.add_argument('--generators',
+                    default=','.join(config.ACTIVE_GENERATORS))
     ap.add_argument('--models', default=None)
     ap.add_argument('--metrics', default='nli,align,claim')
     ap.add_argument('--correct-source', default='contains',

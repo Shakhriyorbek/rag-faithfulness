@@ -326,3 +326,41 @@ class TestLocalHFGenerateCall:
         g, state = self._gen(monkeypatch)
         g.generate('q?', ['c'])
         assert 'attention_mask' in state['kw']
+
+
+class TestGeneratorCliDefaults:
+    """
+    B10 at the CLI layer.
+
+    The module-level GENERATORS lists have known the open label for a while,
+    but every analysis CLI still defaulted --generators to 'claude,gpt4omini'.
+    That is the same failure that left 8,000 paid GPT-4o-mini rows out of the
+    conditional tables: the arm is generated, the scoring modules can see it,
+    and the report you actually run silently omits it.
+    """
+
+    def test_active_generators_covers_the_arms_with_checkpoints(self):
+        import config
+        assert config.OPEN_MODEL_LABEL in config.ACTIVE_GENERATORS
+        assert 'claude' in config.ACTIVE_GENERATORS
+        assert 'gpt4omini' in config.ACTIVE_GENERATORS
+        # legacy label, no checkpoints — must not be queried by default
+        assert 'llama3' not in config.ACTIVE_GENERATORS
+
+    def test_every_analysis_cli_defaults_to_all_active_arms(self):
+        """Parse each CLI's default rather than trusting the source string."""
+        import importlib
+        import config
+
+        checked = 0
+        for mod_name in ('compare_evaluators', 'perturbation_check',
+                         'perturb_report', 'copying_check'):
+            try:
+                mod = importlib.import_module(mod_name)
+            except ImportError:
+                continue          # torch/transformers absent off the GPU box
+            src = __import__('inspect').getsource(mod.main)
+            assert 'ACTIVE_GENERATORS' in src, mod_name
+            checked += 1
+        assert checked >= 1
+        assert len(config.ACTIVE_GENERATORS) >= 3

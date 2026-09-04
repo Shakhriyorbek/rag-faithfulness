@@ -39,6 +39,15 @@ LLAMA_SUBSET  = 300      # open-weight validation queries per dataset
 # model without changing the label would silently mix two models' answers.
 OPEN_MODEL_ID    = 'Qwen/Qwen2.5-7B-Instruct'
 OPEN_MODEL_LABEL = 'qwen'
+
+# The generator arms that actually have checkpoints, in report order. CLI
+# --generators defaults are built from this so a new arm cannot be generated
+# and then silently left out of an analysis. That is B10 exactly: the
+# module-level GENERATORS lists knew about gpt4omini while conditional.py did
+# not, and 8,000 paid rows described only Claude. 'llama3' is deliberately
+# absent — a legacy label with no checkpoints.
+ACTIVE_GENERATORS = ('claude', 'gpt4omini', OPEN_MODEL_LABEL)
+
 ESA_N_SAMPLES = 200      # Queries per model×dataset for the ESA correlation
 
 # ── NLI model (faithfulness, ESA, re-ranking) ──
