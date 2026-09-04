@@ -367,9 +367,18 @@ def run_phase_llama(datasets: Dict, model_names: List[str] = None,
                     subset: int = config.LLAMA_SUBSET,
                     model_id: str = None, label: str = None):
     """
-    Open-weight validation subset (H3: generator independence).
-    Default: the 3 core models, `subset` queries per dataset.
-    NLI scoring happens in Phase D against these checkpoints.
+    The open-weight generator arm (H3: generator independence).
+
+    `model_names=None` means EVERY configured model, as it does in every other
+    phase. It used to mean a hardcoded three, which silently dropped
+    text-embedding-3-small: run_pipeline passes None when --models is omitted,
+    so a run asking for the full grid quietly produced three quarters of it.
+    That is not a smaller run, it is an incomparable one — the embedder spread
+    this arm contributes to Table VII would have been taken over 3 systems
+    while the other generators' was taken over 4.
+
+    Models without a retrieval checkpoint are reported and skipped, so naming
+    all seven configured models costs nothing when only four have been run.
 
     `label` goes into the checkpoint key, so a Qwen run and a Llama run never
     collide. Passing a different `model_id` under the SAME label would mix two
@@ -377,8 +386,7 @@ def run_phase_llama(datasets: Dict, model_names: List[str] = None,
     """
     model_id = model_id or config.OPEN_MODEL_ID
     label = label or config.OPEN_MODEL_LABEL
-    val_models = model_names or ['all-mpnet-base-v2', 'E5-large-instruct',
-                                 'BGE-M3']
+    val_models = model_names or [c['name'] for c in config.EMBEDDING_MODELS]
     llama = LocalHFGenerator(model_id)
 
     for model in val_models:

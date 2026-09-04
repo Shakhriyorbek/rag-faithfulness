@@ -339,6 +339,36 @@ class TestGeneratorCliDefaults:
     and the report you actually run silently omits it.
     """
 
+    def test_open_arm_defaults_to_every_configured_model(self, monkeypatch,
+                                                         tmp_path):
+        """
+        None must mean ALL models, as in every other phase.
+
+        It used to mean a hardcoded three, so run_pipeline passing None (the
+        no --models case) produced 3 of the 4 embedders. The arm then
+        contributes an embedder spread taken over 3 systems to a table whose
+        other rows are over 4 — incomparable, not merely smaller.
+        """
+        import config as cfg
+        import generate
+        monkeypatch.setenv('RAG_CHECKPOINT_DIR', str(tmp_path))
+        monkeypatch.setattr(cfg, 'CHECKPOINT_DIR', tmp_path)
+        monkeypatch.setattr(generate, 'LocalHFGenerator',
+                            lambda model_id=None: type(
+                                'G', (), {'generate': lambda s, q, c: 'a'})())
+        from utils import load_checkpoint, save_checkpoint
+
+        names = [c['name'] for c in cfg.EMBEDDING_MODELS]
+        for m in names:
+            save_checkpoint(f'retrieval_{m}_NQ', [
+                {'query_id': 'q1', 'question': 'q?',
+                 'retrieved_texts': ['ctx']}])
+
+        generate.run_phase_llama({'NQ': object()}, subset=1)
+        for m in names:
+            assert load_checkpoint(
+                f'generated_{cfg.OPEN_MODEL_LABEL}_{m}_NQ'), m
+
     def test_active_generators_covers_the_arms_with_checkpoints(self):
         import config
         assert config.OPEN_MODEL_LABEL in config.ACTIVE_GENERATORS
