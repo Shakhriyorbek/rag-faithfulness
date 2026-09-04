@@ -47,6 +47,14 @@ ESA_N_SAMPLES = 200      # Queries per model×dataset for the ESA correlation
 # {0: contradiction, 1: entailment, 2: neutral} — index 2 is NOT entailment.
 NLI_MODEL = 'cross-encoder/nli-deberta-v3-large'
 
+# NLI batch size. gpu1 is SHARED — a co-tenant's job routinely holds 27 of the
+# 32 GB, which leaves room for a batch of 2 rather than 16, and a run launched
+# at a fixed 16 dies on the first forward pass. 0 means "decide from the free
+# VRAM at load time and adapt during the run"; a positive value pins it.
+# Override with RAG_NLI_BATCH.
+NLI_BATCH_SIZE = int(os.getenv('RAG_NLI_BATCH', '0'))
+NLI_BATCH_MAX = 16
+
 # ── V100 memory handling ──
 # 16GB V100: Llama-3-8B needs 8-bit. 32GB V100: fp16 is fine.
 # Auto-detected at runtime in generate_llama.py
