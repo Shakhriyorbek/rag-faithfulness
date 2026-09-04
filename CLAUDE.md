@@ -653,6 +653,9 @@ value actually is.
 
 ### The four open decisions — RESOLVED 2026-09-03
 
+Full write-up, including the Part A/B revisions pass and every before/after
+number: `reports/2026-09-03_revisions_and_decisions.md`.
+
 `reports/2026-09-01_fixes_implementation.md` closed with four decisions. All
 four are now taken. Two required re-running the falsification probe and the
 evaluator comparison; they were made together and re-run **once**, because both
