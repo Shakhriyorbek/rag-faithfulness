@@ -725,6 +725,52 @@ number produced by running the adopted code over the grid.)
 
 ---
 
+### The two 2026-09-04 closures (report: `reports/2026-09-04_copying_and_multiplicity.md`)
+
+The 2026-09-03 session closed by flagging two unfinished items. Both are done.
+
+**B20 — the verbatim-copying control had no home in `src/`, so it went stale.**
+Section V-B's refutation (overlap 0.234 both generators, corr +0.041/+0.161)
+came from an uncommitted 2026-08-25 script, which is why it was the only
+Section V number not regenerated after D1/D2 — both of which move the deltas it
+correlates against. Rebuilt as **`src/copying_check.py`**. **The conclusion
+holds and the figures reproduce to within 0.005**: overlap 0.226 Claude / 0.235
+GPT-4o-mini, corr +0.046 [-0.004, +0.096] and +0.166 [+0.118, +0.212] over
+3,173 cases. Three corrections to the draft: the overlaps are **not identical**
+(and GPT-4o-mini copies slightly MORE, the wrong way for the hypothesis);
+**Claude's correlation is indistinguishable from zero**, so "positive where the
+explanation predicts negative" was too strong for that arm; and the real
+refutation is the **matched-overlap bands** — Claude +0.052..+0.085 against
+GPT-4o-mini +0.326..+0.507, a fivefold separation in *every* band including
+above 0.3. Two choices are now explicit because they decide the number:
+`squash` tokenisation (which neutralises markdown, so `raw/squash` and
+`stripped/squash` are byte-identical and the measure is **provably insensitive
+to D1**), and answers under 5 tokens **excluded, never scored 0** — GPT-4o-mini
+writes far more of them, so scoring them 0 would manufacture the very
+cross-generator difference the control tests for.
+
+**B21 — the headline count depends on the multiplicity family, and that is now
+printed.** NQ/Claude/align is p=0.0081 uncorrected and Holm puts it either side
+of 0.05: **p_holm 0.0567 over the 8 tests in the table (k=1), 0.0243 within
+evaluator (k=2), 0.0162 within cell (k=2)**. Within-evaluator is defensible on
+the statistics — the 4 NLI tests establish which cells are null, so they
+precede the question rather than compete with it, and the family at risk of
+false positives is the 4 AlignScore rejections. **Table-wide is kept anyway**:
+it was fixed in advance (A5) and is the most conservative, and switching to a
+smaller family after seeing that it restores a cell is a forking path whatever
+its a-priori merit. `compare_evaluators._report_holm_scope_sensitivity` now
+prints all three families and any swing cell on every run; Section VII states
+the alternative. **The headline is still 1 of 4 cells.**
+
+**⚠️ The backup is a pre-D1 snapshot.** `~/rag-backup/checkpoints` was last
+refreshed 2026-09-01 15:39; the D1/D2 re-run landed on gpu1 2026-09-03
+19:41-19:46. Nothing was violated — the convention ties refreshes to *paid*
+runs and 09-03 was free — but every post-decision checkpoint behind the current
+paper exists **in one place only**. Widen the rule to "after any run that
+changes a number in the paper".
+
+---
+
 ### Code moves and reporting changes of 2026-09-01
 
 - **`src/metrics.py` is now `src/legacy/rfg.py`.** The gap metric is retired
@@ -758,10 +804,11 @@ number produced by running the adopted code over the grid.)
    2026-09-01 (`--scorer numeric`, see B19), C1/C2 (~$3–4), QASPER (~$5),
    ESA/re-ranking (decision pending with Berend). Shapley/`doc_utility.py`
    is **dropped** at Berend's explicit direction.
-22. ❌ **Paper update** — v6 exists but references are **unverified** (five were
-   wrong in earlier drafts, see §6); fix ref [8] (jina v3, see §1); convert
-   IEEE → ACL; read the Salemi & Zamani PDF (only the abstract has been read);
-   resolve §4.5.2 "cross-attention" wording (decoder-only models use
+22. ❌ **Paper update** — references ✅ **all 24 verified 2026-09-03** (§6b),
+   which also closed ref [8] (now [24], jina v3); Section V-B and the
+   multiplicity disclosure ✅ refreshed 2026-09-04 (B20/B21). Still open:
+   convert IEEE → ACL; read the Salemi & Zamani PDF (only the abstract has been
+   read); resolve §4.5.2 "cross-attention" wording (decoder-only models use
    self-attention over context tokens, and no code implements that analysis)
 
 ---

@@ -413,10 +413,22 @@ kids.push(P(
 kids.push(H('B. The effect is not verbatim copying', H2));
 kids.push(P(
   'A natural explanation is that one generator quotes the retrieved text back, so the evaluator '
-  + 'scores a copy of its own premise. This does not hold. Measuring the fraction of answer '
-  + 'word 5-grams appearing verbatim in the context gives 0.234 for both generators, and the '
-  + 'correlation between overlap and the response to falsification is +0.041 and +0.161 — '
-  + 'positive, where the explanation predicts negative.',
+  + 'scores a copy of its own premise and a single substituted value cannot move it. The data '
+  + 'does not support this. Over the 3,173 falsification cases, the fraction of answer word '
+  + '5-grams occurring in the retrieved context as a contiguous token sequence is 0.226 for '
+  + 'Claude and 0.235 for GPT-4o-mini: the generator whose scores barely move copies slightly '
+  + 'less, not more. The correlation between overlap and the response to falsification is '
+  + '+0.046 for Claude (95% CI -0.004 to +0.096) and +0.166 for GPT-4o-mini (+0.118 to +0.212) '
+  + '— indistinguishable from zero in the first case and positive in the second, where the '
+  + 'explanation requires both to be negative.',
+  { after: 120 }));
+kids.push(P(
+  'The comparison also survives at matched overlap, which the correlation alone does not show. '
+  + 'Grouping the cases into four overlap bands leaves Claude between +0.052 and +0.085 and '
+  + 'GPT-4o-mini between +0.326 and +0.507; the separation is at least fivefold in every band, '
+  + 'including the band above 0.3 where both generators are reusing a substantial part of the '
+  + 'retrieved wording. Overlap is measured on tokens with punctuation mapped to spaces, so it '
+  + 'is unaffected by the markdown normalisation described in Section VII-B.',
   { after: 160 }));
 
 kids.push(H('C. Answers with more assertions are scored less sensitively', H2));
@@ -626,6 +638,20 @@ kids.push(P(
   + 'first evaluator would be an artifact of instrument resolution rather than a property of '
   + 'the systems. The effect is narrower than the four-cell design can establish, and we report '
   + 'it as one cell rather than as a general property of the grid.',
+  { after: 120 }));
+kids.push(P(
+  'That count of one is itself not invariant to the correction. NQ/Claude under AlignScore is '
+  + 'at p = 0.0081 uncorrected, and Holm places it either side of alpha = 0.05 depending on '
+  + 'which comparisons are treated as one family: 0.057 over the eight in the table, 0.024 over '
+  + 'the four sharing an evaluator, 0.016 over the two in its own cell. Correcting within '
+  + 'evaluator is defensible, since the four NLI tests establish which cells are null and so '
+  + 'precede the question rather than competing with it, and it would make the count two. We '
+  + 'report the eight-comparison family because it is the most conservative of the three and '
+  + 'because it was fixed before the correction was applied; adopting a smaller family after '
+  + 'observing that it restores a cell would be a selection we could not account for. We state '
+  + 'the alternative rather than only the choice, because a count that moves with the '
+  + 'multiplicity family is the same kind of dependence on an analysis decision that this paper '
+  + 'reports for the choice of evaluator.',
   { after: 120 }));
 
 kids.push(H('A. Direction is dataset-dependent', H2));
