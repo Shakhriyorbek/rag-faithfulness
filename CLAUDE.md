@@ -774,6 +774,40 @@ changes a number in the paper".
 
 ---
 
+**B22 — claim-level now covers the full grid, and the evaluator family is 12.**
+`claim_scores_*` exist for all 16 cells (16,000 rows, 0 NaN, 280,548 NLI pairs).
+`compare_evaluators --metrics` already defaulted to `nli,align,claim`, so claim
+was being **silently skipped for want of checkpoints** — running it changes
+Table VII from 8 rows to 12 and every `p_holm` with it. **The headline count is
+unchanged at 1 of 4**; the surviving cell (HotpotQA/GPT-4o-mini, AlignScore)
+goes p_holm 0.0040 -> **0.0060** on the larger family. Table-wide Holm is kept:
+applying it to a 12-row table is the same rule, not a new one, because the paper
+always specified three evaluators — 12 is the design family and the earlier 8
+was incomplete data.
+
+Three things the full grid adds:
+- **The same cell breaks under TWO evaluators.** claim-min gives p=0.0070 there
+  (second-smallest in the table), so the result is not AlignScore-specific.
+- **claim-min has a larger spread and smaller p than nli-max in ALL FOUR cells.**
+  Same DeBERTa checkpoint — the aggregation choice is doing the work.
+- **Equivalence moves with the evaluator too**: at ±0.03 on NQ/Claude, nli-max
+  calls 6/6 pairs equivalent and claim-min 2/6.
+
+The Table III mechanism reproduces at n=16,000: the claim_min/whole_max gap is
+~0.24-0.27 for Claude (2.4-3.0 assertions/answer) and ~0.01-0.02 for
+GPT-4o-mini (1.0-1.2). **The paper is NOT yet updated for any of this** — see §5
+of the report.
+
+**⚠️ `nli.NLIScorer` batch size is now adaptive** (`config.NLI_BATCH_SIZE`,
+`RAG_NLI_BATCH` to pin). gpu1 is shared: a co-tenant holding 27 of 32 GB leaves
+room for batch 2, not 16, and the hardcoded 16 dies on the first forward pass.
+It shrinks on OOM and grows back. **The OOM retry re-runs the failing slice
+rather than skipping it** — `score_claims` slices the returned probabilities by
+block, so a short return would attribute one claim's score to another and every
+`claim_min` would be silently wrong. Pinned by `tests/test_nli_batching.py`.
+
+---
+
 ### Code moves and reporting changes of 2026-09-01
 
 - **`src/metrics.py` is now `src/legacy/rfg.py`.** The gap metric is retired
@@ -801,9 +835,10 @@ changes a number in the paper".
 
 **Still open:**
 21. ❌ **The experiments in `PAPER_TODO.md` §3** — LLM judge ✅ done 2026-08-30,
-   open-weight generator (free), claim-level over the full grid (free — still
-   only the perturbation subset is scored, which is why the evaluator table is
-   a family of 8 and not 12), literal value grounding ✅ built and measured
+   open-weight generator (free), claim-level over the full grid ✅ **done
+   2026-09-04** (16,000 rows, 0 NaN, 3h03m, $0 — the evaluator table is now a
+   family of **12**; see `reports/2026-09-04_claim_level_full_grid.md` and B22
+   below), literal value grounding ✅ built and measured
    2026-09-01 (`--scorer numeric`, see B19), C1/C2 (~$3–4), QASPER (~$5),
    ESA/re-ranking (decision pending with Berend). Shapley/`doc_utility.py`
    is **dropped** at Berend's explicit direction.

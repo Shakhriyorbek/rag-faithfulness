@@ -1,0 +1,12 @@
+What I was recommending — two things I flagged as unfinished
+
+1. Section V-B's verbatim-copying figures were not re-run. The 0.234 5-gram overlap and the +0.041 / +0.161 correlations (build_v6.js:417-418) are computed through a separate ad-hoc path — I've just confirmed no module in src/ implements it. They're probably close to unchanged, but they're unverified against the post-D1/D2 data. Don't treat them as refreshed.
+
+2. p_holm = 0.0567 is a borderline call that depends on a choice you can defend either way. Correcting table-wide over 8 comparisons (the A5 decision, which I kept) loses NQ/Claude; correcting within evaluator over 4 returns it to significance. A reviewer may raise it, and it's the difference between a 1-cell and a 2-cell headline.
+
+Also worth noting
+
+- No report exists for the 09-03 work. Every prior pass got one in reports/; the D1–D4 re-run and the bibliography pass are recorded only in CLAUDE.md and the commit message.
+- CLAUDE.md §8 item 22 is stale — it still says references are unverified and that ref [8] needs fixing, both of which §2 and §6b now record as done.
+
+The still-open queue behind that is unchanged: open-weight generator (free, Qwen arm is wired and ready), claim-level over the full grid (free — it's why the evaluator table is a family of 8 not 12), C1/C2 anchors (~$3–4), QASPER (~$5), IEEE→ACL conversion, and the Salemi & Zamani PDF still read only in abstract.
