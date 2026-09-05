@@ -48,15 +48,15 @@ are configured but were never run.
 
 | Area | Status |
 |------|--------|
-| Paper draft (IEEE format) | ✅ Complete, all supervisor feedback addressed |
+| Paper draft | ✅ Complete, all supervisor feedback addressed. **Source is now `paper/acl/main.tex`** — the docx builder is superseded |
 | References verified | ✅ **All 24 verified 2026-09-03** against arXiv/ACL Anthology (see §6 and §6b). 5 wrong authors fixed earlier, 4 wrong *titles* found in the B3 pass; the jina "v5-text" entry is resolved (now [24], jina-embeddings-v3, arXiv:2409.10173) |
 | Pipeline code | ✅ All of §8 built in `src/`; notebook is a reference artifact only |
 | Server access | ✅ Granted by Berend. **Fedora is now the only machine that can deploy** — the Windows laptop's key was revoked on both hosts 2026-08-28 |
 | Experiments | ✅ **Rung 2 done** — 16,000 real generations, NLI + AlignScore + claim-level, perturbation probe, TOST margin sweep |
 | Correctness | ✅ **LLM judge over the full grid** (2026-08-30, $29.27, 0 errors). Containment is retired as the correctness signal — always run analyses with `--correct-source judge` |
-| Paper v6 | ✅ `paper/RAG_Faithfulness_v6_evaluators.docx`, built by `paper/build_v6.js` |
-| Format | ⚠️ Draft is **IEEE**; **ACL is required for any ARR submission** |
-| Venue | ⚠️ EMNLP 2026 May 25 ARR deadline passed. Target July ARR cycle or COLING 2026. |
+| Paper v6 | ✅ `paper/acl/main.tex` → `main.pdf` (anonymous, for ARR) and `main-preprint.pdf` (named, for Berend). `paper/build_v6.js` + its docx are **superseded — do not edit them**, an edit there will not reach the manuscript |
+| Format | ✅ **ACL, converted 2026-09-05** (`paper/acl/`, builds with `./build.sh` via tectonic). ⚠️ Content is **9.4 pages against ARR's 8-page limit** — cut ~1.5 pages before submitting, over-length is a desk reject |
+| Venue | 🎯 **ARR 12 October 2026** — one cycle feeds **NAACL 2027** (CORE A, Jun 1-5, San Francisco) **and COLING 2027** (CORE B, May 9-14, Macau); primary venue is chosen at commitment, 20-23 Dec 2026, with reviews in hand. Author is comfortable with B/C tier, which argues *for* this deadline rather than a smaller venue now. ESA/re-ranking dropped rather than delay for them. See `reports/2026-09-05_berend_report.md` §2.3 |
 
 **Backup:** 266 MB / 168 files at `~/rag-backup/checkpoints` on Fedora — the only
 copy of $13.46 of paid work outside gpu1. Refresh it after every paid run:
@@ -909,8 +909,11 @@ cells at 1.5-5.5% FPR. **Judge correctness NOT run on this arm (~$15).**
    multiplicity disclosure ✅ refreshed 2026-09-04 (B20/B21); the Salemi & Zamani
    PDF ✅ **read in full, and §II-A rewritten, 2026-09-05**
    (`reports/2026-09-05_salemi_zamani_full_read.md`) — DOI verified against Crossref;
-   the docx is rebuilt and exactly one paragraph moved. Still open: convert IEEE → ACL;
-   resolve §4.5.2
+   the docx is rebuilt and exactly one paragraph moved; IEEE → ACL ✅ **converted
+   2026-09-05** (`paper/acl/`, compiles clean, 0 undefined citations, all 234 prose
+   fragments verified to survive verbatim). Still open: cut ~1.5 pages to the ARR
+   limit; update the results for B22/B23; drop the open-weight generator from the
+   Limitations list now that it has run; resolve §4.5.2
    "cross-attention" wording (decoder-only models use self-attention over context
    tokens, and no code implements that analysis)
 
