@@ -21,6 +21,29 @@ the perturbation subset; references are unverified.
 
 ---
 
+## Next session starts here — written 2026-09-05
+
+The paper is in ACL format and compiles (`paper/acl/`, run `./build.sh`).
+**Deadline: ARR 12 October 2026** — five weeks. Do these in order; each one
+blocks the next.
+
+1. **Update the results for B22 and B23.** Table VII goes 8 rows → 18, the
+   headline goes "1 of 4" → **2 of 6**, Table III gains the qwen row. Biggest
+   job; start nothing else first. Numbers are in
+   `reports/2026-09-04_claim_level_full_grid.md` and
+   `reports/2026-09-05_open_weight_arm.md`.
+2. **Cut ~1.5 pages.** Content is 9.4 against an 8-page limit. Over-length is a
+   desk reject.
+3. **Drop the open-weight generator from the Limitations list** — it is listed
+   there as missing and it has now run.
+4. Optional, ~$15: judge correctness on the qwen arm.
+
+Also waiting: send the letter in `reports/2026-09-05_berend_report.md` §1 —
+edit the prose first so it sounds like you, and attach
+`paper/acl/main-preprint.pdf`, not `main.pdf`.
+
+---
+
 ## 0. The one-line summary
 
 The v5 paper says *"Retrieval Quality Predicts Correctness, Not Faithfulness."*
