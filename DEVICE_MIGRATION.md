@@ -235,6 +235,35 @@ imports fine, reports `cuda: True`, then dies on the first real kernel launch.
 
 ---
 
+## 6b. Node — needed to rebuild the paper, and it did NOT survive the migration
+
+`paper/build_v6.js` renders the .docx. Its dependency (`docx`) is **vendored in
+`paper/node_modules`**, so nothing needs installing from npm — but the Fedora
+box had **no node runtime at all** after the move from Windows, and this was
+only noticed on 2026-09-05 when the paper first needed rebuilding. Installed
+user-locally, no sudo:
+
+```bash
+curl -sSLO https://nodejs.org/dist/v24.20.0/node-v24.20.0-linux-x64.tar.xz
+curl -sSL  https://nodejs.org/dist/v24.20.0/SHASUMS256.txt -o SHASUMS256.txt
+grep "node-v24.20.0-linux-x64.tar.xz" SHASUMS256.txt | sha256sum -c -   # verify
+tar -xJf node-v24.20.0-linux-x64.tar.xz -C ~/.local/opt/
+export PATH="$HOME/.local/opt/node-v24.20.0-linux-x64/bin:$PATH"        # add to ~/.bashrc
+```
+
+**Run the build from the repo root, not from `paper/`** — the script writes to
+the relative path `paper/RAG_Faithfulness_v6_evaluators.docx` and dies with
+`ENOENT` if the cwd is already `paper/`:
+
+```bash
+cd ~/Documents/rag-faithfulness && node paper/build_v6.js
+```
+
+The .docx is **tracked in git**, so a source edit that is not rebuilt leaves the
+committed paper stale. Rebuild and commit both together.
+
+---
+
 ## 7. Where to pick the work up
 
 Read in this order:

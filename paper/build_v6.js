@@ -178,12 +178,19 @@ kids.push(P(
 kids.push(H('II. Related Work', H1));
 kids.push(H('A. Retrieval quality and downstream outcome', H2));
 kids.push(P(
-  'Salemi and Zamani [1] report that query-document relevance labels correlate only weakly '
-  + 'with downstream retrieval-augmented generation performance, and propose evaluating each '
-  + 'retrieved document by the downstream result it produces. Our starting point is downstream '
+  'Salemi and Zamani [1] report that human document-level relevance labels, and LLM relevance '
+  + 'judgments, correlate only weakly with downstream retrieval-augmented generation '
+  + 'performance, and propose eRAG, which labels each retrieved document by the downstream '
+  + 'result the system\'s own generator produces from it alone. Their strongest baseline is '
+  + 'answer-containment labelling, the scheme our qrels use, which retains a moderate '
+  + 'correlation (Kendall\'s tau 0.31-0.40 on the question-answering datasets); their reported '
+  + 'correlations also decline as the number of retrieved documents grows, and are measured at '
+  + 'k = 50 against ours at k = 5. Their downstream measure is correctness throughout, obtained '
+  + 'from a fine-tuned 60M-parameter encoder-decoder reader. Our starting point is downstream '
   + 'of theirs: we take as given that retrieval metrics do not directly predict generation '
   + 'quality, and ask which downstream property a given measurement instrument can resolve at '
-  + 'all.',
+  + 'all — for faithfulness rather than correctness, and for prompted '
+  + 'instruction-following generators, which can abstain.',
   { after: 120 }));
 kids.push(H('B. Faithfulness measurement', H2));
 kids.push(P(

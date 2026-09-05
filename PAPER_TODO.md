@@ -86,7 +86,7 @@ perturbation experiment intuitive. Do **not** make the product the subject.
 | section | change |
 |---|---|
 | **Title / abstract** | Rewrite per §1.1–1.2. Lead with evaluator dependence. |
-| **§2 related work** | Keep the Salemi & Zamani (SIGIR 2024) positioning added in v5. **Read the full PDF** — only the abstract has been read. Add RAGAS (Es et al., EACL 2024) and distinguish it: your contribution is conditioning on retrieval success and the attribution decomposition, not the faithfulness measure itself. Verify both citations. |
+| **§2 related work** | ✅ Salemi & Zamani (SIGIR 2024): **full PDF read and §II-A rewritten 2026-09-05** — the old paragraph overstated them (their weak-correlation result is about human/LLM relevance labels; answer-containment, which is our qrels scheme, holds tau 0.31-0.40, and their downstream measure is correctness throughout). See `reports/2026-09-05_salemi_zamani_full_read.md`. Add RAGAS (Es et al., EACL 2024) and distinguish it: your contribution is conditioning on retrieval success and the attribution decomposition, not the faithfulness measure itself. Verify both citations. |
 | **§3.2 RFG / nRFG** | Keep the v5 demotion. Add §1.3-style general statements. |
 | **§3.3** | Keep necessity/sufficiency, but flag it as provisional pending the LLM judge (see §3 below). |
 | **§4.3 faithfulness** | Must now **name the evaluator** in the definition. Add claim-level: `F = min over claims of max over chunks`. Report all three evaluators wherever a faithfulness number appears. |

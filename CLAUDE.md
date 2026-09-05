@@ -241,7 +241,15 @@ architectures at matched retrieval quality**; **faithfulness** specifically,
 conditioned on correctness; and the controlled floor/ceiling/arrangement
 conditions. What does not: "retrieval quality does not predict downstream
 quality" as a headline. Position as confirming and extending them, with a real
-related-work paragraph. Read the full PDF first — only the abstract has been read.
+related-work paragraph. **Full PDF read 2026-09-05** (`reports/2026-09-05_salemi_zamani_full_read.md`); the DOI is
+verified against Crossref (pp. 2395-2400). **The sentence above is too strong.** Their
+weak-correlation result covers *human provenance* and *LLM relevance* labels; their
+strongest baseline is **answer-containment** labelling — the scheme our qrels use after
+B6/B8b — which holds tau 0.31-0.40 on the QA sets. It is measured at **k=50**, where their
+own Fig. 1 puts the correlation at its lowest (it declines with k); we use k=5. And `E_M`
+is always a match against gold `y`, so **every number they publish is a correctness
+number** from a fine-tuned 60M FiD reader that cannot abstain. Less of our premise is
+pre-empted than this section assumed; the positioning conclusion is unchanged.
 
 **Open question put to Berend (2026-08-13 reply draft):** whether nRFG stays
 the primary metric. It subtracts a faithfulness score from a ranking metric,
@@ -898,10 +906,13 @@ cells at 1.5-5.5% FPR. **Judge correctness NOT run on this arm (~$15).**
    is **dropped** at Berend's explicit direction.
 22. ❌ **Paper update** — references ✅ **all 24 verified 2026-09-03** (§6b),
    which also closed ref [8] (now [24], jina v3); Section V-B and the
-   multiplicity disclosure ✅ refreshed 2026-09-04 (B20/B21). Still open:
-   convert IEEE → ACL; read the Salemi & Zamani PDF (only the abstract has been
-   read); resolve §4.5.2 "cross-attention" wording (decoder-only models use
-   self-attention over context tokens, and no code implements that analysis)
+   multiplicity disclosure ✅ refreshed 2026-09-04 (B20/B21); the Salemi & Zamani
+   PDF ✅ **read in full, and §II-A rewritten, 2026-09-05**
+   (`reports/2026-09-05_salemi_zamani_full_read.md`) — DOI verified against Crossref;
+   the docx is rebuilt and exactly one paragraph moved. Still open: convert IEEE → ACL;
+   resolve §4.5.2
+   "cross-attention" wording (decoder-only models use self-attention over context
+   tokens, and no code implements that analysis)
 
 ---
 
