@@ -808,6 +808,58 @@ block, so a short return would attribute one claim's score to another and every
 
 ---
 
+**B23 — the open-weight arm is run, and it moved the headline UP.**
+Qwen2.5-7B-Instruct, 8 cells / 8,000 answers, fp16 on the V100, $0. Scored with
+all three evaluators + correctness + the falsification probe. Report:
+`reports/2026-09-05_open_weight_arm.md`.
+
+**Two bugs had to be fixed first, both because this arm had never run:**
+- `LocalHFGenerator.generate` **failed on the first call**.
+  `apply_chat_template(return_tensors='pt')` returns a `BatchEncoding` in
+  transformers 5.x (gpu1 has 5.14.1) and a bare tensor in 4.x, so a dict was
+  passed positionally into `model.generate`. Now `return_dict=True` + `**enc`.
+- `run_phase_llama(model_names=None)` meant a **hardcoded 3 models**, not all,
+  unlike every other phase. `run_pipeline` passes None when `--models` is
+  omitted, so the first pass produced **6 cells, not 8**, dropping
+  text-embedding-3-small. That is *incomparable*, not merely smaller: this
+  arm's embedder spread would be over 3 systems against the others' 4, and
+  nothing downstream would say so. Both pinned by tests.
+- Needed `pip install --user accelerate` (for `device_map='auto'`).
+- **`config.ACTIVE_GENERATORS`** is now the one list every analysis CLI builds
+  its `--generators` default from. All four were hardcoded to
+  `claude,gpt4omini` — B10 one layer up.
+
+**Results.** Assertions/answer: Claude 2.728, **qwen 1.584**, GPT-4o-mini 1.117.
+NLI-max falsification detection lands between the other two in both datasets
+(NQ 30.0% vs 4.8%/51.1%; HotpotQA 29.8% vs 9.9%/40.3%) — **predicted before the
+arm was run**. Evaluator ordering AlignScore > Claim-min ≳ NLI-max is identical
+in all six cells.
+
+**⚠️ TABLE VII IS NOW 18 ROWS AND THE HEADLINE IS 2 OF 6, NOT 1 OF 4.**
+HotpotQA/GPT-4o-mini/align p_holm **0.0090** and HotpotQA/qwen/align p_holm
+**0.0187** both survive Holm over 18. Adding a generator made the family
+stricter and the count still rose.
+
+**The strongest result in the project: under AlignScore on HotpotQA all three
+generators give the IDENTICAL embedder ordering** (all-mpnet < text-emb <
+BGE-M3 < E5-large-instruct); under NLI-max no two agree. State it carefully —
+the generators are independent but the *retrieval is shared*, so this is three
+generators agreeing about a property of the retrieval, NOT three independent
+replications.
+
+**Nuance for the paper:** conditioning on assertion count, qwen tracks
+GPT-4o-mini (+0.410 vs +0.447 at one assertion) and **Claude is the outlier**
+(+0.129). The aggregate intermediacy comes from qwen's assertion
+*distribution*. The residual is Claude-specific, not a smooth verbose/terse
+axis — only a third generator makes that distinguishable.
+
+Copying dies a third time: qwen has the **lowest** overlap (0.194 vs 0.226 /
+0.235) with intermediate sensitivity. Numeric check: 100% recall in all 8 qwen
+cells at 1.5-5.5% FPR. **Judge correctness NOT run on this arm (~$15).**
+**The paper is NOT updated for any of this.**
+
+---
+
 ### Code moves and reporting changes of 2026-09-01
 
 - **`src/metrics.py` is now `src/legacy/rfg.py`.** The gap metric is retired
@@ -835,7 +887,9 @@ block, so a short return would attribute one claim's score to another and every
 
 **Still open:**
 21. ❌ **The experiments in `PAPER_TODO.md` §3** — LLM judge ✅ done 2026-08-30,
-   open-weight generator (free), claim-level over the full grid ✅ **done
+   open-weight generator ✅ **done 2026-09-05** (Qwen2.5-7B, 8,000 answers, $0
+   — see B23 and `reports/2026-09-05_open_weight_arm.md`),
+   claim-level over the full grid ✅ **done
    2026-09-04** (16,000 rows, 0 NaN, 3h03m, $0 — the evaluator table is now a
    family of **12**; see `reports/2026-09-04_claim_level_full_grid.md` and B22
    below), literal value grounding ✅ built and measured
