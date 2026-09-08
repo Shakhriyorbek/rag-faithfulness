@@ -15,9 +15,11 @@ margin as a curve, and correctness explicitly flagged provisional.
 `paper/RAG_Faithfulness_v5_results.docx` is superseded; its title is
 contradicted by its own data. Kept for diffing only.
 
-**Still open in v6** (sections 3-6 below): the LLM judge has not run, so
-Table VIII is provisional; no open-weight generator; claim-level covers only
-the perturbation subset; references are unverified.
+**All four items this header used to list are now closed:** the LLM judge ran
+2026-08-30, the open-weight arm ran 2026-09-05, claim-level covers the full grid
+as of 2026-09-04, and all 24 references were verified 2026-09-03. The paper was
+updated for the last two on 2026-09-08. What is still open is in the block
+below — page length first.
 
 ---
 
