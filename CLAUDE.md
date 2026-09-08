@@ -58,9 +58,14 @@ are configured but were never run.
 | Format | ✅ **ACL, converted 2026-09-05** (`paper/acl/`, builds with `./build.sh` via tectonic). ⚠️ Content is **9.4 pages against ARR's 8-page limit** — cut ~1.5 pages before submitting, over-length is a desk reject |
 | Venue | 🎯 **ARR 12 October 2026** — one cycle feeds **NAACL 2027** (CORE A, Jun 1-5, San Francisco) **and COLING 2027** (CORE B, May 9-14, Macau); primary venue is chosen at commitment, 20-23 Dec 2026, with reviews in hand. Author is comfortable with B/C tier, which argues *for* this deadline rather than a smaller venue now. ESA/re-ranking dropped rather than delay for them. See `reports/2026-09-05_berend_report.md` §2.3 |
 
-**Backup:** 266 MB / 168 files at `~/rag-backup/checkpoints` on Fedora — the only
-copy of $13.46 of paid work outside gpu1. Refresh it after every paid run:
+**Backup:** 450 MB / 636 files at `~/rag-backup/checkpoints` on Fedora — the only
+copy of $42.73 of paid work outside gpu1. **Verified byte-identical to gpu1 on
+2026-09-08.** Refresh after any run that changes a number in the paper, not only
+after a paid one:
 `rsync -avz szte-gpu:rag_faithfulness/checkpoints/ ~/rag-backup/checkpoints/`
+A dry run (`-avzn`) first shows exactly what would move; the 09-08 refresh
+transferred one 358-byte file, so a "stale backup" claim is worth checking
+before it is acted on.
 
 **Correctness is now measured, and it moved the paper.** Containment is biased
 against the judge and **the sign of the bias is not constant**: it understates
@@ -773,12 +778,12 @@ its a-priori merit. `compare_evaluators._report_holm_scope_sensitivity` now
 prints all three families and any swing cell on every run; Section VII states
 the alternative. **The headline is still 1 of 4 cells.**
 
-**⚠️ The backup is a pre-D1 snapshot.** `~/rag-backup/checkpoints` was last
-refreshed 2026-09-01 15:39; the D1/D2 re-run landed on gpu1 2026-09-03
-19:41-19:46. Nothing was violated — the convention ties refreshes to *paid*
-runs and 09-03 was free — but every post-decision checkpoint behind the current
-paper exists **in one place only**. Widen the rule to "after any run that
-changes a number in the paper".
+**✅ The backup is current (checked 2026-09-08).** This section previously
+warned it was a pre-D1 snapshot from 2026-09-01. That was wrong by the time it
+mattered: an `rsync -avzn` against gpu1 on 2026-09-08 found a single 358-byte
+file out of date (`n1000_v3/hypothesis_summary.pkl`), and everything behind the
+current paper — the D1/D2 re-run and the whole qwen arm — was already mirrored.
+The rule is still widened to "after any run that changes a number in the paper".
 
 ---
 
