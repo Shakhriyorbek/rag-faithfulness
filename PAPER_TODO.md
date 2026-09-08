@@ -47,9 +47,23 @@ The paper is in ACL format and compiles (`paper/acl/`, run `./build.sh`).
    - The +0.63 in Table VIII is real, not a typo: two systems tie.
 3. ✅ **Open-weight generator dropped from the Limitations list** — done in the
    same pass; the bullet now states what three generators do and do not span.
-2. ⬅️ **Cut pages. Now ~3.5, not 1.5** — content runs to p11 (Limitations starts
-   p12) against an 8-page limit. The B22/B23 update added ~2 pages. This is the
-   next job and it blocks submission; over-length is a desk reject.
+2. ✅ **Cut pages — done 2026-09-08. The body now ends on p8.** It was p11.
+   Section 6 and 7.2 went first (most words per unit of argument), then the
+   front matter, Discussion and Related Work. Two structural moves did most of
+   the work once prose ran out:
+   - **Tables II and VII were transposed** so the three generators sit side by
+     side under a fixed (dataset, evaluator). 18 rows became 6 in each, which
+     saved about a page and reads better — the comparison the paper makes is
+     across generators, so that is the axis that belongs in the columns.
+   - **An appendix now carries A-H**: retrieval quality, the full falsification
+     table with floors and Wilson intervals, the assertion gradient, the
+     Spearman coefficients, the TOST sweep, the overlap bands, the contingency
+     cell and the markdown defect. ARR appendices do not count toward the limit.
+   Prose went 7,187 -> ~5,900 words. Prose references to tables are now `\ref`
+   rather than hard-coded roman numerals, so deleting or moving a table cannot
+   silently break the ones after it.
+   ⚠️ **Length has almost no slack.** The body ends a few lines from the bottom
+   of p8; page 8 is completely full. Adding a sentence pushes over.
 4. Optional, ~$15: judge correctness on the qwen arm. Until then Section VI-A/B/C
    and Tables V-VI cover 16 of the 24 cells, which the paper now states in
    Section VI-A and in Limitations.
