@@ -864,7 +864,37 @@ axis — only a third generator makes that distinguishable.
 Copying dies a third time: qwen has the **lowest** overlap (0.194 vs 0.226 /
 0.235) with intermediate sensitivity. Numeric check: 100% recall in all 8 qwen
 cells at 1.5-5.5% FPR. **Judge correctness NOT run on this arm (~$15).**
-**The paper is NOT updated for any of this.**
+
+**B24 — the paper IS now updated for B22 and B23 (2026-09-08), and the update
+found two stale tables.** Every reported number was regenerated from
+`~/rag-backup/checkpoints/n1000_v3` in one pass rather than spliced from the two
+reports. The 12 pre-existing Table VII rows, both Table III columns, the copying
+control, Table II's 12 rows and the refusal counts all reproduced **exactly** —
+so the two that did not moved for a substantive reason:
+
+- **Table IV was pre-D1 and pre-D4**, and the mechanism behind it is
+  **generator-dependent**. Under NLI-max, Claude's HotpotQA refusals average
+  0.272-0.353 against 0.693-0.712 for its attempts, but qwen's average
+  0.846-0.903 and GPT-4o-mini's 0.905-0.940 — *above* their attempts. So pooling
+  refusals makes the pooled column track NDCG@5 **positively** for Claude
+  (rho +0.99) and **negatively** for qwen and GPT (-0.98, -0.92); answered-only
+  spread collapses to 0.003-0.029 in all three. Do not restore the old claim
+  that pooling "reproduces the retrieval ranking" — it reproduces it *or
+  inverts it*, and the sign is set by how the evaluator scores that generator's
+  refusal sentence.
+- **Table VIII had two stale cells** (Claude/align -0.40 → **-0.20**,
+  HotpotQA/Claude/nli +0.40 → **+0.20**). The clean "all HotpotQA positive, all
+  NQ zero-or-negative" pattern holds in all 12 NLI-max and AlignScore
+  combinations and **breaks under claim-min** (NQ/qwen +0.63, HotpotQA/qwen
+  -0.40). The +0.63 is not a typo: 4 systems can only give multiples of 0.2
+  *without ties*, and two systems tie there.
+
+Also settled in that pass: eligible/scored falsification cases are **4,784 of
+7,609** (was 3,184 of 5,272); refusals **5,776 of 24,000 (24.1%)**; markdown on
+answered rows **76.0% / 1.3% / 0.3%** (the old 74.9% predates D4); the
+single-assertion identity check is **n=2,472, max 1.66e-05**; the numeric
+grounding check is 100% recall in all six pooled cells at **0.8-5.2% FPR**.
+**Content is now ~11.5 pages against ARR's 8** — cutting is the next job.
 
 ---
 

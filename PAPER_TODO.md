@@ -21,22 +21,36 @@ the perturbation subset; references are unverified.
 
 ---
 
-## Next session starts here — written 2026-09-05
+## Next session starts here — written 2026-09-08
 
 The paper is in ACL format and compiles (`paper/acl/`, run `./build.sh`).
-**Deadline: ARR 12 October 2026** — five weeks. Do these in order; each one
-blocks the next.
+**Deadline: ARR 12 October 2026** — five weeks.
 
-1. **Update the results for B22 and B23.** Table VII goes 8 rows → 18, the
-   headline goes "1 of 4" → **2 of 6**, Table III gains the qwen row. Biggest
-   job; start nothing else first. Numbers are in
-   `reports/2026-09-04_claim_level_full_grid.md` and
-   `reports/2026-09-05_open_weight_arm.md`.
-2. **Cut ~1.5 pages.** Content is 9.4 against an 8-page limit. Over-length is a
-   desk reject.
-3. **Drop the open-weight generator from the Limitations list** — it is listed
-   there as missing and it has now run.
-4. Optional, ~$15: judge correctness on the qwen arm.
+1. ✅ **Update the results for B22 and B23** — done 2026-09-08. Every number in
+   the paper was regenerated from `~/rag-backup/checkpoints/n1000_v3` in one
+   pass rather than spliced from the two reports; the 12 pre-existing Table VII
+   rows, both Table III columns, the copying control and the refusal counts all
+   reproduced exactly, so anything that moved, moved for a reason. Tables II,
+   III, IV, VII, VIII and IX are rewritten; the headline is **2 of 6**.
+   Three things the update turned up that the reports did not:
+   - **Table IV was stale** (pre-D1 and pre-D4) and its mechanism is
+     generator-dependent: refusals score 0.27-0.35 under Claude but 0.85-0.94
+     under qwen and GPT-4o-mini, so pooling them makes the pooled column track
+     NDCG@5 **positively** for Claude (rho +0.99) and **negatively** for the
+     other two (-0.98, -0.92). Section VI now says that, which is a stronger
+     claim than the one it replaced.
+   - **Two Table VIII values were stale too** (Claude/align -0.40 → -0.20,
+     HotpotQA/Claude/nli +0.40 → +0.20). The clean sign pattern survives under
+     NLI-max and AlignScore and **breaks under claim-min**, both times on qwen.
+   - The +0.63 in Table VIII is real, not a typo: two systems tie.
+3. ✅ **Open-weight generator dropped from the Limitations list** — done in the
+   same pass; the bullet now states what three generators do and do not span.
+2. ⬅️ **Cut pages. Now ~3.5, not 1.5** — content runs to p11 (Limitations starts
+   p12) against an 8-page limit. The B22/B23 update added ~2 pages. This is the
+   next job and it blocks submission; over-length is a desk reject.
+4. Optional, ~$15: judge correctness on the qwen arm. Until then Section VI-A/B/C
+   and Tables V-VI cover 16 of the 24 cells, which the paper now states in
+   Section VI-A and in Limitations.
 
 Also waiting: send the letter in `reports/2026-09-05_berend_report.md` §1 —
 edit the prose first so it sounds like you, and attach
