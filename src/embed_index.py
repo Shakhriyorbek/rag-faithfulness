@@ -140,6 +140,32 @@ class VectorIndex:
 
 
 # ── Embedding model wrapper ───────────────────────────────────────
+
+def _patch_transformers_for_jina():
+    """
+    jina-embeddings-v3 ships custom remote code (XLMRobertaLoRA) written
+    against a pre-5.x transformers API. transformers 5.x expects every model
+    class to declare `all_tied_weights_keys`, and the load dies with
+
+        AttributeError: 'XLMRobertaLoRA' object has no attribute
+                        'all_tied_weights_keys'
+
+    Supplying the attribute as an empty default on the base class satisfies
+    the 5.x tie-weights bookkeeping without altering behaviour: the model has
+    no tied weights to track. Verified on gpu1 with transformers 5.14.1 and
+    sentence-transformers 5.6.1 (2026-09-14) — 1024-d output, cosine 0.894 on
+    a paraphrase pair against 0.251 on an unrelated one.
+
+    Preferred over pinning an older transformers: the qwen arm depends on 5.x
+    behaviour (apply_chat_template(return_dict=True), see B23) and the DeBERTa
+    scorer runs on 5.x too, so a downgrade would break working arms to fix an
+    unrun one. No-op on versions that already define the attribute.
+    """
+    from transformers.modeling_utils import PreTrainedModel
+    if not hasattr(PreTrainedModel, 'all_tied_weights_keys'):
+        PreTrainedModel.all_tied_weights_keys = {}
+
+
 class EmbeddingModelWrapper:
     """
     Unified encoder over four call conventions:
@@ -165,6 +191,8 @@ class EmbeddingModelWrapper:
             from InstructorEmbedding import INSTRUCTOR
             self.model = INSTRUCTOR(cfg['hf_id'], device=config.DEVICE)
         else:
+            if self.is_jina:
+                _patch_transformers_for_jina()
             from sentence_transformers import SentenceTransformer
             self.model = SentenceTransformer(
                 cfg['hf_id'], device=config.DEVICE,

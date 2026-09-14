@@ -308,12 +308,22 @@ def load_qasper(n: int) -> LoadedDataset:
         return cached
 
     print('Loading QASPER...')
-    # §7 fix: needs trust_remote_code on newer `datasets`
+    # `datasets` 5.0 removed dataset-script execution, and allenai/qasper ships
+    # a loading script (qasper.py), so the plain call now raises
+    #   RuntimeError: Dataset scripts are no longer supported
+    # regardless of trust_remote_code. HuggingFace's own auto-conversion of the
+    # same dataset lives on the refs/convert/parquet branch and carries the
+    # IDENTICAL nested structure (verified 2026-09-14): full_text.paragraphs is
+    # list-of-lists, `qas` is a dict of parallel lists (the §7 fix still
+    # applies), and each answer keeps free_form_answer / extractive_spans /
+    # evidence. Everything below this line is therefore unchanged.
+    # The script path is kept as a fallback for older `datasets` installs.
     try:
         ds = _load_dataset('allenai/qasper', split='validation',
-                          trust_remote_code=True)
+                           revision='refs/convert/parquet')
     except Exception:
-        ds = _load_dataset('allenai/qasper', split='validation')
+        ds = _load_dataset('allenai/qasper', split='validation',
+                           trust_remote_code=True)
 
     samples, documents = [], []
     for paper_idx, paper in enumerate(ds):
