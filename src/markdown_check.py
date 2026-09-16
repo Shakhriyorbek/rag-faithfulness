@@ -84,7 +84,7 @@ def summarise(rows, label):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--datasets', default='NQ,HotpotQA')
+    ap.add_argument('--datasets', default=','.join(config.DATASETS))
     ap.add_argument('--generators', default='claude')
     ap.add_argument('--models', default='all-mpnet-base-v2')
     ap.add_argument('--limit', type=int, default=300)

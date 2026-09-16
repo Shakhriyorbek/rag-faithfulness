@@ -191,7 +191,7 @@ def main():
     ap = argparse.ArgumentParser(description='NLI / AlignScore faithfulness')
     ap.add_argument('--phase', default='e', choices=['d', 'e'],
                     help='d = DeBERTa NLI, e = AlignScore')
-    ap.add_argument('--datasets', default='NQ,HotpotQA')
+    ap.add_argument('--datasets', default=','.join(config.DATASETS))
     ap.add_argument('--models', default=None,
                     help='comma-separated; default = every configured model')
     ap.add_argument('--scope-n', type=int, default=None)

@@ -226,7 +226,7 @@ def run_phase_claim(datasets: Dict, model_names: List[str] = None,
 
 def main():
     ap = argparse.ArgumentParser(description='Claim-level faithfulness scoring')
-    ap.add_argument('--datasets', default='NQ,HotpotQA')
+    ap.add_argument('--datasets', default=','.join(config.DATASETS))
     ap.add_argument('--models', default=None)
     ap.add_argument('--limit', type=int, default=None,
                     help='answers per checkpoint (default: all)')

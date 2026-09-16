@@ -223,7 +223,7 @@ def matched_overlap_bands(rows, label, edges=(0.0, 0.1, 0.2, 0.3, 1.01)):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--datasets', default='NQ,HotpotQA')
+    ap.add_argument('--datasets', default=','.join(config.DATASETS))
     ap.add_argument('--generators',
                     default=','.join(config.ACTIVE_GENERATORS))
     ap.add_argument('--models', default=None)

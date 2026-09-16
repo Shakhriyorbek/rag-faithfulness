@@ -657,7 +657,7 @@ def summarise_numeric(rows, label):
 def main():
     ap = argparse.ArgumentParser(
         description='Numeric-infidelity sensitivity of the NLI faithfulness metric')
-    ap.add_argument('--datasets', default='NQ,HotpotQA')
+    ap.add_argument('--datasets', default=','.join(config.DATASETS))
     ap.add_argument('--models', default=None,
                     help='comma-separated; default = every configured model')
     ap.add_argument('--generators',
