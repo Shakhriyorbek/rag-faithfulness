@@ -42,7 +42,7 @@ coverage decision, not an omission: `--models` runs any of the seven.
 ## 1. How the machines split up
 
 ```
-your laptop  ──ssh──►  hop (193.225.250.29)  ──►  gpu1 (nlp-large-1, V100 32GB)
+your laptop  ──ssh──►  hop (SZTE_HOP_IP)  ──►  gpu1 (nlp-large-1, V100 32GB)
   git, ssh, editing         entry point only        ALL compute lives here
 ```
 
@@ -84,7 +84,7 @@ cp server/ssh_config ~/.ssh/config
 Read the comments in that file before editing it. Two things that have already
 cost days:
 
-- `HostName` for `szte-gpu` **must be the private IP `192.168.0.206`**, not the
+- `HostName` for `szte-gpu` **must be the private IP `GPU1_PRIVATE_IP`**, not the
   alias `gpu1`. ProxyJump runs `ssh -W gpu1:22`, which does a literal DNS
   lookup and ignores Host aliases defined on the hop.
 - **`ControlMaster` is Linux/macOS only.** Windows OpenSSH has no Unix domain
@@ -219,7 +219,7 @@ consecutive API errors or a 20% error rate, and hard-stops at a $60 spend cap.
 Every run prints its checkpoint directory as its **first line**:
 
 ```
-  [scope] checkpoints -> /home/sboltabaev/rag_faithfulness/checkpoints/n1000_v3
+  [scope] checkpoints -> /home/<your-username>/rag_faithfulness/checkpoints/n1000_v3
 ```
 
 Checkpoint keys are named for their content (`retrieval_BGE-M3_NQ`), not for

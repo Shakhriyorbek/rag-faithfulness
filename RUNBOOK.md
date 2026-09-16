@@ -22,8 +22,8 @@ after a few hours, not after a few days.
 ## 1. Server facts (verified 2026-07-26)
 
 ```
-laptop ──ssh──> nlp (193.225.250.29) ──ssh gpu1──> nlp-large-1
-                user: sboltabaev                   GRID V100DX-32C, 32 GB
+laptop ──ssh──> nlp (SZTE_HOP_IP) ──ssh gpu1──> nlp-large-1
+                user: <your-username>                   GRID V100DX-32C, 32 GB
 ```
 
 - **GPU is 32 GB** → Llama-3-8B runs in **fp16, no 8-bit needed**. `bitsandbytes` optional.
@@ -35,7 +35,7 @@ laptop ──ssh──> nlp (193.225.250.29) ──ssh gpu1──> nlp-large-1
 
 1. **`ping` never works** — ICMP is blocked. Test reachability with TCP 22:
    ```powershell
-   Test-NetConnection -ComputerName 193.225.250.29 -Port 22
+   Test-NetConnection -ComputerName SZTE_HOP_IP -Port 22
    ```
 2. **The gateway rate-limits SSH.** ~6 connections in a few minutes = temporary
    IP block. Open **one** session and stay in it; `ControlMaster` in
@@ -64,6 +64,10 @@ resumed** — it skips what's already done. This is what makes the ladder safe.
 ## 3. One-time setup
 
 ### 3.1 Laptop — SSH config
+
+> **Redacted for publication.** `server/ssh_config` ships with `SZTE_HOP_IP`,
+> `GPU1_PRIVATE_IP` and `<your-username>` as placeholders. Substitute the real
+> values before copying it to `~/.ssh/config`; ask Berend for them.
 
 ```bash
 cp server/ssh_config ~/.ssh/config
@@ -235,7 +239,7 @@ needs sudo. Packages are installed with `pip install --user`, so just call
 Every run prints its checkpoint directory as its **first line**:
 
 ```
-  [scope] checkpoints -> /home/sboltabaev/rag_faithfulness/checkpoints/n1000_v3
+  [scope] checkpoints -> /home/<your-username>/rag_faithfulness/checkpoints/n1000_v3
 ```
 
 `n{N}_{CORPUS_VERSION}`. Checkpoint keys are named for their content

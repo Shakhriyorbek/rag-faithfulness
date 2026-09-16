@@ -118,8 +118,8 @@ per-chunk scoring), `intfloat/e5-large-instruct` does not exist (now
 ## 3. Server access (SZTE)
 
 ```
-laptop ──ssh──> hop (193.225.250.29) ──ssh gpu1──> gpu1 (NVIDIA V100)
-                user: sboltabaev                    alias pre-configured by Berend
+laptop ──ssh──> hop (SZTE_HOP_IP) ──ssh gpu1──> gpu1 (NVIDIA V100)
+                user: <your-username>                    alias pre-configured by Berend
 ```
 
 > **The laptop is Fedora as of 2026-08-28**, and its key is the only one still
@@ -140,7 +140,7 @@ laptop ──ssh──> hop (193.225.250.29) ──ssh gpu1──> gpu1 (NVIDIA 
 
 | Fact | Value |
 |------|-------|
-| hop hostname | `nlp` (193.225.250.29), key auth with `~/.ssh/id_ed25519` works |
+| hop hostname | `nlp` (SZTE_HOP_IP), key auth with `~/.ssh/id_ed25519` works |
 | gpu1 hostname | `nlp-large-1` |
 | **GPU** | **`GRID V100DX-32C`, 32768 MiB (~30.5 GB free), driver 580.167.08** |
 | **→ Llama-3-8B** | **fp16 fits — 8-bit NOT needed.** `bitsandbytes` is now an optional dep |
@@ -160,7 +160,7 @@ contains `sm_70`. Reinstalling needs `--force-reinstall` — pip treats
 `2.13.0+cu130` and `2.13.0+cu126` as the same version and silently skips.
 
 **Gotchas learned the hard way:**
-- **`gpu1` is an alias that exists ONLY in the hop's `~/.ssh/config`** (`host gpu1 → hostname 192.168.0.206`). It is not in DNS or `/etc/hosts`. `ssh gpu1` works from the hop because SSH reads that config, but **ProxyJump uses `ssh -W gpu1:22`, which does a literal DNS lookup and ignores Host aliases** → `Temporary failure in name resolution`. A working `~/.ssh/config` must set `HostName 192.168.0.206` for `szte-gpu`. This was the cause of the "ProxyJump flakiness" noted earlier — it was never flaky, it was always wrong.
+- **`gpu1` is an alias that exists ONLY in the hop's `~/.ssh/config`** (`host gpu1 → hostname GPU1_PRIVATE_IP`). It is not in DNS or `/etc/hosts`. `ssh gpu1` works from the hop because SSH reads that config, but **ProxyJump uses `ssh -W gpu1:22`, which does a literal DNS lookup and ignores Host aliases** → `Temporary failure in name resolution`. A working `~/.ssh/config` must set `HostName GPU1_PRIVATE_IP` for `szte-gpu`. This was the cause of the "ProxyJump flakiness" noted earlier — it was never flaky, it was always wrong.
 - **`ControlMaster` does not work on Windows OpenSSH** (needs Unix domain sockets). Including it makes every connection fail. Linux/macOS only.
 - **ICMP is blocked** — `ping` always fails, this says nothing about reachability. Test with TCP 22 instead.
 - **The gateway rate-limits SSH.** ~6 connections in a few minutes got the IP temporarily blocked (TCP 22 went from open to refused). Use **one** long-lived session plus `ControlMaster` multiplexing (already in `server/ssh_config`); never script rapid reconnects.

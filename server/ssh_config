@@ -5,7 +5,7 @@
 #
 # Then a single command gets you a GPU shell:   ssh szte-gpu
 #
-# Verified 2026-07-26: key auth to the hop works; gpu1 = 192.168.0.206.
+# Verified 2026-07-26: key auth to the hop works; gpu1 = GPU1_PRIVATE_IP.
 #
 # 2026-08-13 — `ssh szte-gpu` now works DIRECTLY, including scp and git.
 # Berend authorized the laptop key on the HOP only, so until this date the
@@ -20,13 +20,22 @@
 # Deploy loop:  git push gpu1 main   (remote gpu1 -> szte-gpu:rag-faithfulness.git)
 #               then `cd ~/rag-faithfulness && git pull` on gpu1.
 # ============================================================
+# ------------------------------------------------------------
+# PLACEHOLDERS: this file is published in a public repository, so the
+# real host details are redacted. Before use, substitute:
+#     SZTE_HOP_IP      -> the RGAI entry host's public IP
+#     GPU1_PRIVATE_IP  -> gpu1's private address, routable only from the hop
+#     <your-username>  -> your SZTE account name
+# Ask your supervisor for all three. Everything else here is accurate and
+# was verified against the live hosts.
+# ------------------------------------------------------------
 
 # ── Hop / entry instance (jump host) ──
 # Berend: "not primarily meant for conducting experiments" — it is an
 # entry point only. Never compute here.
 Host szte-hop
-    HostName 193.225.250.29
-    User sboltabaev
+    HostName SZTE_HOP_IP
+    User <your-username>
     IdentityFile ~/.ssh/id_ed25519
     ServerAliveInterval 60
     ServerAliveCountMax 3
@@ -37,16 +46,16 @@ Host szte-hop
 #
 # Berend defined the alias only inside the HOP's own ~/.ssh/config:
 #     host gpu1
-#       hostname 192.168.0.206
+#       hostname GPU1_PRIVATE_IP
 # So `ssh gpu1` works once you are already on the hop, because SSH reads
 # that config. But ProxyJump connects with `ssh -W gpu1:22`, which does a
 # literal DNS lookup and ignores Host aliases — giving:
 #     channel 0: open failed: connect failed: Temporary failure in name resolution
-# 192.168.0.206 is private and routable only from the hop, which is
+# GPU1_PRIVATE_IP is private and routable only from the hop, which is
 # precisely why the jump host exists.
 Host szte-gpu
-    HostName 192.168.0.206
-    User sboltabaev
+    HostName GPU1_PRIVATE_IP
+    User <your-username>
     IdentityFile ~/.ssh/id_ed25519
     ProxyJump szte-hop
     ServerAliveInterval 60

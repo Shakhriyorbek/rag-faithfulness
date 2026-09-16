@@ -94,7 +94,7 @@ One-liner:
 sed -i 's/^# \(Host szte-\*\)/\1/; s/^#     \(ControlMaster\|ControlPath\|ControlPersist\)/    \1/' ~/.ssh/config
 ```
 
-Do **not** change `HostName 192.168.0.206` for `szte-gpu` to `gpu1`. The alias
+Do **not** change `HostName GPU1_PRIVATE_IP` for `szte-gpu` to `gpu1`. The alias
 exists only inside the hop's own config, and ProxyJump does a literal DNS
 lookup that ignores it.
 
