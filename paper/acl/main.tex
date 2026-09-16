@@ -12,6 +12,7 @@
 \usepackage{microtype}
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{amsmath}
 \usepackage{amssymb}
 
@@ -434,14 +435,51 @@ For work reporting RAG faithfulness:
 \item Name the evaluator. "Faithfulness did not differ" is incomplete; two of our six cells reverse between evaluators on identical data.
 \item Report the evaluation population, and whether membership depends on the system being compared. Pooling refusals here produced a column tracking retrieval quality in all three generators, in opposite directions (Table~\ref{tab:4}). Established frameworks often separate refusals already, so this is a caution about aggregate reporting rather than a defect in those frameworks. It reached our own results through a shared helper whose two implementations disagreed on 365 rows, which is the more realistic failure: the rule exists, and two parts of the pipeline apply different versions of it.
 \item Prefer claim-level aggregation to a maximum over the whole answer, most of all where answers carry several assertions. Treat it as a partial remedy. It roughly quadruples detection on the verbose generator's NQ cell, 5.1\% to 25.1\%, and 25.1\% is still a minority of known fabrications, against 61.0\% for the tersest generator under the same aggregate. The gap between generators narrows and does not close, so claim-min reduces the structural bias rather than removing it. Per-assertion thresholding, or weighting assertions by how much of the answer's content they carry, are the obvious next steps and we did not test them.
+\item For symbolic content, put a deterministic check in front of the evaluator. Requiring every value in an answer to appear in the retrieved context recalls \emph{every} falsified value in all six cells, at a false-positive rate of 0.8\% to 5.2\%. No trained evaluator we tested comes close on this error class: the best reaches 89.4\% and the worst 5.1\%. The check is cheap, exact, and indifferent to how long the answer is, which is the property the entailment aggregates lack.
 \item Calibrate the margin against a measured effect before claiming equivalence. A falsification experiment of this kind costs nothing beyond re-scoring.
 \end{itemize}
 
-For a document question answering system, the practical reading of Table~\ref{tab:2} is that a grounding threshold on a verbose generator catches a minority of falsified values: 5.1\% under the common evaluator, 25.1\% under the most responsive one tested. A deterministic check that every value in an answer appears in the retrieved context addresses this directly, recalling every falsified value in all six cells at a false-positive rate of 0.8\% to 5.2\%. Two qualifications matter. Numbers that assert nothing about the world, such as chunk indices and ordered-list markers, are not expected in the retrieved text, and counting them raises that rate on Claude's HotpotQA answers to about 39\%. The rest are quantities the answer derives instead of copying, which a literal check also flags, so it complements an entailment score rather than replacing one.
+For a document question answering system, the practical reading of Table~\ref{tab:2} is that a grounding threshold on a verbose generator catches a minority of falsified values: 5.1\% under the common evaluator, 25.1\% under the most responsive one tested. That is the case for the deterministic check above, and two qualifications on it matter. Numbers that assert nothing about the world, such as chunk indices and ordered-list markers, are not expected in the retrieved text, and counting them raises that rate on Claude's HotpotQA answers to about 39\%. The rest are quantities the answer derives instead of copying, which a literal check also flags, so it complements an entailment score rather than replacing one.
 
-Checking symbolic content against the source is not a new proposal and we do not claim it as one \citep{goodrich-etal-2019, nan-etal-2021, zhao-etal-2020}, and that numbers are a weak point is documented at the level of the representations too \citep{wallace-etal-2019}. Entailment is separately a loose proxy for attribution: the AIS framework \citep{rashkin-etal-2023} separates support by an identified source from general plausibility.
+Checking symbolic content against the source is an old idea \citep{goodrich-etal-2019, nan-etal-2021, zhao-etal-2020}, and that numbers are a weak point is documented at the level of the representations too \citep{wallace-etal-2019}. We claim no novelty for it. We do claim the measurement that makes the case for it here, against three current evaluators on identical inputs, and note that a practitioner choosing an instrument is served by knowing which one works rather than which one is new. Entailment is separately a loose proxy for attribution: the AIS framework \citep{rashkin-etal-2023} separates support by an identified source from general plausibility.
 
 What this paper adds is narrower than the check: the controlled minimal pair. One numeric value is replaced in an otherwise byte-identical generation and the same case goes to all three evaluators, so what is measured is each evaluator's response to a known error on identical input, not its agreement with a human label on some other corpus. That covers numeric values, three generators and two datasets.
+
+
+
+\subsection{Choosing among the three}
+\label{sec:choosing}
+
+The recommendations above say how to report a faithfulness result. They do not say which evaluator to run, and nothing in this paper supports a single answer to that, since the three differ on properties that matter different amounts in different applications. Table~\ref{tab:choose} collects what we measured into the form that decision needs. Every entry comes from a table earlier in the paper; none of it is new evidence.
+
+Read it against the deployment, not in the abstract. If answers are short and the question is whether a fabricated value gets caught, the deterministic check dominates and the choice of entailment scorer barely matters. If answers are long, no evaluator here catches most fabrications and the gap between the best and worst of them, 24.1\% against 5.1\% on the verbose generator's NQ cell, is the difference between a weak gate and no gate. If the evaluation population cannot be guaranteed free of refusals, AlignScore is the only one of the three that scores refusals below attempted answers for every generator we ran; under the other two, refusals score above real answers for two generators and far below for the third, so pooling them moves the average in a generator-dependent direction. If systems are being compared and the expected difference is small, the relevant property is resolving power, where AlignScore needs 0.012 to 0.037 against 0.021 to 0.060 for the entailment aggregate at the same sample size.
+
+Those criteria do not agree, and we are not proposing a weighting for them. The point of stating them together is that a choice is being made whenever a faithfulness number is reported, and it is usually made by default.
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{p{2.85cm}ccc>{\centering\arraybackslash}p{1.15cm}}
+\toprule
+ & \textbf{NLI} & \textbf{Claim} & \textbf{Align} & \textbf{Value chk.} \\
+\midrule
+Detects a falsified value, terse generator & 57--71\% & 61--71\% & 75--89\% & 100\% \\
+\addlinespace
+\dots verbose generator & 5--14\% & 25--34\% & 24--49\% & 100\% \\
+\addlinespace
+Sensitivity to answer length (gap above) & 54 pts & \textbf{36 pts} & 46 pts & none \\
+\addlinespace
+Resolving power, MDE at 80\% & .021--.060 & .024--.050 & .012--.037 & --- \\
+\addlinespace
+Scores a refusal above a real answer? & 2 of 3 gens & 2 of 3 gens & never & --- \\
+\addlinespace
+Error types covered & any & any & any & symbolic \\
+\addlinespace
+False positives & --- & --- & --- & 0.8--5.2\% \\
+\bottomrule
+\end{tabular}
+\caption{What we measured about each instrument, arranged for choosing one. Detection is against a falsified numeric value at the fixed gate (Table~\ref{tab:2}); the entity probe gives the same ordering (Table~\ref{tab:entity}). MDE is from Appendix~\ref{app:power}. Refusal behaviour is the mean refusal score against the mean attempted-answer score, per generator. The sensitivity row is the detection gap between the two generators, averaged over the two datasets; claim-min is the least length-sensitive of the three and still gives up 36 points. The deterministic value check covers only symbolic content, which is why it supplements an evaluator instead of replacing one.}
+\label{tab:choose}
+\end{table}
 
 
 \section{Conclusion}

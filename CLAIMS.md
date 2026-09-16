@@ -34,6 +34,8 @@ Line numbers are for commit `440ac21` and may drift; the symbol names will not.
 | 22 | Re-rank top-20 by query entailment at λ=0.6, then regenerate | `src/rerank.py::rerank_candidates` (l.22) |
 | 23 | QASPER as a boundary condition, five embedders × three generators | `src/datasets_loader.py::load_qasper` (l.303); `src/config.py::DATASETS` |
 | 24 | Entity substitution reproduces the numeric result | `src/perturbation_check.py::build_entity_case` (l.208) |
+| 25 | Deterministic value check: 100% recall at 0.8–5.2% FPR | `src/perturbation_check.py`, `--scorer numeric`; content-vs-citation split in `value_role()` |
+| 26 | Evaluator selection table (detection, MDE, refusal behaviour) | `scripts/entity_substitution_table.py`, `scripts/power_analysis.py`, `scripts/refusal_scores.py` |
 
 ## Reading order
 
