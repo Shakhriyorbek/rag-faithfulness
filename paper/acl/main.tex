@@ -27,7 +27,7 @@
 \maketitle
 
 \begin{abstract}
-Faithfulness in retrieval-augmented generation is usually measured by asking a natural language inference model whether the retrieved context entails the generated answer, aggregated as a maximum over retrieved chunks. We hold a generation grid fixed --- four embedding models, two question answering datasets, three generators, 24,000 answers --- and vary only the evaluator. Across six dataset-generator cells, the conclusion about whether embedding choice affects faithfulness changes in two of them depending on which evaluator is used, and the cause is measurable in the evaluators, not in the retrieval systems. Replacing a grounded value in an answer with one absent from the context, the failure a document question answering system most needs to catch, moves the entailment score by 0.054 on Natural Questions for the most verbose generator against 0.451 for the tersest, and a fixed threshold catches 5-14\% of such edits against 57-71\%. Answer structure accounts for most of that gap: the score falls as an answer accumulates assertions, and the three generators average 3.08, 1.77 and 1.25 of them. It does not account for all of it, since the generators still differ at a matched single assertion. Including refusals in the evaluation population produces an apparent relationship between retrieval quality and faithfulness whose direction depends on the generator and which disappears once they are excluded. We report what these choices do to a concrete equivalence claim, and the conditions under which such a claim can be stated.
+Faithfulness in retrieval-augmented generation is usually measured by asking a natural language inference model whether the retrieved context entails the generated answer, aggregated as a maximum over retrieved chunks. We hold a generation grid fixed --- four embedding models, two question answering datasets, three generators, 24,000 answers --- and vary only the evaluator. Across six dataset-generator cells, the conclusion about whether embedding choice affects faithfulness changes in two of them depending on which evaluator is used, and the cause is measurable in the evaluators, not in the retrieval systems. Replacing a grounded value in an answer with one absent from the context, the failure a document question answering system most needs to catch, moves the entailment score by 0.054 on Natural Questions for the most verbose generator against 0.451 for the tersest, and under that evaluator a fixed threshold catches 5-14\% of such edits on the two datasets against 57-71\%. The same probe with entities in place of numbers reproduces the gap. Answer structure accounts for most of that gap: the score falls as an answer accumulates assertions, and the three generators average 3.08, 1.77 and 1.25 of them. It does not account for all of it, since the generators still differ at a matched single assertion. Including refusals in the evaluation population produces an apparent relationship between retrieval quality and faithfulness whose direction depends on the generator and which disappears once they are excluded. We report what these choices do to a concrete equivalence claim, and the conditions under which such a claim can be stated.
 \end{abstract}
 
 \section{Introduction}
@@ -75,6 +75,8 @@ Most faithfulness scores work by entailment: an inference model is asked whether
 A separate line of work evaluates the detectors themselves. TRUE \citep{honovich-etal-2022}, AGGREFACT \citep{tang-etal-2023}, RAGTruth \citep{niu-etal-2024} and FaithBench \citep{bao-etal-2025} assemble annotated corpora and score detectors against them; MiniCheck \citep{tang-etal-2024} trains compact fact-checkers on unified grounding datasets. Two of their findings bear on ours: no single metric is best in all settings or for all error types, and on summaries where current detectors disagree, detection falls to about 50\%.
 
 Those studies score detectors against human hallucination labels and report accuracy. Section~\ref{sec:sensitivity} is a meta-evaluation as well, though its labels are constructed rather than annotated: we falsify one value in an otherwise identical answer, so the error is known by construction and every evaluator sees the same minimal pair. From Section~\ref{sec:population} onward there are no labels at all. We hold the grid, the queries and the answers fixed, swap the evaluator, and watch whether the ranking of the systems survives.
+
+Two recent papers separate faithfulness from correctness in ways that bear on what we measure. \citet{wallat-etal-2025} distinguish whether a cited document supports a statement from whether the model actually relied on it, and show a citation can be correct while the reliance is post-hoc rationalisation. \citet{xu-etal-2025} reward the faithfulness of intermediate reasoning steps rather than the final answer alone. Both concern whether a generator is faithful. We take the generator as given and ask what the scorer can resolve, which is the prior question in either case: a reward signal or a citation audit is only as good as the faithfulness measurement underneath it.
 
 These are different questions. A detector that scores well on a labelled corpus need not resolve differences between the systems a practitioner is actually choosing between, and it is that second property which decides whether a published comparison describes the systems or the instrument. \citet{xiao-etal-2023} make the general case for treating generation metrics as measurement instruments with stated reliability and validity.
 
@@ -138,7 +140,7 @@ One refusal rule is used throughout, from a single shared implementation, so eve
 
 A faithfulness score is only useful if it responds when an answer stops being faithful, so we construct that condition directly. For each answer containing a numeric value that appears in the retrieved context, we replace the value with one that does not appear there, preserve the surface format, and re-score against the same chunks. Two eligibility rules carry the design: the original value must be present, or the answer was never grounded, and the replacement must be absent, or the altered answer is accidentally supported and a low score is correct behaviour.
 
-Cases are taken in dataset order, the first 200 eligible answers per system, dataset and generator, so the scored set is a prefix of an already filtered population: 4,784 cases against 7,609 eligible, from a near-census on GPT-4o-mini (800 of 882 on NQ) to two fifths on Claude (800 of 1,946).
+Cases are taken deterministically, in dataset order rather than by random sampling: the first 200 eligible answers per system, dataset and generator. The scored set is therefore a prefix of an already filtered population: 4,784 cases against 7,609 eligible, from a near-census on GPT-4o-mini (800 of 882 on NQ) to two fifths on Claude (800 of 1,946).
 
 Two controls accompany it: an entity substitution, which makes a comparable edit to a named entity instead of a value, and the untouched answer scored against another query's context, which gives the floor of each evaluator's scale. Cases are rebuilt deterministically, so all three evaluators see identical inputs.
 
@@ -168,7 +170,45 @@ On Claude's Natural Questions answers, NLI-max leaves the falsified answer at 0.
 
 We predicted that intermediate position before the arm was run, from its assertion count alone (Section~\ref{sec:assertions}), and it holds in both datasets under all three evaluators. The evaluator ordering is stable too: AlignScore responds most, claim-min next, NLI-max least, in all six cells. Generators differ in how far apart the evaluators are, not in which responds most.
 
-The evaluators do not share a floor, so detection rates only become comparable once the scale is normalised, and we report two gates. On Claude's NQ cell an untouched answer scored against an unrelated context averages 0.474 under NLI-max and 0.245 under claim-min, and the distribution is heavy-tailed: its 95th percentile is 0.985 under NLI-max, so an unrelated document clears a fixed 0.5 gate nearly half the time. Our second gate sits at that percentile, where "detected" means the falsified answer is no longer better supported than an unrelated document, which means the same thing on every scale. Read that way NLI-max detects 50.2\% of falsifications rather than 5.1\%, and its gap to GPT-4o-mini narrows from roughly elevenfold to under twofold. The ordering holds at either gate. The floor-anchored gate is a comparison device, not an operating point: it sits above the mean untouched answer.
+The evaluators do not share a floor, so detection rates only become comparable once the scale is normalised, and we report two gates. On Claude's NQ cell an untouched answer scored against an unrelated context averages 0.474 under NLI-max and 0.245 under claim-min, and the distribution is heavy-tailed: its 95th percentile is 0.985 under NLI-max, so an unrelated document clears a fixed 0.5 gate nearly half the time. Our second gate, which we call floor-anchored because it sits relative to each evaluator's own floor rather than at a shared constant, is placed at that percentile, where "detected" means the falsified answer is no longer better supported than an unrelated document, which means the same thing on every scale. Read that way NLI-max detects 50.2\% of falsifications rather than 5.1\%, and its gap to GPT-4o-mini narrows from roughly elevenfold to under twofold. The ordering holds at either gate. The floor-anchored gate is a comparison device, not an operating point: it sits above the mean untouched answer.
+
+
+
+Counterfactual substitution is also used to build training data. \citet{ju-etal-2026} construct 99,094 examples by replacing answer-bearing entities in SQuAD and TriviaQA with type-consistent alternatives, so that following the context can be distinguished from agreeing with it by coincidence. The construction is close to ours and the purpose is not: they manufacture conflicts to train a generator toward the context, and we manufacture them to ask what a scorer does when the conflict is already there. Their scale also shows what ours is not, since our probe is 200 cases per system, dataset and generator, chosen for having a gold-standard error rather than for covering the space of errors.
+
+
+\subsection{The same probe with entities instead of numbers}
+\label{sec:entity}
+
+A numeric substitution is one error type, and the pattern above could be specific to it. The same construction runs on named entities: take a grounded entity in the answer, replace it with a donor entity that the context does not contain, hold everything else fixed. Cases are built once and every evaluator sees the same ones. Table~\ref{tab:entity} reports them.
+
+The verbosity effect survives the change of error type. Under the entailment aggregate on Natural Questions a falsified entity moves the score by 0.082 for the most verbose generator and 0.403 for the tersest, against 0.054 and 0.451 for numbers. Detection at the fixed gate is 9.1\% against 48.8\%, against 5.1\% and 56.6\%. The gap narrows slightly and does not close.
+
+Ordering by generator holds in five of the six dataset-evaluator combinations. The exception is claim-min on Natural Questions, where the verbose generator is scored \emph{more} sensitively than the mid-length one (0.163 against 0.112, detection 25.9\% against 17.9\%). Assertion count predicts the ordering well but it does not fix it.
+
+Entity and numeric substitution are not interchangeable, and neither is uniformly the harder case. Both agree closely for the tersest generator, within 0.05 in every cell. They diverge for the other two, and in opposite directions: on HotpotQA the entailment aggregate responds roughly twice as strongly to a falsified entity as to a falsified number for the verbose generator (0.178 against 0.085), while on Natural Questions the mid-length generator shows the reverse and by a wider factor (0.088 against 0.261). A claim that an evaluator does or does not catch fabrications is therefore a claim about a particular kind of fabrication, and the two error types we tested do not license extrapolation to each other, let alone to unsupported causal claims or contradicted negations, which we did not test.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{llrrrrrr}
+\toprule
+ & & \multicolumn{2}{c}{\textbf{Claude Haiku 4.5}} & \multicolumn{2}{c}{\textbf{Qwen2.5-7B}} & \multicolumn{2}{c}{\textbf{GPT-4o-mini}} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+\textbf{Dataset} & \textbf{Evaluator} & $\Delta$ & Det. & $\Delta$ & Det. & $\Delta$ & Det. \\
+\midrule
+NQ & NLI-max & 0.082 & 9.1\% & 0.088 & 10.8\% & 0.403 & 48.8\% \\
+ & Claim-min & 0.163 & 25.9\% & 0.112 & 17.9\% & 0.431 & 53.4\% \\
+ & AlignScore & 0.232 & 21.9\% & 0.290 & 33.1\% & 0.673 & 77.5\% \\
+\midrule
+HotpotQA & NLI-max & 0.178 & 28.6\% & 0.267 & 54.1\% & 0.412 & 75.1\% \\
+ & Claim-min & 0.132 & 38.2\% & 0.262 & 67.3\% & 0.412 & 75.9\% \\
+ & AlignScore & 0.321 & 47.6\% & 0.463 & 69.4\% & 0.668 & 90.6\% \\
+\bottomrule
+\end{tabular}
+\caption{Response to a falsified \emph{entity}, on the same answers and the same fixed 0.5 gate as Table~\ref{tab:2}. $\Delta$ is the mean drop in score. n = 783, 740 and 725 on NQ and 800, 771 and 762 on HotpotQA; detection is computed over the cases scoring above the gate before falsification. The generator ordering of Table~\ref{tab:2} is reproduced in five of six rows, the exception being claim-min on NQ.}
+\label{tab:entity}
+\end{table*}
 
 
 \subsection{The effect is not verbatim copying}
@@ -263,7 +303,7 @@ HotpotQA & NLI-max & 0.0232 & 1.000 & 0.0123 & 1.000 & 0.0267 & 0.823 \\
 
 The statistic is the spread, the difference in mean faithfulness between the best and worst of the four systems, with a p-value from a paired bootstrap over that pair re-centred at zero \citep{dror-etal-2018}. It is what a practitioner is exposed to, since they adopt one embedding model and stand to lose the distance to the best alternative. It also summarises two systems chosen for being the extremes, so its p-value is not adjusted for that selection and the intermediate systems never enter it. We treat it as descriptive and give the direction across all four in Section~\ref{sec:direction}. An omnibus test would be stricter; we do not run one.
 
-Under the common evaluator no cell of the six shows a detectable difference; under the evaluator Section~\ref{sec:sensitivity} measures as most responsive to known errors, two do. A result reported only under the first would describe the resolution of the instrument, not a property of the systems. Both surviving cells are on HotpotQA, which has the wider retrieval spread, and neither is on Claude, whose answers the entailment aggregate resolves least well.
+Under the common evaluator no cell of the six shows a detectable difference; under the evaluator Section~\ref{sec:sensitivity} measures as most responsive to known errors, two do. Appendix~\ref{app:power} reports what each cell could have detected: the minimum detectable effect at 80\% power is 0.012 to 0.060, above the observed spread in 16 of 18 cells, and it is lowest under AlignScore in all six. Part of the difference between evaluators here is resolving power at fixed $n$, not only response to a known error. A result reported only under the first would describe the resolution of the instrument, not a property of the systems. Both surviving cells are on HotpotQA, which has the wider retrieval spread, and neither is on Claude, whose answers the entailment aggregate resolves least well.
 
 Adding a third generator made the correction stricter, eighteen comparisons rather than twelve, and the count rose anyway. The design does not guarantee that. It also produced the sharpest result here: under AlignScore on HotpotQA all three generators rank the four systems identically (all-mpnet $<$ text-embedding-3-small $<$ BGE-M3 $<$ E5-instruct), while under NLI-max no two agree. Read it carefully. The generators are independent of each other but answer from the \emph{same} retrieved contexts, so this is three generators agreeing about a property of the shared retrieval, not three replications. What it establishes is that one evaluator resolves that property consistently across generators and another does not, on identical inputs.
 
@@ -309,6 +349,8 @@ Four of the six cells in Table~\ref{tab:7} show no detectable difference under a
 The curve is steep. On NQ/Claude under NLI-max no pair is equivalent at $\pm$0.01, four of six are at $\pm$0.02 and all six at $\pm$0.03; on HotpotQA nothing is equivalent below $\pm$0.05 in any cell. Stating equivalence means choosing a column, and the choice does most of the work.
 
 Section~\ref{sec:sensitivity} gives a way to choose it. Falsifying one grounded value moves NLI-max by 0.049 to 0.095 on Claude's answers, so $\pm$0.05 on that evaluator is about the size of one fabricated fact, and equivalence at that margin says the systems differ by less than one fabrication. The anchor is evaluator-specific and so is the verdict: the same falsification moves claim-min by 0.165 and AlignScore by 0.247 on those answers, and at $\pm$0.03 on NQ/Claude, NLI-max calls all six pairs equivalent while claim-min calls two. An equivalence claim has to name its evaluator, and say what the margin is worth on that evaluator's scale.
+
+The anchor fixes the units, not the tolerance. Saying $\pm$0.05 is about one fabricated fact on this evaluator does not establish that one fabricated fact is the right bar, and nothing in our data can establish that. A system summarising product reviews and a system reading a drug label have different tolerances for the same measured difference, and the second may want a margin an order of magnitude tighter. What the anchor removes is the case where a margin is chosen because it is conventional and its magnitude on the chosen evaluator's scale is never checked. Reporting the curve leaves the choice with the reader, who knows the application.
 
 
 
@@ -380,7 +422,7 @@ The generators swap places. GPT-4o-mini is the most faithful here under all thre
 
 The 0.240 carries the information. Claim-min reports the least supported assertion in an answer, so a value that low says Claude is producing multi-assertion answers whose weakest component the context does not support. That is what we would expect when the context usually lacks the evidence and the generator answers anyway. NLI-max takes a maximum over chunks, finds something to entail, and reports 0.712 on the same answers.
 
-We keep this out of the main grid. A population where retrieval failed cannot test a claim about systems at matched retrieval quality. It does bound Section~\ref{sec:verdict}: the ordering of these three evaluators held in every cell we measured on Wikipedia data, and it does not hold here.
+We keep this out of the main grid, and these numbers are not comparable to the ones above. A population where retrieval failed cannot test a claim about systems at matched retrieval quality. The inversion also has a competing explanation we cannot rule out: with Recall@5 between 8\% and 18\%, scores are compressed toward the bottom of each evaluator's range, and orderings among compressed scores can reverse through floor effects and distribution shift without any change in what the evaluators are sensitive to. Read this as one boundary observation, not as evidence that evaluator orderings are generally unstable across domains. What it establishes is narrower: the ordering held in every cell we measured where retrieval worked, and it stopped holding in the one regime we measured where retrieval did not.
 
 
 \section{Discussion}
@@ -390,8 +432,8 @@ For work reporting RAG faithfulness:
 
 \begin{itemize}
 \item Name the evaluator. "Faithfulness did not differ" is incomplete; two of our six cells reverse between evaluators on identical data.
-\item Report the evaluation population, and whether membership depends on the system being compared. Pooling refusals here produced a column tracking retrieval quality in all three generators, in opposite directions (Table~\ref{tab:4}).
-\item Prefer claim-level aggregation to a maximum over the whole answer, most of all where answers carry several assertions.
+\item Report the evaluation population, and whether membership depends on the system being compared. Pooling refusals here produced a column tracking retrieval quality in all three generators, in opposite directions (Table~\ref{tab:4}). Established frameworks often separate refusals already, so this is a caution about aggregate reporting rather than a defect in those frameworks. It reached our own results through a shared helper whose two implementations disagreed on 365 rows, which is the more realistic failure: the rule exists, and two parts of the pipeline apply different versions of it.
+\item Prefer claim-level aggregation to a maximum over the whole answer, most of all where answers carry several assertions. Treat it as a partial remedy. It roughly quadruples detection on the verbose generator's NQ cell, 5.1\% to 25.1\%, and 25.1\% is still a minority of known fabrications, against 61.0\% for the tersest generator under the same aggregate. The gap between generators narrows and does not close, so claim-min reduces the structural bias rather than removing it. Per-assertion thresholding, or weighting assertions by how much of the answer's content they carry, are the obvious next steps and we did not test them.
 \item Calibrate the margin against a measured effect before claiming equivalence. A falsification experiment of this kind costs nothing beyond re-scoring.
 \end{itemize}
 
@@ -431,6 +473,8 @@ What we can claim is bounded by the grid we measured on, and by the graders that
 
 \item All three datasets are English, and the two that carry the main grid are built on Wikipedia. The no-retrieval condition shows 32.2\% of Natural Questions is answerable from parametric memory alone, so the Wikipedia dependence is measured rather than hypothetical.
 \item The two-detector comparison in Section~\ref{sec:graders} and the contingency decomposition were computed on the two proprietary arms, and cover eight of the twenty-four cells; graded correctness itself covers all twenty-four. Nothing in Sections~\ref{sec:sensitivity}, \ref{sec:verdict} or \ref{sec:equivalence} depends on that grading.
+
+\item The detection rates here bear on deployment. A system that gates answers on a fixed grounding threshold, using the common entailment aggregate on a verbose generator, would pass 94.9\% of the answers in which we falsified a grounded value on Natural Questions. Anyone operating such a gate in a setting where a wrong number matters -- an invoice, a dosage, a contract term -- should measure its detection rate on their own generator's output before relying on it, because the rate is a property of that pairing and not of the threshold. We did not test deployment-scale traffic, and our probe injects errors rather than observing natural ones.
 
 \item The correct-versus-incorrect faithfulness comparison rests on 44 to 134 attempted wrong answers per cell. Excluding refusals and grading correctness with a judge both reduce that population, and the resulting confidence intervals are 0.064 to 0.129 wide. The tests reported in Section~\ref{sec:refusals} bear on the general claim and do not resolve individual systems.
 \end{itemize}
@@ -613,6 +657,48 @@ Attempted and wrong & 5.4\% & 4.5\% & 6.7\% & 7.9\% \\
 \caption{Correctness from graded judgement. The raw cell is 17 to 36 per cent of queries; the share that is a grounded, committed, wrong answer is 4.5 to 7.9 per cent.}
 \label{tab:6}
 \end{table}
+
+
+\section{What the comparison could have detected}
+\label{app:power}
+
+Four of the six cells in Table~\ref{tab:7} are null under every evaluator, and Section~\ref{sec:control} shows the procedure separates systems that genuinely differ. Neither of those says what size of effect it would have caught. Table~\ref{tab:power} gives the minimum detectable effect at 80\% power for a two-sided paired test at $\alpha = 0.05$, computed from the observed standard deviation of the paired per-query differences between the best and worst system in each cell.
+
+Two things follow, and the first is a caution about our own null results. The minimum detectable effect runs from 0.012 to 0.060 with a median of 0.034, and in 16 of the 18 cells it exceeds the spread actually observed. Where we report no detectable difference, an effect the size of the one we measured would usually not have been detected. The nulls bound what a practitioner would notice at this sample size; they are not evidence that the systems are identical, which is why Section~\ref{sec:equivalence} tests equivalence separately instead of reading the nulls as equivalence. Both cells that do reach significance have a spread above their own minimum detectable effect (0.0461 against 0.0368, and 0.0406 against 0.0350).
+
+The second is about the evaluators, and it qualifies how Section~\ref{sec:verdict} should be read. AlignScore has the lowest minimum detectable effect in all six cells, 0.012 to 0.037, against 0.021 to 0.060 for the entailment aggregate. This is a variance property rather than a sensitivity one: the standard deviation of the paired per-query difference is 0.12 to 0.30 under AlignScore and 0.20 to 0.48 under NLI-max, on identical answers. So part of why the verdict changes with the evaluator is that the evaluators differ in resolving power at fixed $n$, and not only in how they respond to a known error. The two effects point the same way here, and our design does not separate them.
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{llrrr}
+\toprule
+\textbf{Cell} & \textbf{Evaluator} & $n$ & spread & MDE \\
+\midrule
+NQ / Claude & NLI-max & 784 & 0.011 & 0.021 \\
+ & Claim-min & 784 & 0.022 & 0.038 \\
+ & AlignScore & 784 & 0.011 & 0.012 \\
+NQ / Qwen & NLI-max & 790 & 0.006 & 0.025 \\
+ & Claim-min & 790 & 0.008 & 0.032 \\
+ & AlignScore & 790 & 0.007 & 0.016 \\
+NQ / GPT-4o-mini & NLI-max & 628 & 0.013 & 0.022 \\
+ & Claim-min & 628 & 0.015 & 0.024 \\
+ & AlignScore & 628 & 0.008 & 0.015 \\
+\midrule
+HotpotQA / Claude & NLI-max & 517 & 0.023 & 0.046 \\
+ & Claim-min & 517 & 0.035 & 0.050 \\
+ & AlignScore & 517 & 0.016 & 0.025 \\
+HotpotQA / Qwen & NLI-max & 499 & 0.012 & 0.060 \\
+ & Claim-min & 499 & 0.018 & 0.049 \\
+ & AlignScore & 499 & \textbf{0.041} & 0.035 \\
+HotpotQA / GPT & NLI-max & 510 & 0.027 & 0.041 \\
+ & Claim-min & 510 & 0.038 & 0.040 \\
+ & AlignScore & 510 & \textbf{0.046} & 0.037 \\
+\bottomrule
+\end{tabular}
+\caption{Minimum detectable effect at 80\% power, two-sided paired test at $\alpha = 0.05$, against the spread observed in each cell. Bold marks the two cells that reach significance in Table~\ref{tab:7}; both have a spread exceeding their own MDE. AlignScore has the lowest MDE in every cell.}
+\label{tab:power}
+\end{table}
+
 
 \section{The markdown normalisation defect}
 \label{app:markdown}
