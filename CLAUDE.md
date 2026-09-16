@@ -929,28 +929,33 @@ grounding check is 100% recall in all six pooled cells at **0.8-5.2% FPR**.
   rate, and rejection of random-context donors that support the answer.
 
 **Still open:**
-21. ❌ **The experiments in `PAPER_TODO.md` §3** — LLM judge ✅ done 2026-08-30,
-   open-weight generator ✅ **done 2026-09-05** (Qwen2.5-7B, 8,000 answers, $0
-   — see B23 and `reports/2026-09-05_open_weight_arm.md`),
-   claim-level over the full grid ✅ **done
-   2026-09-04** (16,000 rows, 0 NaN, 3h03m, $0 — the evaluator table is now a
-   family of **12**; see `reports/2026-09-04_claim_level_full_grid.md` and B22
-   below), literal value grounding ✅ built and measured
-   2026-09-01 (`--scorer numeric`, see B19), C1/C2 (~$3–4), QASPER (~$5),
-   ESA/re-ranking (decision pending with Berend). Shapley/`doc_utility.py`
-   is **dropped** at Berend's explicit direction.
-22. ❌ **Paper update** — references ✅ **all 24 verified 2026-09-03** (§6b),
+21. ✅ **Every experiment in `PAPER_TODO.md` §3 has now run** (2026-09-16).
+   LLM judge (2026-08-30, all 24 cells incl. qwen), open-weight generator
+   (2026-09-05), claim-level full grid (2026-09-04), literal value grounding
+   (2026-09-01), **C1/C2**, **context ablation**, **ESA**, **re-ranking**,
+   **QASPER** and **jina-embeddings-v3** (all 2026-09-12..16).
+   Shapley/`doc_utility.py` is dropped at Berend's direction. Nothing paid
+   remains. Full derivation: `reports/2026-09-16_all_results.md`.
+
+22. ✅ **Paper update — the draft now contains every result we have** (2026-09-16).
+   Previously open items: — references ✅ **all 24 verified 2026-09-03** (§6b),
    which also closed ref [8] (now [24], jina v3); Section V-B and the
    multiplicity disclosure ✅ refreshed 2026-09-04 (B20/B21); the Salemi & Zamani
    PDF ✅ **read in full, and §II-A rewritten, 2026-09-05**
    (`reports/2026-09-05_salemi_zamani_full_read.md`) — DOI verified against Crossref;
    the docx is rebuilt and exactly one paragraph moved; IEEE → ACL ✅ **converted
    2026-09-05** (`paper/acl/`, compiles clean, 0 undefined citations, all 234 prose
-   fragments verified to survive verbatim). Still open: cut ~1.5 pages to the ARR
-   limit; update the results for B22/B23; drop the open-weight generator from the
-   Limitations list now that it has run; resolve §4.5.2
-   "cross-attention" wording (decoder-only models use self-attention over context
-   tokens, and no code implements that analysis)
+   fragments verified to survive verbatim). all closed. **The ARR page limit no longer
+   applies** — the goal is a complete draft for Berend, and the paper is 17
+   pages. The six orphaned arms were added in commit 03951bd: jina as a
+   positive control (2 of 6 -> 6 of 6 when included, which is the premise
+   breaking, not a better result), QASPER as a boundary condition where the
+   evaluator ordering inverts, C1/C2 anchors (retrieval beats the oracle on NQ
+   in 3 of 4 systems), context ablation, ESA and re-ranking. **All 13 red flags
+   and all 14 of Berend's points are closed or explicitly stated.**
+   Still open: put the six new sections in the author's own voice, and verify
+   the one new citation (`dasigi-etal-2021`, QASPER) — it has NOT been checked
+   against the ACL Anthology the way the other 24 were in the B3 pass.
 
 ---
 

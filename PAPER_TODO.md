@@ -23,56 +23,75 @@ below — page length first.
 
 ---
 
-## Next session starts here — written 2026-09-08
+## Next session starts here — rewritten 2026-09-16
 
-The paper is in ACL format and compiles (`paper/acl/`, run `./build.sh`).
-**Deadline: ARR 12 October 2026** — five weeks.
+**Every experiment is run. The draft now contains every result we have.**
+Full derivation of every number: `reports/2026-09-16_all_results.md`.
 
-1. ✅ **Update the results for B22 and B23** — done 2026-09-08. Every number in
-   the paper was regenerated from `~/rag-backup/checkpoints/n1000_v3` in one
-   pass rather than spliced from the two reports; the 12 pre-existing Table VII
-   rows, both Table III columns, the copying control and the refusal counts all
-   reproduced exactly, so anything that moved, moved for a reason. Tables II,
-   III, IV, VII, VIII and IX are rewritten; the headline is **2 of 6**.
-   Three things the update turned up that the reports did not:
-   - **Table IV was stale** (pre-D1 and pre-D4) and its mechanism is
-     generator-dependent: refusals score 0.27-0.35 under Claude but 0.85-0.94
-     under qwen and GPT-4o-mini, so pooling them makes the pooled column track
-     NDCG@5 **positively** for Claude (rho +0.99) and **negatively** for the
-     other two (-0.98, -0.92). Section VI now says that, which is a stronger
-     claim than the one it replaced.
-   - **Two Table VIII values were stale too** (Claude/align -0.40 → -0.20,
-     HotpotQA/Claude/nli +0.40 → +0.20). The clean sign pattern survives under
-     NLI-max and AlignScore and **breaks under claim-min**, both times on qwen.
-   - The +0.63 in Table VIII is real, not a typo: two systems tie.
-3. ✅ **Open-weight generator dropped from the Limitations list** — done in the
-   same pass; the bullet now states what three generators do and do not span.
-2. ✅ **Cut pages — done 2026-09-08. The body now ends on p8.** It was p11.
-   Section 6 and 7.2 went first (most words per unit of argument), then the
-   front matter, Discussion and Related Work. Two structural moves did most of
-   the work once prose ran out:
-   - **Tables II and VII were transposed** so the three generators sit side by
-     side under a fixed (dataset, evaluator). 18 rows became 6 in each, which
-     saved about a page and reads better — the comparison the paper makes is
-     across generators, so that is the axis that belongs in the columns.
-   - **An appendix now carries A-H**: retrieval quality, the full falsification
-     table with floors and Wilson intervals, the assertion gradient, the
-     Spearman coefficients, the TOST sweep, the overlap bands, the contingency
-     cell and the markdown defect. ARR appendices do not count toward the limit.
-   Prose went 7,187 -> ~5,900 words. Prose references to tables are now `\ref`
-   rather than hard-coded roman numerals, so deleting or moving a table cannot
-   silently break the ones after it.
-   ⚠️ **Length has almost no slack.** The body ends a few lines from the bottom
-   of p8; page 8 is completely full. Adding a sentence pushes over.
-4. Optional, ~$15: judge correctness on the qwen arm. Until then Section VI-A/B/C
-   and Tables V-VI cover 16 of the 24 cells, which the paper now states in
-   Section VI-A and in Limitations.
+The 2026-09-08 entry below is superseded by this block; the page-cutting work it
+describes was done and then partly undone on purpose, because **the ARR page
+limit is no longer the constraint**. The paper is 17 pages and that is fine. The
+goal now is a complete draft for Berend, not a submission.
 
-Also waiting: send the letter in `reports/2026-09-05_berend_report.md` §1 —
-edit the prose first so it sounds like you, and attach
-`paper/acl/main-preprint.pdf`, not `main.pdf`.
+**Added to the manuscript 2026-09-16** (commit 03951bd), all previously orphaned:
 
----
+1. **jina-embeddings-v3 as a positive control** (Section~`sec:control`). Not a
+   fifth matched system: it retrieves 10 points worse than the band on NQ
+   (0.685 vs 0.786-0.830), triples the spread the comparison runs on
+   (0.044 -> 0.145) and fails TOST against all four at `p_tost = 1.0000`.
+   Rerunning Table 7 over five systems takes the count **2 of 6 -> 6 of 6**.
+   That is the matched-quality premise breaking, *not* a stronger result — and
+   it is worth more as a control, because it shows the four nulls are not a
+   power failure. On HotpotQA it sits inside the band, and its pair with
+   text-embedding-3-small is the only TOST-equivalent pair in the whole grid.
+2. **QASPER as a boundary condition** (`sec:qasper`), not a third dataset.
+   Retrieval collapses (NDCG@5 0.062-0.122, Recall@5 8-18%) because pooling 819
+   papers destroys the paper-identifying signal. The **evaluator ordering
+   inverts**: AlignScore > claim-min > NLI-max in all six main-grid cells, but
+   QASPER/Claude reads 0.712 / 0.629 / **0.240**. The ordering is a property of
+   the evaluators *in a retrieval regime*.
+3. **C1/C2 floor and ceiling** (`sec:anchors`). **Retrieval beats the oracle on
+   NQ in 3 of 4 systems** (102.2-103.4%) — Berend's letter-2 point 3, surfaced
+   and not clipped. The oracle is qrels-scoped, so it is a ceiling on evidence
+   *selection*, not accuracy. No-retrieval floor: **32.2%** on NQ.
+4. **Context ablation** (same section). Order is inert (<=1.7 pts; no position
+   effect at k=5). Subset is not, and only where composition is: one gold chunk
+   costs HotpotQA 36 points and converts into **refusals** (7.3% -> 75.7%),
+   not errors.
+5. **ESA** (`sec:esa`) closes supervisor point 6 with data. Both correlations
+   computed. Weak signal on NQ (r 0.13-0.23, significant in 3 of 4), **none on
+   HotpotQA** where the gold-answer correlation is negative in all four.
+6. **Re-ranking** (same section). Moves faithfulness <1 point either way, both
+   CIs containing zero, and raises NQ refusals 15.4% -> 19.0%.
+
+Also fixed: the Limitations bullet claiming jina was never run (false since this
+week), plus four new bullets bounding the new arms' scope.
+
+### What is actually left
+
+1. **Read the six new sections and put them in your own voice.** They are
+   drafted in the paper's existing register but they are my words, and §6 of
+   this file is explicit about why that matters.
+2. **Verify the one new citation.** `dasigi-etal-2021` (QASPER) was added to
+   `custom.bib` this session and has **not** been checked against the ACL
+   Anthology the way the other 24 were in the B3 pass. Given the history in
+   CLAUDE.md §6/§6b, check it before sending.
+3. **Send Berend the letter** in `reports/2026-09-05_berend_report.md` §1, with
+   `paper/acl/main-preprint.pdf` attached — now 17 pages and complete. The
+   report above gives him the red-flag and point-by-point closure tables.
+4. Optional, free: context-ablation rows were never scored for faithfulness.
+   Only accuracy and refusal exist for those 16 conditions.
+
+### Two things not to regress
+
+- `results.equivalence_table()` **writes `equivalence_table.pkl` on every call
+  and takes no model filter.** Running it exploratorily this session overwrote
+  the published 4-model artifact in the backup. It was regenerated exactly
+  (TOST is analytic, no RNG), but copy before exploring — same trap as
+  `conditional.py` overwriting `faith_gap_significance_*.pkl`.
+- The seven analysis CLIs that hardcoded `--datasets default='NQ,HotpotQA'` now
+  read `config.DATASETS` (commit 8fc666f). That hardcoding is what made the
+  first QASPER pass skip every cell and print "complete".
 
 ## 0. The one-line summary
 
@@ -262,17 +281,17 @@ From the ChatGPT review Berend commissioned (2026-08-19).
 |---|---|---|
 | 🔴 1 | Single NLI judge, AlignScore not run | ✅ **done** — AlignScore run, changes the conclusion |
 | 🔴 2 | Max-over-chunks aggregation | ✅ **done** — claim-level built, mechanism confirmed |
-| 🔴 3 | Conditioning on "all models answered" (collider) | ⚠️ **partly** — report the 3-way outcome (grounded / ungrounded / abstained) given a hit instead of excluding abstentions |
-| 🔴 4 | Selective NQ sampling | ❌ untouched — must be stated as a limitation |
-| 🔴 5 | Causal language exceeds identification | ⚠️ fix in the rewrite; a decomposition makes no causal claim |
+| 🔴 3 | Conditioning on "all models answered" (collider) | ✅ **done** — measured 2026-09-12, bound stated in Limitations; the 3-way table was deliberately not built (see memory) |
+| 🔴 4 | Selective NQ sampling | ✅ **stated** — Limitations bullet; cannot be fixed without redrawing the corpus. The C1 floor now quantifies the related Wikipedia dependence at 32.2% answerable with no retrieval |
+| 🔴 5 | Causal language exceeds identification | ✅ **done** — swept in the v6 rewrite |
 | 🟠 6 | ±0.05 TOST margin unjustified | ✅ **done** — margin sweep + empirical anchor |
-| 🟠 7 | Correctness metric inadequate | ❌ needs the LLM judge (§3.1) |
-| 🟠 8 | Only 4 embedders | ❌ much weaker objection under the new spine |
-| 🟠 9 | Only 2 English benchmarks | ❌ QASPER would help |
-| 🟠 10 | Only 2 closed-source generators | ❌ needs §3.2 |
-| 🟡 11 | Multiple-testing presentation | ⚠️ state the multiplicity structure; the sweep helps |
+| 🟠 7 | Correctness metric inadequate | ✅ **done** — LLM judge over all 24 cells |
+| 🟠 8 | Only 4 embedders | ✅ **five now** — and the fifth is a positive control, not a survey entry |
+| 🟠 9 | Only 2 English benchmarks | ✅ **three now** (QASPER); all still English, stated as a limitation |
+| 🟠 10 | Only 2 closed-source generators | ✅ **done** — Qwen2.5-7B open-weight arm |
+| 🟡 11 | Multiple-testing presentation | ✅ **done** — all three families printed on every run |
 | 🟡 12 | RFG/nRFG conceptually weak | ✅ becomes a result rather than a liability |
-| 🟡 13 | Many experiments mentioned, not run | ⚠️ shrinks as §3 lands; be explicit about what is out of scope |
+| 🟡 13 | Many experiments mentioned, not run | ✅ **all of them have now run** and all are in the draft |
 
 ---
 
