@@ -66,6 +66,18 @@ def main():
                          '1000 for parity with the API arms')
     ap.add_argument('--models', default=None,
                     help='comma-separated model names (overrides mode default)')
+    ap.add_argument('--open-label', default=None,
+                    help='checkpoint label for the open-weight arm. '
+                         'Defaults to config.OPEN_MODEL_LABEL. Give a '
+                         'distinct label for any arm that is not the '
+                         'main grid, or it overwrites it.')
+    ap.add_argument('--open-prompt-style', default='standard',
+                    choices=['standard', 'verbose'],
+                    help='prompt variant for the open-weight arm. '
+                         '"standard" is byte-identical to every other '
+                         'generator and is what the main grid uses. '
+                         '"verbose" is the Section 5.4 control and must '
+                         'be paired with its own --open-label.')
     ap.add_argument('--datasets', default=None,
                     help='comma-separated dataset names (overrides mode default)')
     ap.add_argument('--n-queries', type=int, default=None,
@@ -148,7 +160,9 @@ def main():
         # ~4.7 h and free, and a third generator that shares the other two
         # arms' models, queries and n is comparable in every table instead of
         # being a footnote with its own scale.
-        run_phase_llama(datasets, models, subset=args.open_subset)
+        run_phase_llama(datasets, models, subset=args.open_subset,
+                        label=args.open_label,
+                        prompt_style=args.open_prompt_style)
     if 'd' in phases:
         from faithfulness import run_phase_d
         run_phase_d(datasets, models)

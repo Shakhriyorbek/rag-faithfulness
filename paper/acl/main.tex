@@ -152,18 +152,18 @@ Two controls accompany it: an entity substitution, which makes a comparable edit
 \toprule
  & & \multicolumn{3}{c}{\textbf{Claude Haiku 4.5}} & \multicolumn{3}{c}{\textbf{Qwen2.5-7B}} & \multicolumn{3}{c}{\textbf{GPT-4o-mini}} \\
 \cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}
-\textbf{Dataset} & \textbf{Evaluator} & Orig & Fals. & Det. & Orig & Fals. & Det. & Orig & Fals. & Det. \\
+\textbf{Dataset} & \textbf{Evaluator} & Orig & Fals. & Det. & Orig & Fals. & Det. & Orig & Fals. & Det. \\ 
 \midrule
-NQ & NLI-max & 0.906 & 0.852 & 5.1\% & 0.836 & 0.574 & 35.1\% & 0.887 & 0.436 & 56.6\% \\
- & Claim-min & 0.679 & 0.514 & 25.1\% & 0.693 & 0.397 & 48.1\% & 0.863 & 0.390 & 61.0\% \\
- & AlignScore & 0.866 & 0.619 & 24.1\% & 0.863 & 0.428 & 51.8\% & 0.912 & 0.272 & 75.4\% \\
+NQ & NLI-max & 0.906 & 0.852 & \textbf{5.1\%} & 0.836 & 0.574 & 35.1\% & 0.887 & 0.436 & \textbf{56.6\%} \\ 
+ & Claim-min & 0.679 & 0.514 & \textbf{25.1\%} & 0.693 & 0.397 & 48.1\% & 0.863 & 0.390 & \textbf{61.0\%} \\ 
+ & AlignScore & 0.866 & 0.619 & \textbf{24.1\%} & 0.863 & 0.428 & 51.8\% & 0.912 & 0.272 & \textbf{75.4\%} \\ 
 \midrule
-HotpotQA & NLI-max & 0.702 & 0.618 & 13.9\% & 0.547 & 0.277 & 54.8\% & 0.577 & 0.186 & 70.5\% \\
- & Claim-min & 0.370 & 0.255 & 34.3\% & 0.424 & 0.160 & 66.8\% & 0.571 & 0.182 & 70.6\% \\
- & AlignScore & 0.786 & 0.454 & 48.9\% & 0.749 & 0.255 & 74.5\% & 0.780 & 0.119 & 89.4\% \\
+HotpotQA & NLI-max & 0.702 & 0.618 & \textbf{13.9\%} & 0.547 & 0.277 & 54.8\% & 0.577 & 0.186 & \textbf{70.5\%} \\ 
+ & Claim-min & 0.370 & 0.255 & \textbf{34.3\%} & 0.424 & 0.160 & 66.8\% & 0.571 & 0.182 & \textbf{70.6\%} \\ 
+ & AlignScore & 0.786 & 0.454 & \textbf{48.9\%} & 0.749 & 0.255 & 74.5\% & 0.780 & 0.119 & \textbf{89.4\%} \\ 
 \bottomrule
 \end{tabular}
-\caption{Response of three evaluators to a falsified value, on identical inputs, pooled over the four embedding systems (n = 800 per cell, 784 on HotpotQA/GPT-4o-mini). "Det." is the share of answers passing a fixed 0.5 threshold before falsification and failing it after. Scale floors, the floor-anchored gate and Wilson 95\% intervals on every rate are in Appendix~\ref{app:falsification}.}
+\caption{Response of three evaluators to a falsified value, on identical inputs, pooled over the four embedding systems (n = 800 per cell, 784 on HotpotQA/GPT-4o-mini). "Det." is the share of answers passing a fixed 0.5 threshold before falsification and failing it after. Bold marks the detection columns for the two extreme generators: the same falsification, scored by the same evaluator on the same retrieved context, is caught between 5.1\% and 48.9\% of the time on the most verbose generator and between 56.6\% and 89.4\% on the tersest. Scale floors, the floor-anchored gate and Wilson 95\% intervals on every rate are in Appendix~\ref{app:falsification}.}
 \label{tab:2}
 \end{table*}
 
@@ -311,6 +311,20 @@ Adding a third generator made the correction stricter, eighteen comparisons rath
 The count of two is not invariant to the correction either. Two comparisons sit either side of alpha = 0.05 depending on which are treated as one family. NQ/Claude under AlignScore is p = 0.0081 uncorrected, adjusted to 0.122 over the eighteen in the table, 0.032 over the six sharing an evaluator, 0.024 over the three in its own cell. HotpotQA/GPT-4o-mini under claim-min is p = 0.0070, adjusted to 0.112, 0.042 and 0.014. Either smaller family makes the count four. Correcting within evaluator is defensible, since the six NLI tests establish which cells are null and so precede the question rather than competing with it. We still report the eighteen-comparison family, because it is the most conservative and was fixed before the correction was applied, and choosing a smaller one after seeing that it restores cells is a selection we could not account for. We give the alternative as well as the choice, because a count that moves with the multiplicity family depends on an analysis decision in the same way this paper reports for the choice of evaluator.
 
 
+\subsection{A system the test should separate}
+\label{sec:control}
+
+Four of the six cells are null. A reader is entitled to ask whether the test detects anything at all, and the grid answers that without a new experiment.
+
+We ran a fifth embedding model, jina-embeddings-v3 \citep{sturua-etal-2024}, over both datasets and all three generators. On Natural Questions it retrieves badly. Its NDCG@5 is 0.685, where the other four sit between 0.786 and 0.830, and it widens the spread the comparison runs on from 4.4 points to 14.5. Paired TOST on per-query NDCG gives mean differences of 0.102 to 0.145 against the other four, at $p_{\mathrm{TOST}} = 1.0000$ each time. The test cannot place a system further from equivalence than that. HotpotQA is a different story. There jina falls inside the band, and its pair with text-embedding-3-small is the only pair in our grid that is both undifferentiated and TOST-equivalent at $\pm$0.02 (mean difference 0.0059, $p_{\mathrm{TOST}} = 0.0083$).
+
+Rerun Table~\ref{tab:7} over five systems instead of four, holding the test, the resampling and the correction fixed, and the count goes from two of six cells to six of six. Every cell differs under every evaluator.
+
+We read that as the precondition failing. This section asks what happens to systems that retrieve about equally well, and a system retrieving ten points worse ought to come out differently. It does, under all three evaluators. So the four nulls do not come from an instrument that never fires. At these sample sizes the procedure separates systems that differ and declines to separate the matched four.
+
+The control bounds our own framing too. Matched retrieval quality has to be checked rather than assumed from a plausible-looking set of models, and one of the five we ran fails the check on one of the two datasets.
+
+
 \subsection{Direction is dataset-dependent}
 \label{sec:direction}
 
@@ -326,20 +340,6 @@ An earlier version of this analysis reported two of the four cells then in the d
 
 How it was caught is the transferable part. The defect is invisible in every summary statistic and survives every significance test. What exposed it was an identity the two aggregates must satisfy exactly on single-assertion answers, which failed on all 131 formatted answers then in the grid by as much as 0.729 (Appendix~\ref{app:markdown}). Metrics that admit such an identity should be checked against it.
 
-
-
-\subsection{A system the test should separate}
-\label{sec:control}
-
-Four of the six cells are null. A reader is entitled to ask whether the test detects anything at all, and the grid answers that without a new experiment.
-
-We ran a fifth embedding model, jina-embeddings-v3 \citep{sturua-etal-2024}, over both datasets and all three generators. On Natural Questions it retrieves badly. Its NDCG@5 is 0.685, where the other four sit between 0.786 and 0.830, and it widens the spread the comparison runs on from 4.4 points to 14.5. Paired TOST on per-query NDCG gives mean differences of 0.102 to 0.145 against the other four, at $p_{\mathrm{TOST}} = 1.0000$ each time. The test cannot place a system further from equivalence than that. HotpotQA is a different story. There jina falls inside the band, and its pair with text-embedding-3-small is the only pair in our grid that is both undifferentiated and TOST-equivalent at $\pm$0.02 (mean difference 0.0059, $p_{\mathrm{TOST}} = 0.0083$).
-
-Rerun Table~\ref{tab:7} over five systems instead of four, holding the test, the resampling and the correction fixed, and the count goes from two of six cells to six of six. Every cell differs under every evaluator.
-
-We read that as the precondition failing. This section asks what happens to systems that retrieve about equally well, and a system retrieving ten points worse ought to come out differently. It does, under all three evaluators. So the four nulls do not come from an instrument that never fires. At these sample sizes the procedure separates systems that differ and declines to separate the matched four.
-
-The control bounds our own framing too. Matched retrieval quality has to be checked rather than assumed from a plausible-looking set of models, and one of the five we ran fails the check on one of the two datasets.
 
 
 \section{What an Equivalence Claim Requires}

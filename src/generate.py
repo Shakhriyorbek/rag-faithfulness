@@ -42,10 +42,45 @@ Question: {question}
 Answer:"""
 
 
-def build_prompt(question: str, chunks: List[str]) -> str:
+# W2 control. The falsification gap in Section V tracks assertion count, but
+# assertion count is confounded with model family: the three generators differ
+# in provider and training as well as in verbosity. Varying the PROMPT on a
+# single model holds the family fixed and moves only the answer structure,
+# which a fourth model could not do.
+#
+# The grounding instruction and the refusal sentence are byte-identical to the
+# standard template. Only an instruction to answer more fully is added, so the
+# abstention rule still matches and the grounding constraint is unchanged.
+RAG_PROMPT_TEMPLATE_VERBOSE = """You are a helpful assistant. Answer the question using ONLY the provided context.
+Do not use any external knowledge. If the context does not contain enough information, say "I cannot answer based on the provided context."
+Give a thorough answer: state every relevant detail the context provides, and explain how the context supports each part of your answer.
+
+Context:
+{context}
+
+Question: {question}
+
+Answer:"""
+
+PROMPT_STYLES = {'standard': RAG_PROMPT_TEMPLATE,
+                 'verbose': RAG_PROMPT_TEMPLATE_VERBOSE}
+
+
+def build_prompt(question: str, chunks: List[str],
+                 style: str = 'standard') -> str:
+    """Build the RAG prompt.
+
+    `style` defaults to 'standard', which every generator in the main grid
+    uses and which tests/test_openai_generator.py::TestPromptParity pins as
+    byte-identical across arms. Do not change that default: H3 compares
+    rankings across generators, so a prompt difference between them would
+    confound it. 'verbose' exists only for the single-model control in
+    Section~\ref{sec:verbosity}, which is reported under its own label.
+    """
+    template = PROMPT_STYLES[style]
     context = '\n\n'.join(f'[Chunk {i + 1}]: {c}'
                           for i, c in enumerate(chunks))
-    return RAG_PROMPT_TEMPLATE.format(context=context, question=question)
+    return template.format(context=context, question=question)
 
 
 # ── Claude ────────────────────────────────────────────────────────
@@ -301,8 +336,9 @@ class LocalHFGenerator:
     """
     MODEL_ID = None      # subclasses may pin one; otherwise config.OPEN_MODEL_ID
 
-    def __init__(self, model_id: str = None):
+    def __init__(self, model_id: str = None, prompt_style: str = 'standard'):
         import torch
+        self.prompt_style = prompt_style
         from transformers import AutoModelForCausalLM, AutoTokenizer
         self.MODEL_ID = model_id or self.MODEL_ID or config.OPEN_MODEL_ID
         assert torch.cuda.is_available(), \
@@ -329,7 +365,7 @@ class LocalHFGenerator:
         print('  loaded')
 
     def generate(self, question: str, chunks: List[str]) -> str:
-        prompt = build_prompt(question, chunks)
+        prompt = build_prompt(question, chunks, style=self.prompt_style)
         # Instruct model -> chat template, not raw completion.
         #
         # `return_dict=True` is passed explicitly rather than relying on the
@@ -365,7 +401,8 @@ class Llama3Generator(LocalHFGenerator):
 
 def run_phase_llama(datasets: Dict, model_names: List[str] = None,
                     subset: int = config.LLAMA_SUBSET,
-                    model_id: str = None, label: str = None):
+                    model_id: str = None, label: str = None,
+                    prompt_style: str = 'standard'):
     """
     The open-weight generator arm (H3: generator independence).
 
@@ -387,7 +424,7 @@ def run_phase_llama(datasets: Dict, model_names: List[str] = None,
     model_id = model_id or config.OPEN_MODEL_ID
     label = label or config.OPEN_MODEL_LABEL
     val_models = model_names or [c['name'] for c in config.EMBEDDING_MODELS]
-    llama = LocalHFGenerator(model_id)
+    llama = LocalHFGenerator(model_id, prompt_style=prompt_style)
 
     for model in val_models:
         for ds_name in datasets:

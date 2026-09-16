@@ -217,7 +217,7 @@ class TestOpenWeightGenerator:
         seen = []
 
         class FakeGen:
-            def __init__(self, model_id=None):
+            def __init__(self, model_id=None, prompt_style='standard'):
                 seen.append(model_id)
 
             def generate(self, question, chunks):
@@ -354,7 +354,7 @@ class TestGeneratorCliDefaults:
         monkeypatch.setenv('RAG_CHECKPOINT_DIR', str(tmp_path))
         monkeypatch.setattr(cfg, 'CHECKPOINT_DIR', tmp_path)
         monkeypatch.setattr(generate, 'LocalHFGenerator',
-                            lambda model_id=None: type(
+                            lambda model_id=None, prompt_style='standard': type(
                                 'G', (), {'generate': lambda s, q, c: 'a'})())
         from utils import load_checkpoint, save_checkpoint
 
