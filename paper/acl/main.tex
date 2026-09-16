@@ -120,6 +120,8 @@ Correctness is measured against the gold answer, never against the context. Keep
 
 Two datasets are used, Natural Questions \citep{kwiatkowski-etal-2019} and HotpotQA \citep{yang-etal-2018}, at 1,000 queries each. Four embedding models index each corpus, retrieval takes the top five chunks of 256 tokens with 32-token overlap, and three generators answer from a byte-identical prompt at temperature 0: two proprietary (Claude Haiku 4.5, GPT-4o-mini) and one open-weight run locally (Qwen2.5-7B-Instruct). That gives 4 x 2 x 3 x 1,000 = 24,000 answers, each re-scored by every evaluator. The four systems --- all-mpnet-base-v2 (contrastive), BGE-M3 (multilingual), E5-large-instruct (instruction-tuned) and text-embedding-3-small (proprietary) --- reach NDCG@5 of 0.786, 0.794, 0.806 and 0.830 on Natural Questions and 0.705, 0.809, 0.824 and 0.767 on HotpotQA, a spread of 4.4 and 11.9 points, and they do not rank the same way on the two datasets (Appendix~\ref{app:retrieval}). A single prompt builder enforces parity, one user turn and no system message, since a prompt difference would confound every cross-generator comparison below.
 
+Four further arms run off the same grid and are reported in Sections~\ref{sec:control} to~\ref{sec:qasper}. A fifth embedding model, jina-embeddings-v3, was run over both datasets and all three generators and serves as a control on the comparison rather than a member of it. A third dataset, QASPER \citep{dasigi-etal-2021}, was run over all five embedding models and all three generators at 819 questions. Floor, ceiling and context-arrangement conditions, and the geometric and re-ranking analyses, were run on the Claude arm; their scope is stated where they appear and in the Limitations.
+
 Three evaluators are compared, on identical inputs. NLI-max is (1) with a DeBERTa-v3-large \citep{he-etal-2023} inference model, the common choice. Claim-min is (2) with the same model and sentence-level claim segmentation, chosen so no second generator enters the measurement loop. AlignScore \citep{zha-etal-2023} is an independently trained alignment model.
 
 The answers are byte-identical across evaluators. The premises are not, and that difference is part of what the comparison measures, since premise construction follows each evaluator's intended interface: the entailment scorer sees each of the five chunks separately plus their concatenation truncated to its 512-token window, and takes the maximum; the claim-level scorer applies the same construction per extracted claim; AlignScore takes the concatenated context as one premise and splits it internally. Some of the difference in Section~\ref{sec:sensitivity} is therefore premise granularity rather than evaluator sensitivity; the Limitations section bounds that share by re-scoring the same cases on the concatenated premise alone. The hypothesis is normalised identically for all three, with markdown emphasis, headings and list markers stripped before scoring. That matters because one generator emits markdown in 76.0\% of its attempted answers against 1.3\% and 0.3\% for the other two, and the entailment model responds to it (Section~\ref{sec:normalisation}).
@@ -284,6 +286,19 @@ An earlier version of this analysis reported two of the four cells then in the d
 How it was caught is the transferable part. The defect is invisible in every summary statistic and survives every significance test. What exposed it was an identity the two aggregates must satisfy exactly on single-assertion answers, which failed on all 131 formatted answers then in the grid by as much as 0.729 (Appendix~\ref{app:markdown}). Metrics that admit such an identity should be checked against it.
 
 
+
+\subsection{A system the test should separate}
+\label{sec:control}
+
+Four of the six cells are null, which invites the question of whether the test can detect anything at all. It can, and the same grid supplies the control. jina-embeddings-v3 \citep{sturua-etal-2024} was indexed and generated over on both datasets under all three generators, and on Natural Questions it retrieves considerably worse than the four systems above: NDCG@5 of 0.685 against a band of 0.786 to 0.830. It widens the spread the comparison is run on from 4.4 points to 14.5. Paired TOST on per-query NDCG puts its mean difference from the other four at 0.102 to 0.145, with $p_{\mathrm{TOST}} = 1.0000$ against each --- the furthest from equivalence the test can report. On HotpotQA it sits inside the existing band instead, and its pair with text-embedding-3-small is the only one anywhere in our grid that is both undifferentiated and TOST-equivalent at $\pm$0.02 (mean difference 0.0059, $p_{\mathrm{TOST}} = 0.0083$).
+
+Rerunning Table~\ref{tab:7} over five systems rather than four, with the same test, the same resampling and the same correction, takes the count from two of six cells to \emph{six of six}. Every cell differs, under every evaluator.
+
+We do not read that as a stronger result. It is the precondition failing. The comparison in this section is between systems that retrieve about equally well and are nonetheless scored differently, and a system that retrieves worse should be scored differently, by any evaluator worth using. What the control establishes is that the four nulls are not a power failure: at these sample sizes the procedure separates systems that genuinely differ, in every cell, and it declines to separate the matched four. A null obtained from an instrument that never fires would carry no information. This one is obtained from an instrument that fires whenever it is given a real difference.
+
+It also bounds how far the paper's own framing can be pushed. Matched retrieval quality is not a property of a convenient subset of embedding models; it is a condition that has to be checked, and one of the five models in this repository fails it on one of the two datasets.
+
+
 \section{What an Equivalence Claim Requires}
 \label{sec:equivalence}
 
@@ -292,6 +307,74 @@ Four of the six cells in Table~\ref{tab:7} show no detectable difference under a
 The curve is steep. On NQ/Claude under NLI-max no pair is equivalent at $\pm$0.01, four of six are at $\pm$0.02 and all six at $\pm$0.03; on HotpotQA nothing is equivalent below $\pm$0.05 in any cell. Stating equivalence means choosing a column, and the choice does most of the work.
 
 Section~\ref{sec:sensitivity} gives a way to choose it. Falsifying one grounded value moves NLI-max by 0.049 to 0.095 on Claude's answers, so $\pm$0.05 on that evaluator is about the size of one fabricated fact, and equivalence at that margin says the systems differ by less than one fabrication. The anchor is evaluator-specific and so is the verdict: the same falsification moves claim-min by 0.165 and AlignScore by 0.247 on those answers, and at $\pm$0.03 on NQ/Claude, NLI-max calls all six pairs equivalent while claim-min calls two. An equivalence claim has to name its evaluator, and say what the margin is worth on that evaluator's scale.
+
+
+
+\section{Floor, Ceiling and the Arrangement of Context}
+\label{sec:anchors}
+
+Everything above compares retrieval systems to each other. Two anchors say what the comparison is inside of. Both were run on the Claude arm only, at $n = 1000$ per dataset.
+
+\textbf{The floor.} With no retrieved context the generator answers 32.2\% of Natural Questions correctly, declining 15.5\% of the time. Both benchmarks are built on Wikipedia, and roughly a third of the single-hop result is therefore reachable without retrieval at all. On HotpotQA the same condition gives 20.9\% correct and a 70.4\% refusal rate: asked to compose across documents it does not have, the model mostly declines rather than guessing. Any claim that retrieval caused a correct answer on Natural Questions has this floor underneath it.
+
+\textbf{The ceiling.} Supplying exactly the answer-bearing chunks gives 77.0\% on Natural Questions and 86.8\% on HotpotQA. On HotpotQA that behaves as a ceiling: the best of the four systems reaches 81.0\% of it and the worst 60.8\%. On Natural Questions three of the four systems \emph{exceed} it, at 102.2\%, 102.6\% and 103.4\%.
+
+We report that rather than clipping it, because the explanation is a design choice worth stating. The oracle condition supplies the answer-bearing chunks and nothing else, which is narrower context than top-five retrieval, and a narrower context produces more refusals on questions that need surrounding material --- 12.9\% here against a floor of retrieval's own. It is a ceiling on evidence \emph{selection}, not on accuracy, and on a single-hop dataset the extra material retrieval brings is worth more than the extra noise costs. On a multi-hop dataset, where the composition is the difficulty, it is not.
+
+\textbf{Arrangement.} Over 300 queries per condition we vary how the gold evidence is presented (Table~\ref{tab:ablation}). Order does not matter: reversing or shuffling it moves accuracy by at most 1.7 points on either dataset, and holding length at five chunks while moving a single gold chunk between first, middle and last position spans 0.727 to 0.757 on Natural Questions and 0.503 to 0.530 on HotpotQA. At $k = 5$ we see no position effect.
+
+Subset does matter, and only where composition does. Reducing the context to one gold chunk costs Natural Questions two points and HotpotQA thirty-six, and the refusal column says why: HotpotQA refusals rise from 7.3\% to 75.7\%. Given half of a multi-hop chain the model declines rather than completing it from memory. That is the behaviour one would want, and it is produced by the same refusal machinery that Section~\ref{sec:population} shows will distort a faithfulness average if those answers are left in it. Retrieval failure and refusal are not independent events, and an evaluation that averages over both is measuring their sum.
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{lcccc}
+\hline
+ & \multicolumn{2}{c}{NQ} & \multicolumn{2}{c}{HotpotQA} \\
+condition & acc. & ref. & acc. & ref. \\
+\hline
+all gold & .790 & .127 & .877 & .073 \\
+reversed & .773 & .123 & .890 & .063 \\
+shuffled & .790 & .123 & .880 & .070 \\
+one gold only & .770 & .170 & \textbf{.517} & \textbf{.757} \\
+one gold, first & .753 & .137 & .530 & .693 \\
+one gold, middle & .757 & .163 & .503 & .683 \\
+one gold, last & .727 & .153 & .510 & .723 \\
+distractors only & \textbf{.090} & .667 & \textbf{.150} & .913 \\
+\hline
+\end{tabular}
+\caption{Accuracy and refusal rate when the gold evidence is rearranged, $n = 300$ per condition, Claude. The last four conditions hold context length at five chunks. Order is inert; losing half a multi-hop chain is not, and it converts into refusals rather than errors.}
+\label{tab:ablation}
+\end{table}
+
+The distractor-only condition gives a second floor and it is not zero: 9.0\% and 15.0\% correct from hard negatives alone, consistent with the no-retrieval result above.
+
+
+\section{Geometric Analysis and Re-ranking}
+\label{sec:esa}
+
+A natural response to any of this is to re-rank retrieved chunks by how well they support an answer. That presumes a usable signal at retrieval time, which is testable and turns out to be dataset-dependent.
+
+The quantity that motivates re-ranking is the correlation between a chunk's similarity to the query and its entailment of the answer. There are two versions and they are not interchangeable. Correlating with entailment of the \emph{gold} answer measures a static property of the embedding space; correlating with entailment of the \emph{query} measures the signal actually available before any answer exists. We compute both, $n = 200$ per system and dataset.
+
+On Natural Questions both are positive and agree closely: gold-answer correlations of 0.146 to 0.217 and query correlations of 0.131 to 0.226, significant at $\alpha = 0.05$ in three of four systems for each. On HotpotQA the gold-answer correlation is \emph{negative} in all four systems ($-0.086$ to $-0.115$) and the query correlation is indistinguishable from zero (0.037 to 0.077, no $p$ below 0.27). The geometry carries a weak signal on single-hop retrieval and none on multi-hop.
+
+Re-ranking then does what that predicts. Taking the top twenty for one system and re-ranking by entailment of the query at $\lambda = 0.6$ before regenerating, faithfulness on attempted answers moves by $+0.008$ on Natural Questions (95\% CI $[-0.007, +0.023]$) and $-0.008$ on HotpotQA ($[-0.029, +0.012]$). Both intervals contain zero. What does move is the refusal rate, from 15.4\% to 19.0\% on Natural Questions: re-ranking removes context the generator had been using, and it declines rather than answering from less.
+
+Faithfulness-aware re-ranking is often proposed on the strength of a correlation like the one above. This is what that correlation is worth when it is spent: under one point of faithfulness in either direction, and neither interval excludes zero. A correlation of 0.13 to 0.23 on the one dataset where it exists is not enough to convert into a gain, and on the other there is nothing to convert.
+
+
+\section{When Retrieval Collapses}
+\label{sec:qasper}
+
+The two benchmarks above are Wikipedia, and both are ones these retrieval systems do well on. QASPER \citep{dasigi-etal-2021} is neither. Running the same grid over 819 questions on NLP papers, with all five embedding systems, retrieval essentially fails: NDCG@5 of 0.062 to 0.122 against 0.705 to 0.830 on the other two, and Recall@5 between 8\% and 18\%. The cause is structural rather than a property of the retrievers. QASPER is single-document question answering, and pooling 819 papers into one corpus of 13,876 chunks leaves questions like ``which multilingual approaches do they compare with?'' carrying no signal that identifies which paper they belong to.
+
+Refusal rates rise accordingly, to 27.8\%, 35.4\% and 45.0\% for the three generators, but between 2,254 and 2,955 answers per generator remain. On those, two orderings from the main grid invert.
+
+The generators swap places. GPT-4o-mini is the most faithful here under all three evaluators and Claude the least, the reverse of Section~\ref{sec:verdict}. More consequentially, so do the evaluators. Across all six cells of the main grid the three evaluators order identically, AlignScore above claim-min above NLI-max. On QASPER that holds only for GPT-4o-mini. For Claude the order reverses to NLI-max 0.712, AlignScore 0.629, claim-min 0.240.
+
+The 0.240 is the informative number. Claim-min reports the least supported assertion in an answer, so a value that low means Claude is producing multi-assertion answers whose weakest component the retrieved context does not support --- which is what one would expect when the context usually lacks the evidence and the generator answers anyway. NLI-max, taking the maximum over chunks, still finds something to entail and reports 0.712 on the same answers.
+
+We do not fold this into the main grid, because a population where retrieval failed cannot test a claim about systems at matched retrieval quality. What it adds is a boundary condition on Section~\ref{sec:verdict}. The relative ordering of these evaluators is not a fixed property of the evaluators. It is a property of the evaluators applied to a particular retrieval regime, and it inverts when that regime does.
 
 
 \section{Discussion}
@@ -332,7 +415,15 @@ What we can claim is bounded by the grid we measured on, and by the graders that
 \item The three evaluators receive byte-identical answers but not identical premises. The entailment scorer is given each of the five retrieved chunks separately, plus their concatenation truncated to the model's window, and the maximum is taken; the claim-level scorer applies that construction per extracted claim; AlignScore is given the concatenated context as one premise and performs its own splitting. Each scorer is used as its authors intend, but that means some of the difference reported in Section~\ref{sec:sensitivity} comes from premise granularity and not from evaluator sensitivity. We bound that share by re-scoring the same cases with the same entailment model on the concatenated premise alone. As a fraction of the NLI-max-to-AlignScore gap it runs from -0.55 to +0.20 across the six cells, and it is negative in four of them, meaning the concatenated premise makes the entailment model \emph{less} responsive to a falsified value, not more. So premise granularity does not account for AlignScore's advantage. In most cells it works against it. The hypothesis is normalised identically for all three scorers (Section~\ref{sec:normalisation}). It was not in an earlier version, and that difference alone decided one cell.
 \item Which answers count as refusals is fixed by a rule rather than given by the data, and that rule sets the evaluation population for every result from Section~\ref{sec:sensitivity} onward. It is a researcher degree of freedom as much as a finding. Swapping one defensible detector for another moves the rows nearest the boundary between refusing and attempting, and carries the uncorrected p-value across the conventional threshold in two of eight cells (Section~\ref{sec:graders}). Neither of those two survives correction for multiple comparisons, but the population every reported number rests on still depends on the choice. The rule used here strips the generators' standard preamble before matching; without that step 107 refusals, all from one generator, would be graded as attempts.
 \item The falsification cases are the first 200 eligible answers in dataset order for each system, dataset and generator, rather than a random sample of the eligible answers: 4,784 cases scored against 7,609 eligible across the grid. Eligibility requires a grounded numeric value in the answer together with a replacement value absent from the context, so the scored set is a prefix of an already filtered population. Cells whose eligible count is near 200 are close to a census; the largest cells are sampled at about two fifths.
-\item The repository configures seven embedding models and this paper reports four: all-mpnet-base-v2 (contrastive), BGE-M3 (multilingual), E5-large-instruct (instruction-tuned) and text-embedding-3-small (proprietary), chosen to span pretraining paradigms and to include one closed-source arm. GTE-large, Instructor-XL and jina-embeddings-v3 \citep{sturua-etal-2024} are configured and runnable but were not run at this scale: each additional model is a further generation pass over both datasets and all three generators, and the grid is a testbed for the evaluator comparison rather than a survey of embedding models.
+\item The repository configures seven embedding models. Four carry the matched comparison --- all-mpnet-base-v2 (contrastive), BGE-M3 (multilingual), E5-large-instruct (instruction-tuned) and text-embedding-3-small (proprietary) --- chosen to span pretraining paradigms and to include one closed-source arm. A fifth, jina-embeddings-v3 \citep{sturua-etal-2024}, was run over both datasets and all three generators and is reported in Section~\ref{sec:control} as a control rather than as a member of the matched set, because it fails the matched-quality precondition on Natural Questions. GTE-large and Instructor-XL remain unrun: each additional model is a further generation pass over every dataset and generator, and the grid is a testbed for the evaluator comparison rather than a survey of embedding models.
+
+\item The floor, ceiling and context-arrangement conditions of Section~\ref{sec:anchors} were run on the Claude arm only, and the geometric analysis and re-ranking of Section~\ref{sec:esa} on one embedding system. Neither set of conclusions has been shown to hold across generators, and the re-ranking result in particular is a single operating point ($\lambda = 0.6$) on a single system, so it bounds what that intervention achieved here rather than what such interventions can achieve.
+
+\item The oracle condition supplies answer-bearing chunks only, which is narrower context than top-five retrieval. It is therefore a ceiling on evidence selection and not on accuracy, which is why retrieval exceeds it on Natural Questions. A ceiling defined as gold passages in full would be higher and less comparable to what retrieval produces.
+
+\item QASPER is reported as a boundary condition rather than a third dataset. Retrieval fails on it under every system tested, so the population it yields cannot test a claim about systems at matched retrieval quality, and the inverted evaluator ordering we observe there is measured on answers produced largely without supporting evidence.
+
+\item All three datasets are English, and the two that carry the main grid are built on Wikipedia. The no-retrieval condition shows 32.2\% of Natural Questions is answerable from parametric memory alone, so the Wikipedia dependence is measured rather than hypothetical.
 \item The two-detector comparison in Section~\ref{sec:graders} and the contingency decomposition were computed on the two proprietary arms, and cover eight of the twenty-four cells; graded correctness itself covers all twenty-four. Nothing in Sections~\ref{sec:sensitivity}, \ref{sec:verdict} or \ref{sec:equivalence} depends on that grading.
 
 \item The correct-versus-incorrect faithfulness comparison rests on 44 to 134 attempted wrong answers per cell. Excluding refusals and grading correctness with a judge both reduce that population, and the resulting confidence intervals are 0.064 to 0.129 wide. The tests reported in Section~\ref{sec:refusals} bear on the general claim and do not resolve individual systems.
@@ -342,7 +433,7 @@ What we can claim is bounded by the grid we measured on, and by the graders that
 
 \appendix
 
-\section{Retrieval quality of the four systems}
+\section{Retrieval quality of every system run}
 \label{app:retrieval}
 
 \begin{table}[t]
@@ -356,11 +447,14 @@ all-mpnet-base-v2 & contrastive & 0.786 & 0.705 \\
 BGE-M3 & multilingual & 0.794 & 0.809 \\
 E5-large-instruct & instruction-tuned & 0.806 & 0.824 \\
 text-embedding-3-small & proprietary & 0.830 & 0.767 \\
-spread &  & 4.4 pts & 11.9 pts \\
+\textit{spread, matched four} &  & \textit{4.4 pts} & \textit{11.9 pts} \\
+\midrule
+jina-embeddings-v3 & distilled & 0.685 & 0.772 \\
+\textit{spread, all five} &  & \textit{14.5 pts} & \textit{11.9 pts} \\
 \bottomrule
 \end{tabular}
 }
-\caption{Retrieval quality of the four systems in the testbed. The ranking differs between datasets, and the spread is far larger on HotpotQA.}
+\caption{Retrieval quality of every system run. The four above the rule carry the matched comparison; their ranking differs between datasets and their spread is far larger on HotpotQA. jina-embeddings-v3 is reported separately (Section~\ref{sec:control}): it sits inside the band on HotpotQA but is the weakest system by ten points on Natural Questions, where it triples the spread and fails TOST equivalence against all four at $\pm$0.02.}
 \label{tab:1}
 \end{table}
 
