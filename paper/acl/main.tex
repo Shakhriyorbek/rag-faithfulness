@@ -456,30 +456,24 @@ Read it against the deployment, not in the abstract. If answers are short and th
 
 Those criteria do not agree, and we are not proposing a weighting for them. The point of stating them together is that a choice is being made whenever a faithfulness number is reported, and it is usually made by default.
 
-\begin{table}[t]
+\begin{table*}[t]
 \centering\small
-\begin{tabular}{p{2.85cm}ccc>{\centering\arraybackslash}p{1.15cm}}
+\begin{tabular}{lcccc}
 \toprule
- & \textbf{NLI} & \textbf{Claim} & \textbf{Align} & \textbf{Value chk.} \\
+ & \textbf{NLI-max} & \textbf{Claim-min} & \textbf{AlignScore} & \textbf{Value check} \\
 \midrule
-Detects a falsified value, terse generator & 57--71\% & 61--71\% & 75--89\% & 100\% \\
-\addlinespace
-\dots verbose generator & 5--14\% & 25--34\% & 24--49\% & 100\% \\
-\addlinespace
+Detects a falsified value, terse generator & 57--71\% & 61--71\% & 75--89\% & \textbf{100\%} \\
+\quad \dots verbose generator & 5--14\% & 25--34\% & 24--49\% & \textbf{100\%} \\
 Sensitivity to answer length (gap above) & 54 pts & \textbf{36 pts} & 46 pts & none \\
-\addlinespace
-Resolving power, MDE at 80\% & .021--.060 & .024--.050 & .012--.037 & --- \\
-\addlinespace
-Scores a refusal above a real answer? & 2 of 3 gens & 2 of 3 gens & never & --- \\
-\addlinespace
-Error types covered & any & any & any & symbolic \\
-\addlinespace
-False positives & --- & --- & --- & 0.8--5.2\% \\
+Resolving power, minimum detectable effect at 80\% & .021--.060 & .024--.050 & \textbf{.012--.037} & --- \\
+Scores a refusal above a real answer? & 2 of 3 gens & 2 of 3 gens & \textbf{never} & --- \\
+Error types covered & any & any & any & symbolic only \\
+False-positive rate & --- & --- & --- & 0.8--5.2\% \\
 \bottomrule
 \end{tabular}
 \caption{What we measured about each instrument, arranged for choosing one. Detection is against a falsified numeric value at the fixed gate (Table~\ref{tab:2}); the entity probe gives the same ordering (Table~\ref{tab:entity}). MDE is from Appendix~\ref{app:power}. Refusal behaviour is the mean refusal score against the mean attempted-answer score, per generator. The sensitivity row is the detection gap between the two generators, averaged over the two datasets; claim-min is the least length-sensitive of the three and still gives up 36 points. The deterministic value check covers only symbolic content, which is why it supplements an evaluator instead of replacing one.}
 \label{tab:choose}
-\end{table}
+\end{table*}
 
 
 \section{Conclusion}
@@ -710,25 +704,27 @@ The second is about the evaluators, and it qualifies how Section~\ref{sec:verdic
 \centering\small
 \begin{tabular}{llrrr}
 \toprule
-\textbf{Cell} & \textbf{Evaluator} & $n$ & spread & MDE \\
+\textbf{Generator} & \textbf{Evaluator} & $n$ & spread & MDE \\
 \midrule
-NQ / Claude & NLI-max & 784 & 0.011 & 0.021 \\
+\multicolumn{5}{l}{\emph{Natural Questions}} \\
+Claude & NLI-max & 784 & 0.011 & 0.021 \\
  & Claim-min & 784 & 0.022 & 0.038 \\
  & AlignScore & 784 & 0.011 & 0.012 \\
-NQ / Qwen & NLI-max & 790 & 0.006 & 0.025 \\
+Qwen & NLI-max & 790 & 0.006 & 0.025 \\
  & Claim-min & 790 & 0.008 & 0.032 \\
  & AlignScore & 790 & 0.007 & 0.016 \\
-NQ / GPT-4o-mini & NLI-max & 628 & 0.013 & 0.022 \\
+GPT-4o-mini & NLI-max & 628 & 0.013 & 0.022 \\
  & Claim-min & 628 & 0.015 & 0.024 \\
  & AlignScore & 628 & 0.008 & 0.015 \\
 \midrule
-HotpotQA / Claude & NLI-max & 517 & 0.023 & 0.046 \\
+\multicolumn{5}{l}{\emph{HotpotQA}} \\
+Claude & NLI-max & 517 & 0.023 & 0.046 \\
  & Claim-min & 517 & 0.035 & 0.050 \\
  & AlignScore & 517 & 0.016 & 0.025 \\
-HotpotQA / Qwen & NLI-max & 499 & 0.012 & 0.060 \\
+Qwen & NLI-max & 499 & 0.012 & 0.060 \\
  & Claim-min & 499 & 0.018 & 0.049 \\
  & AlignScore & 499 & \textbf{0.041} & 0.035 \\
-HotpotQA / GPT & NLI-max & 510 & 0.027 & 0.041 \\
+GPT-4o-mini & NLI-max & 510 & 0.027 & 0.041 \\
  & Claim-min & 510 & 0.038 & 0.040 \\
  & AlignScore & 510 & \textbf{0.046} & 0.037 \\
 \bottomrule
