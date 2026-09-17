@@ -170,15 +170,15 @@ def score_claims(chunks: List[str], answer: str, nli) -> dict:
     }
 
 
-def _generation_checkpoints(model: str, ds_name: str):
-    for gen in GENERATORS:
+def _generation_checkpoints(model: str, ds_name: str, generators=None):
+    for gen in (generators or GENERATORS):
         ck = f'generated_{gen}_{model}_{ds_name}'
         if checkpoint_exists(ck):
             yield gen, ck
 
 
 def run_phase_claim(datasets: Dict, model_names: List[str] = None,
-                    limit: int = None):
+                    limit: int = None, generators=None):
     """Re-score existing generations with claim-level faithfulness."""
     from nli import NLIScorer
     nli = NLIScorer()
@@ -187,7 +187,8 @@ def run_phase_claim(datasets: Dict, model_names: List[str] = None,
 
     for model in model_list:
         for ds_name in datasets:
-            for gen, ck_gen in _generation_checkpoints(model, ds_name):
+            for gen, ck_gen in _generation_checkpoints(model, ds_name,
+                                                       generators):
                 ck_out = f'claim_scores_{gen}_{model}_{ds_name}'
                 if checkpoint_exists(ck_out):
                     print(f'  [skip] {ck_out}')
@@ -227,6 +228,8 @@ def run_phase_claim(datasets: Dict, model_names: List[str] = None,
 def main():
     ap = argparse.ArgumentParser(description='Claim-level faithfulness scoring')
     ap.add_argument('--datasets', default=','.join(config.DATASETS))
+    ap.add_argument('--generators', default=','.join(GENERATORS),
+                    help='comma-separated generator labels. Default is the main grid. A non-default arm (e.g. a prompt-variant control) has its own label and is SKIPPED unless named here.')
     ap.add_argument('--models', default=None)
     ap.add_argument('--limit', type=int, default=None,
                     help='answers per checkpoint (default: all)')
@@ -240,7 +243,9 @@ def main():
 
     datasets = {d.strip(): None for d in args.datasets.split(',')}
     models = [m.strip() for m in args.models.split(',')] if args.models else None
-    run_phase_claim(datasets, models, limit=args.limit)
+    gens = [g.strip() for g in args.generators.split(',') if g.strip()]
+    print(f'  [generators] {gens}')
+    run_phase_claim(datasets, models, limit=args.limit, generators=gens)
     return 0
 
 

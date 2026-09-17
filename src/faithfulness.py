@@ -27,14 +27,15 @@ from utils import checkpoint_exists, load_checkpoint, save_checkpoint
 GENERATORS = ['claude', 'gpt4omini', 'llama3', config.OPEN_MODEL_LABEL]
 
 
-def _generation_checkpoints(model: str, ds_name: str):
-    for gen in GENERATORS:
+def _generation_checkpoints(model: str, ds_name: str, generators=None):
+    for gen in (generators or GENERATORS):
         ck = f'generated_{gen}_{model}_{ds_name}'
         if checkpoint_exists(ck):
             yield gen, ck
 
 
-def run_phase_d(datasets: Dict, model_names: List[str] = None):
+def run_phase_d(datasets: Dict, model_names: List[str] = None,
+                generators=None):
     """NLI faithfulness for every generated answer."""
     nli = NLIScorer()
     model_list = [c['name'] for c in config.EMBEDDING_MODELS
@@ -42,7 +43,8 @@ def run_phase_d(datasets: Dict, model_names: List[str] = None):
 
     for model in model_list:
         for ds_name in datasets:
-            for gen, ck_gen in _generation_checkpoints(model, ds_name):
+            for gen, ck_gen in _generation_checkpoints(model, ds_name,
+                                                       generators):
                 ck_out = f'nli_scores_{gen}_{model}_{ds_name}'
                 if checkpoint_exists(ck_out):
                     print(f'  [skip] {ck_out}')
@@ -122,7 +124,7 @@ def run_phase_d_conditions(patterns=('oracle_*', 'ctx_*', 'util_*')):
 
 
 def run_phase_e(datasets: Dict, model_names: List[str] = None,
-                batch_size: int = 32):
+                batch_size: int = 32, generators=None):
     """AlignScore faithfulness (GPU strongly recommended)."""
     try:
         from alignscore import AlignScore
@@ -148,7 +150,8 @@ def run_phase_e(datasets: Dict, model_names: List[str] = None,
 
     for model in model_list:
         for ds_name in datasets:
-            for gen, ck_gen in _generation_checkpoints(model, ds_name):
+            for gen, ck_gen in _generation_checkpoints(model, ds_name,
+                                                       generators):
                 ck_out = f'align_scores_{gen}_{model}_{ds_name}'
                 if checkpoint_exists(ck_out):
                     print(f'  [skip] {ck_out}')
@@ -192,6 +195,8 @@ def main():
     ap.add_argument('--phase', default='e', choices=['d', 'e'],
                     help='d = DeBERTa NLI, e = AlignScore')
     ap.add_argument('--datasets', default=','.join(config.DATASETS))
+    ap.add_argument('--generators', default=','.join(GENERATORS),
+                    help='comma-separated generator labels. Default is the main grid. A non-default arm (e.g. a prompt-variant control) has its own label and is SKIPPED unless named here.')
     ap.add_argument('--models', default=None,
                     help='comma-separated; default = every configured model')
     ap.add_argument('--scope-n', type=int, default=None)
@@ -205,11 +210,14 @@ def main():
 
     datasets = {d.strip(): None for d in args.datasets.split(',')}
     models = [m.strip() for m in args.models.split(',')] if args.models else None
+    gens = [g.strip() for g in args.generators.split(',') if g.strip()]
+    print(f'  [generators] {gens}')
 
     if args.phase == 'd':
-        run_phase_d(datasets, models)
+        run_phase_d(datasets, models, generators=gens)
     else:
-        run_phase_e(datasets, models, batch_size=args.batch_size)
+        run_phase_e(datasets, models, batch_size=args.batch_size,
+                    generators=gens)
     return 0
 
 
