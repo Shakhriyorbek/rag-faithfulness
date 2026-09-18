@@ -82,6 +82,21 @@ Two recent papers separate faithfulness from correctness in ways that bear on wh
 These are different questions. A detector that scores well on a labelled corpus need not resolve differences between the systems a practitioner is actually choosing between, and it is that second property which decides whether a published comparison describes the systems or the instrument. \citet{xiao-etal-2023} make the general case for treating generation metrics as measurement instruments with stated reliability and validity.
 
 
+
+\subsection{Does this reach past entailment scorers?}
+\label{sec:beyond-nli}
+
+Two of the three evaluators we test are built on the same entailment model, which invites the reading that we have diagnosed NLI rather than faithfulness measurement. Other paradigms exist. ARES \citep{saad-falcon-etal-2024} fine-tunes lightweight judges on synthetic data and calibrates them against a few hundred human annotations with prediction-powered inference. RAGVUE \citep{murugaraj-etal-2026} decomposes a RAG system into retrieval quality, answer relevance, claim-level faithfulness and judge calibration, and attaches an explanation to each. We ran neither, so what follows is an argument about what our measurements imply for them, not a test of them.
+
+Three of our results do not depend on entailment. AlignScore is not an NLI model --- it is an alignment function trained across factual-consistency tasks --- and in the verbosity control it loses more than either entailment aggregate, falling from 74.5\% to 18.5\% on HotpotQA with its mean response to a falsified value dropping 0.494 to 0.127 (Section~\ref{sec:verbosity}). The structural bias therefore attaches to scalar aggregation over a multi-assertion answer, not to the entailment model underneath. Any scorer that returns one number for a five-assertion answer inherits it, including a fine-tuned judge.
+
+Claim-level decomposition is the obvious response and is what RAGVUE prescribes. We measure it. Claim-min is the most length-robust of the three, giving up 36 detection points between the extreme generators against 54 and 46 for the others, and it holds 43.6\% detection where the others fall below 19\%. It is also the aggregate whose absolute scores collapse at that verbosity, to means of 0.234 and 0.076, so decomposition buys sensitivity and costs thresholdability. That trade is a property of taking a minimum, not of the model taking it, and it will appear in any claim-decomposed metric.
+
+Calibration is a different axis from the one we measure, which is why ARES is complementary rather than an answer. Prediction-powered inference corrects a judge's bias against a human-labelled sample: it makes the reported number closer to what annotators would say on that distribution. Our two failure modes survive that correction. A judge can be unbiased on average and still fail to separate two systems at the sample sizes people use, which is resolving power (Appendix~\ref{app:power}), and it can be unbiased on average and still move by 0.054 when a grounded value is replaced with a false one, which is sensitivity to a known error. Neither is a calibration error, and neither would be visible in agreement with annotators on unperturbed answers.
+
+What would test this properly is running these frameworks through the same probe. We expect the verbosity effect to reproduce for any scalar aggregate and the calibration machinery to be orthogonal to it, and we have not shown either.
+
+
 \subsection{Hallucination and grounding analysis}
 \label{sec:hallu}
 
@@ -127,7 +142,7 @@ Four further arms run off the same grid, in Sections~\ref{sec:control} to~\ref{s
 
 Three evaluators are compared, on identical inputs. NLI-max is (1) with a DeBERTa-v3-large \citep{he-etal-2023} inference model, the common choice. It uses the entailment probability alone. \citet{steen-etal-2023} show that an NLI scorer predicts faithfulness better when it also uses the contradiction probability, and better again with task-adapted training and Monte-Carlo dropout. We deliberately score the configuration people deploy rather than the best one available, since the question here is what published comparisons rest on; a better-configured entailment scorer would be a fourth instrument to characterise, not a reason to expect the three we ran to agree. Claim-min is (2) with the same model and sentence-level claim segmentation, chosen so no second generator enters the measurement loop. AlignScore \citep{zha-etal-2023} is an independently trained alignment model.
 
-The answers are byte-identical across evaluators. The premises are not, and that difference is part of what the comparison measures, since premise construction follows each evaluator's intended interface: the entailment scorer sees each of the five chunks separately plus their concatenation truncated to its 512-token window, and takes the maximum; the claim-level scorer applies the same construction per extracted claim; AlignScore takes the concatenated context as one premise and splits it internally. Some of the difference in Section~\ref{sec:sensitivity} is therefore premise granularity rather than evaluator sensitivity; the Limitations section bounds that share by re-scoring the same cases on the concatenated premise alone. The hypothesis is normalised identically for all three, with markdown emphasis, headings and list markers stripped before scoring. That matters because one generator emits markdown in 76.0\% of its attempted answers against 1.3\% and 0.3\% for the other two, and the entailment model responds to it (Section~\ref{sec:normalisation}).
+The answers are byte-identical across evaluators. The premises are not, and that difference is part of what the comparison measures, since premise construction follows each evaluator's intended interface: the entailment scorer sees each of the five chunks separately plus their concatenation, truncated to the scorer's own 512-token window, and takes the maximum; the claim-level scorer applies the same construction per extracted claim; AlignScore takes the concatenated context as one premise and splits it internally. Some of the difference in Section~\ref{sec:sensitivity} is therefore premise granularity rather than evaluator sensitivity; the Limitations section bounds that share by re-scoring the same cases on the concatenated premise alone. The hypothesis is normalised identically for all three, with markdown emphasis, headings and list markers stripped before scoring. That matters because one generator emits markdown in 76.0\% of its attempted answers against 1.3\% and 0.3\% for the other two, and the entailment model responds to it (Section~\ref{sec:normalisation}).
 
 One refusal rule is used throughout, from a single shared implementation, so every section below describes the same population. An answer counts as a refusal when, after SQuAD-style normalisation, it begins with one of a fixed list of declining phrases. The rule excludes 5,776 of the 24,000 answers (24.1\%), from 11.8\% on NQ/Qwen to 30.2\% on HotpotQA/GPT-4o-mini. All three generators prepend a "Based on the provided context," preamble to everything, refusals included, so the rule strips it before the anchored test; without that step 107 refusals, all Claude's, would count as attempts.
 
@@ -391,7 +406,7 @@ How it was caught is the transferable part. The defect is invisible in every sum
 \section{What an Equivalence Claim Requires}
 \label{sec:equivalence}
 
-Four of the six cells in Table~\ref{tab:7} show no detectable difference under any evaluator. That is not evidence of equivalence, so we test for it with two one-sided tests \citep{schuirmann-1987}. TOST turns on the margin, and the margin is a judgement about what difference would matter, and not a fact the data supplies. We sweep it from $\pm$0.01 to $\pm$0.10 and report the curve (Appendix~\ref{app:tost}).
+Four of the six cells in Table~\ref{tab:7} show no detectable difference under any evaluator. Read that as a statement about resolution, not about the systems: Appendix~\ref{app:power} puts the minimum detectable effect above the observed spread in 16 of the 18 cells, so an effect the size of the one we measured would usually not have been detected. A null here is not evidence of equivalence, so we test for equivalence directly with two one-sided tests \citep{schuirmann-1987}. TOST turns on the margin, and the margin is a judgement about what difference would matter, and not a fact the data supplies. We sweep it from $\pm$0.01 to $\pm$0.10 and report the curve (Appendix~\ref{app:tost}).
 
 The curve is steep. On NQ/Claude under NLI-max no pair is equivalent at $\pm$0.01, four of six are at $\pm$0.02 and all six at $\pm$0.03; on HotpotQA nothing is equivalent below $\pm$0.05 in any cell. Stating equivalence means choosing a column, and the choice does most of the work.
 
@@ -493,6 +508,23 @@ What this paper adds is narrower than the check: the controlled minimal pair. On
 
 
 
+
+\subsection{What to do with a verbose generator}
+\label{sec:deploy}
+
+The detection rates above are low enough to raise a practical question the recommendations so far do not answer: given a generator that writes several assertions per answer, what should a system actually run? Our measurements support four steps, in order of how much they buy.
+
+\textbf{Put a deterministic check in front, for anything symbolic.} It recalls every falsified value we constructed at a false-positive rate of 0.8 to 5.2\%, against 5.1\% to 89.4\% for the learned scorers, and it is indifferent to answer length. It cannot see unsupported prose, so it is a pre-filter and not a gate.
+
+\textbf{Do not put a fixed threshold on a long answer.} The scale floor moves with verbosity. Under the entailment aggregate, an untouched answer scored against an \emph{unrelated} document averages 0.245 for our terse arm on HotpotQA and 0.509 for the verbose one (Section~\ref{sec:verbosity}), so a 0.5 gate sits below the unrelated-document baseline for the verbose arm. Anchoring the gate to that floor costs one extra scoring pass over random contexts and makes the number mean the same thing across generators.
+
+\textbf{If you control the generator, constrain the answer.} This is the largest single lever we measured, and it is free. One added prompt line moved Qwen from 1.77 to 4.90 assertions and detection from 35.1\% to 10.4\%; the same lever is available in the other direction. Shortening answers buys more detection than switching evaluators does.
+
+\textbf{Choose the evaluator against the failure you care about.} Table~\ref{tab:choose} gives the properties. For separating two systems at a few hundred queries the binding constraint is resolving power, where AlignScore needs the smallest effect. For scoring a single verbose answer it is length robustness, where claim-min gives up the least --- with the caveat that its absolute scores fall near zero at five assertions, so it resists the bias without remaining thresholdable.
+
+None of this is a general recipe. Every rate above is a property of a particular generator, evaluator and dataset, and the point of the paper is that those properties are not transferable. What does transfer is the procedure: falsify a value in your own outputs, score the floor against random contexts, and read the detection rate you actually have rather than the one the evaluator's benchmark reports.
+
+
 \subsection{Choosing among the three}
 \label{sec:choosing}
 
@@ -517,7 +549,7 @@ Error types covered & any & any & any & symbolic only \\
 False-positive rate & --- & --- & --- & 0.8--5.2\% \\
 \bottomrule
 \end{tabular}
-\caption{What we measured about each instrument, arranged for choosing one. Detection is against a falsified numeric value at the fixed gate (Table~\ref{tab:2}); the entity probe gives the same ordering (Table~\ref{tab:entity}). MDE is from Appendix~\ref{app:power}. Refusal behaviour is the mean refusal score against the mean attempted-answer score, per generator. The sensitivity row is the detection gap between the two generators, averaged over the two datasets; claim-min is the least length-sensitive of the three and still gives up 36 points. The deterministic value check covers only symbolic content, which is why it supplements an evaluator instead of replacing one.}
+\caption{What we measured about each instrument, arranged for choosing one. Detection is against a falsified numeric value at the fixed gate (Table~\ref{tab:2}); the entity probe gives the same ordering (Table~\ref{tab:entity}). MDE is from Appendix~\ref{app:power}. Refusal behaviour is the mean refusal score against the mean attempted-answer score, per generator. The sensitivity row is the detection gap between the two generators, averaged over the two datasets; claim-min is the least length-sensitive of the three and still gives up 36 points. The deterministic value check covers only symbolic content, which is why it supplements an evaluator instead of replacing one. Its two numbers are not the same quantity: 100\% is recall over the falsified cases, while 0.8--5.2\% is the rate at which values in untouched answers are flagged, most of them quantities the answer derives rather than copies.}
 \label{tab:choose}
 \end{table*}
 
