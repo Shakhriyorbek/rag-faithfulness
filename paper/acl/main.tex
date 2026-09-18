@@ -28,7 +28,7 @@
 \maketitle
 
 \begin{abstract}
-Faithfulness in retrieval-augmented generation is usually measured by asking a natural language inference model whether the retrieved context entails the generated answer, aggregated as a maximum over retrieved chunks. We hold a generation grid fixed --- four embedding models, two question answering datasets, three generators, 24,000 answers --- and vary only the evaluator. Across six dataset-generator cells, the conclusion about whether embedding choice affects faithfulness changes in two of them depending on which evaluator is used, and the cause is measurable in the evaluators, not in the retrieval systems. Replacing a grounded value in an answer with one absent from the context, the failure a document question answering system most needs to catch, moves the entailment score by 0.054 on Natural Questions for the most verbose generator against 0.451 for the tersest, and under that evaluator a fixed threshold catches 5-14\% of such edits on the two datasets against 57-71\%. The same probe with entities in place of numbers reproduces the gap. Answer structure accounts for most of that gap: the score falls as an answer accumulates assertions, and the three generators average 3.08, 1.77 and 1.25 of them. It does not account for all of it, since the generators still differ at a matched single assertion. Including refusals in the evaluation population produces an apparent relationship between retrieval quality and faithfulness whose direction depends on the generator and which disappears once they are excluded. We report what these choices do to a concrete equivalence claim, and the conditions under which such a claim can be stated.
+Faithfulness in retrieval-augmented generation is usually measured by asking a natural language inference model whether the retrieved context entails the generated answer, aggregated as a maximum over retrieved chunks. We hold a generation grid fixed --- four embedding models, two question answering datasets, three generators, 24,000 answers --- and vary only the evaluator. Across six dataset-generator cells, the conclusion about whether embedding choice affects faithfulness changes in two of them depending on which evaluator is used, and the cause is measurable in the evaluators, not in the retrieval systems. Replacing a grounded value in an answer with one absent from the context, the failure a document question answering system most needs to catch, moves the entailment score by 0.054 on Natural Questions for the most verbose generator against 0.451 for the tersest, and under that evaluator a fixed threshold catches 5-14\% of such edits on the two datasets against 57-71\%. The same probe with entities in place of numbers reproduces the gap. Answer structure accounts for most of that gap: the score falls as an answer accumulates assertions, and the three generators average 3.08, 1.77 and 1.25 of them. It does not account for all of it, since the generators still differ at a matched single assertion. Holding the model fixed and varying only its verbosity by prompt reproduces the effect within one model: detection falls from 35.1\% to 10.4\% under the entailment aggregate, and in all six evaluator-dataset cells. Including refusals in the evaluation population produces an apparent relationship between retrieval quality and faithfulness whose direction depends on the generator and which disappears once they are excluded. We report what these choices do to a concrete equivalence claim, and the conditions under which such a claim can be stated.
 \end{abstract}
 
 \section{Introduction}
@@ -228,6 +228,52 @@ The three generators average 3.08, 1.77 and 1.25 assertions per attempted answer
 Claim-level aggregation is a partial remedy. As a fraction of the distance to the random-context floor, the median response on Claude's answers moves from 0.01 to 0.03, and the minimum moves the right way in 55\% of cases; when the falsified assertion is not already the weakest, the minimum does not move at all. A second dilution survives inside assertions, since the three generators still differ at matched assertion count and their single-assertion answers average 23.9, 19.5 and 16.1 words.
 
 The third generator makes that residual legible. It sits between the other two in aggregate and does not once assertion count is held fixed: at one assertion it is +0.409, against +0.485 for GPT-4o-mini and +0.102 for Claude. Its intermediate aggregate comes from its assertion \emph{distribution}, not from intermediate per-assertion sensitivity. So the remaining gap belongs to one generator, not to a smooth verbosity axis. Two generators cannot tell those apart; three can.
+
+
+
+\subsection{Verbosity, varied within one model}
+\label{sec:verbosity}
+
+The gradient in Section~\ref{sec:assertions} runs across three generators, and those generators differ in more than answer length. Two are proprietary chat models from different labs and one is open-weight; assertion count is confounded with everything else that distinguishes them. A fourth model would add a fourth confounded point. Varying the prompt on one model does not.
+
+We ran Qwen2.5-7B a second time over the same queries, the same retrieved contexts and the same weights, adding one line to the prompt asking for a fuller answer. The grounding instruction and the refusal sentence are byte-identical to the standard template, so the refusal rule still matches and faithfulness is still measured against the same constraint. The arm carries its own label throughout.
+
+The manipulation is large. Assertions per attempted answer go from 1.77 to 4.90 on Natural Questions and 1.54 to 4.99 on HotpotQA; attempted answers go from 34 and 26 words to 108 and 110. That overshoots the most verbose generator in the main grid, which averages 3.08, so the arm extends the axis rather than interpolating on it.
+
+Sensitivity falls in all six cells (Table~\ref{tab:verbosity}), and no confidence interval overlaps its own baseline. Under the entailment aggregate detection goes from 35.1\% to 10.4\% on Natural Questions and 54.8\% to 17.4\% on HotpotQA. The effect is not specific to the evaluator: AlignScore falls furthest in proportional terms, from 74.5\% to 18.5\% on HotpotQA, and its mean response to a falsified value drops from 0.494 to 0.127. The instrument Section~\ref{sec:falsification} measures as most responsive is not exempt; it had been reading shorter answers.
+
+Claim-min degrades least, retaining 28.9\% and 43.6\% where the others fall to between 10\% and 19\%. That is the behaviour its construction predicts and it is here demonstrated by manipulation rather than inferred across models. Its absolute scores, though, collapse: mean 0.693 to 0.234 on Natural Questions and 0.424 to 0.076 on HotpotQA. A minimum over five assertions sits near zero whatever the answer says, so claim-min keeps its sensitivity at this verbosity while ceasing to be usable against a fixed threshold. Resisting the structural bias and remaining thresholdable are separate properties.
+
+\textbf{What this does not show.} We predicted, before running it, that an arm at 4.9 assertions would fall below the 5.1\% detection of the main grid's most verbose generator at 3.08. It does not: 10.4\% against 5.1\%, on more assertions. Answer structure is therefore causal and accounts for most of the distance between the two, but not all of it, and what remains is a property of the generator that verbosity does not capture. Section~\ref{sec:assertions} reaches the same conclusion from the opposite direction, by conditioning on assertion count and finding one generator still separated from the other two. On HotpotQA the residual is small enough to disappear: 0.088 here against 0.085 there.
+
+\textbf{Two effects that are not the one we manipulated.} Refusals fall, from 11.8\% to 9.8\% and 29.6\% to 23.8\%, so the answered population is not identical between arms; the probe runs on attempted answers, but the two arms attempt slightly different questions. And the scale floor rises steeply. An untouched answer scored against an unrelated document averages 0.470 under the entailment aggregate on Natural Questions for the standard arm and 0.581 for the verbose one; on HotpotQA it goes from 0.245 to \textbf{0.509}. A five-assertion answer gives an unrelated context more chances to support something, and the aggregate takes the maximum. On HotpotQA that puts the unrelated-document baseline above the fixed 0.5 gate entirely, which is the argument of Section~\ref{sec:falsification} for a floor-anchored gate, arrived at here by manipulation: verbosity degrades a fixed threshold twice over, by moving the falsified answer up and the floor up with it.
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{llrrr}
+\toprule
+\textbf{Evaluator} & \textbf{Arm} & $\Delta$ & Det. & 95\% CI \\
+\midrule
+\multicolumn{5}{l}{\emph{Natural Questions}} \\
+NLI-max & standard & 0.261 & 35.1\% & [31.7, 38.8] \\
+ & verbose & 0.072 & \textbf{10.4\%} & [8.2, 13.0] \\
+Claim-min & standard & 0.297 & 48.1\% & [44.0, 52.2] \\
+ & verbose & 0.054 & \textbf{28.9\%} & [22.4, 36.4] \\
+AlignScore & standard & 0.436 & 51.8\% & [48.2, 55.4] \\
+ & verbose & 0.149 & \textbf{16.0\%} & [13.5, 18.8] \\
+\midrule
+\multicolumn{5}{l}{\emph{HotpotQA}} \\
+NLI-max & standard & 0.270 & 54.8\% & [50.1, 59.5] \\
+ & verbose & 0.088 & \textbf{17.4\%} & [14.3, 20.9] \\
+Claim-min & standard & 0.263 & 66.8\% & [61.6, 71.6] \\
+ & verbose & 0.025 & \textbf{43.6\%} & [31.4, 56.7] \\
+AlignScore & standard & 0.494 & 74.5\% & [71.1, 77.7] \\
+ & verbose & 0.127 & \textbf{18.5\%} & [15.8, 21.4] \\
+\bottomrule
+\end{tabular}
+\caption{One model, one prompt line. Response to a falsified numeric value under the standard prompt (1.77 and 1.54 assertions per answer) and a verbose one (4.90 and 4.99), on the same queries, weights and retrieved contexts, pooled over the four matched embedding systems, $n = 800$ per row. Detection is at the fixed 0.5 gate over cases scoring above it before falsification. Every cell falls and no interval overlaps its baseline.}
+\label{tab:verbosity}
+\end{table}
 
 
 \section{The Evaluation Population Can Manufacture a Relationship}
@@ -486,7 +532,7 @@ Holding a 24,000-answer generation grid fixed and varying only the faithfulness 
 What we can claim is bounded by the grid we measured on, and by the graders that decide who belongs to each population.
 
 \begin{itemize}
-\item Four embedding models, two English datasets, three generators. The generators span 1.12 to 2.73 assertions per answer, which is the axis the mechanism in Section~\ref{sec:assertions} runs along. Three points on that axis is not many, and two of the three are instruction-tuned chat models trained in broadly similar ways.
+\item Four embedding models, two English datasets, three generators. The generators span 1.12 to 2.73 assertions per answer, which is the axis the mechanism in Section~\ref{sec:assertions} runs along. Three points on that axis is not many, and two of the three are instruction-tuned chat models trained in broadly similar ways. Section~\ref{sec:verbosity} addresses the confound between answer length and model identity by manipulating length within a single model, but it adds one model under two prompts rather than a population of models, and the residual it leaves unexplained is measured on one generator.
 \item Correctness is graded by a judge model rather than by string overlap. Exact match is 0.000 across all 24,000 answers because the generators do not emit bare answer spans. String containment is the obvious fallback, and it bounds accuracy in neither direction. Measured against the judge it understates accuracy by 5 to 15 points in twelve cells, and overstates it by 3 to 7 points in the four HotpotQA cells under Claude, where a long answer mentions a reference string while asserting something else. The judge is itself a language model reading model output, and we have not checked it against a human annotator on this data.
 \item Retrieval hit is defined as the gold answer string appearing in the retrieved context. This is a strong definition, and it does not separate retrieval failure from failures of composition, entity resolution or inference once the evidence is present.
 \item The Natural Questions sample retains only queries whose annotated answer falls inside the retained context window. This makes the retrieval task more constrained than open-domain RAG, where evidence may be distributed, partial or implicit. It may also be why the three Natural Questions cells are null under every evaluator while both surviving cells are on HotpotQA: a constrained single-hop task leaves less for an embedding model to get wrong, so the systems have less to differ about. We cannot separate that from the datasets differing in hop structure, and do not claim to.

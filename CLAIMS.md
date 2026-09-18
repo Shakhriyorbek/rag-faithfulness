@@ -36,6 +36,8 @@ Line numbers are for commit `440ac21` and may drift; the symbol names will not.
 | 24 | Entity substitution reproduces the numeric result | `src/perturbation_check.py::build_entity_case` (l.208) |
 | 25 | Deterministic value check: 100% recall at 0.8–5.2% FPR | `src/perturbation_check.py`, `--scorer numeric`; content-vs-citation split in `value_role()` |
 | 26 | Evaluator selection table (detection, MDE, refusal behaviour) | `scripts/entity_substitution_table.py`, `scripts/power_analysis.py`, `scripts/refusal_scores.py` |
+| 27 | Verbosity control: one model, two prompts, weights and retrieval held fixed | `src/generate.py::build_prompt(style=)` + `PROMPT_STYLES`; run via `run_pipeline --open-label --open-prompt-style`; pinned by `tests/test_prompt_styles.py` |
+| 28 | Verbosity control results (Table 5) | `scripts/verbosity_control_table.py` |
 
 ## Reading order
 
