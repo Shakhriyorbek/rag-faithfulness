@@ -23,75 +23,62 @@ below — page length first.
 
 ---
 
-## Next session starts here — rewritten 2026-09-16
+## Next session starts here — rewritten 2026-10-07
 
-**Every experiment is run. The draft now contains every result we have.**
-Full derivation of every number: `reports/2026-09-16_all_results.md`.
+**The paper is finished to draft. Two automated review passes done. Everything
+is committed and pushed.** Latest report:
+`reports/2026-10-07_reviews_and_verbosity_control.md`. Prior:
+`reports/2026-09-16_all_results.md`.
 
-The 2026-09-08 entry below is superseded by this block; the page-cutting work it
-describes was done and then partly undone on purpose, because **the ARR page
-limit is no longer the constraint**. The paper is 17 pages and that is fine. The
-goal now is a complete draft for Berend, not a submission.
+| | |
+|---|---|
+| Paper | `paper/acl/main-preprint.pdf` — **22 pages, send this one to Berend** |
+| Build | 0 undefined refs, 0 overfull boxes, 230 tests pass |
+| Review | **3.5 Borderline Conference**, soundness 4, excitement 3.5 |
+| Red flags | all 13 closed or explicitly stated |
+| Berend's points | all 14 closed or explicitly stated |
+| Experiments | all run; nothing paid remains |
+| Citations | 31 entries, all cited, 1 unverified (see below) |
 
-**Added to the manuscript 2026-09-16** (commit 03951bd), all previously orphaned:
+### The review named its own price for 4.0, and both halves are done
 
-1. **jina-embeddings-v3 as a positive control** (Section~`sec:control`). Not a
-   fifth matched system: it retrieves 10 points worse than the band on NQ
-   (0.685 vs 0.786-0.830), triples the spread the comparison runs on
-   (0.044 -> 0.145) and fails TOST against all four at `p_tost = 1.0000`.
-   Rerunning Table 7 over five systems takes the count **2 of 6 -> 6 of 6**.
-   That is the matched-quality premise breaking, *not* a stronger result — and
-   it is worth more as a control, because it shows the four nulls are not a
-   power failure. On HotpotQA it sits inside the band, and its pair with
-   text-embedding-3-small is the only TOST-equivalent pair in the whole grid.
-2. **QASPER as a boundary condition** (`sec:qasper`), not a third dataset.
-   Retrieval collapses (NDCG@5 0.062-0.122, Recall@5 8-18%) because pooling 819
-   papers destroys the paper-identifying signal. The **evaluator ordering
-   inverts**: AlignScore > claim-min > NLI-max in all six main-grid cells, but
-   QASPER/Claude reads 0.712 / 0.629 / **0.240**. The ordering is a property of
-   the evaluators *in a retrieval regime*.
-3. **C1/C2 floor and ceiling** (`sec:anchors`). **Retrieval beats the oracle on
-   NQ in 3 of 4 systems** (102.2-103.4%) — Berend's letter-2 point 3, surfaced
-   and not clipped. The oracle is qrels-scoped, so it is a ceiling on evidence
-   *selection*, not accuracy. No-retrieval floor: **32.2%** on NQ.
-4. **Context ablation** (same section). Order is inert (<=1.7 pts; no position
-   effect at k=5). Subset is not, and only where composition is: one gold chunk
-   costs HotpotQA 36 points and converts into **refusals** (7.3% -> 75.7%),
-   not errors.
-5. **ESA** (`sec:esa`) closes supervisor point 6 with data. Both correlations
-   computed. Weak signal on NQ (r 0.13-0.23, significant in 3 of 4), **none on
-   HotpotQA** where the gold-answer correlation is negative in all four.
-6. **Re-ranking** (same section). Moves faithfulness <1 point either way, both
-   CIs containing zero, and raises NQ refusals 15.4% -> 19.0%.
+Engage ARES/RAGVUE and say whether the problems reach past NLI-style evaluators
+(new §2.4), and give practitioners a decision pathway rather than cautions
+(new §12.1). The strongest argument turned out to be one we already had:
+**AlignScore is not an NLI model and the verbosity control hits it hardest**, so
+the structural bias attaches to scalar aggregation over a multi-assertion
+answer, not to entailment.
 
-Also fixed: the Limitations bullet claiming jina was never run (false since this
-week), plus four new bullets bounding the new arms' scope.
+### What is actually left, in priority order
 
-### What is actually left
+1. **Generator coverage (n=3).** The review's named *downside* risk and the only
+   weakness writing cannot fix. Needs a fourth model run end to end.
+   `qwen_verbose` does **not** count — same weights (see CLAUDE.md B25).
+2. **Verify `dasigi-etal-2021`** (QASPER) against the ACL Anthology. The only
+   citation never put through the B3 check, and §6/§6b of CLAUDE.md is a list of
+   four wrong titles and five wrong author attributions.
+3. **Decide the venue.** The ARR 12 Oct 2026 deadline passed unused. A venue
+   with a hard 8-page limit needs the supplementary sections moved to the
+   appendix first — body is ~14 pages; the candidates and their word counts are
+   in the CLAUDE.md Format row.
+4. Optional: quantify the constructed-vs-natural error gap (review comment 3
+   suggests 50–100 hand-annotated natural errors). This is the caveat Sinha
+   supplies and we cannot currently size.
+5. Optional, free: context-ablation rows were never scored for faithfulness.
+6. Optional: re-ranking is one λ on one system.
 
-1. **Read the six new sections and put them in your own voice.** They are
-   drafted in the paper's existing register but they are my words, and §6 of
-   this file is explicit about why that matters.
-2. **Verify the one new citation.** `dasigi-etal-2021` (QASPER) was added to
-   `custom.bib` this session and has **not** been checked against the ACL
-   Anthology the way the other 24 were in the B3 pass. Given the history in
-   CLAUDE.md §6/§6b, check it before sending.
-3. **Send Berend the letter** in `reports/2026-09-05_berend_report.md` §1, with
-   `paper/acl/main-preprint.pdf` attached — now 17 pages and complete. The
-   report above gives him the red-flag and point-by-point closure tables.
-4. Optional, free: context-ablation rows were never scored for faithfulness.
-   Only accuracy and refusal exist for those 16 conditions.
+### Do not regress
 
-### Two things not to regress
-
-- `results.equivalence_table()` **writes `equivalence_table.pkl` on every call
-  and takes no model filter.** Running it exploratorily this session overwrote
-  the published 4-model artifact in the backup. It was regenerated exactly
-  (TOST is analytic, no RNG), but copy before exploring — same trap as
-  `conditional.py` overwriting `faith_gap_significance_*.pkl`.
-- The seven analysis CLIs that hardcoded `--datasets default='NQ,HotpotQA'` now
-  read `config.DATASETS` (commit 8fc666f). That hardcoding is what made the
-  first QASPER pass skip every cell and print "complete".
+- **Prompt parity.** `build_prompt`'s default is byte-identical across
+  generators and pinned by `tests/test_prompt_styles.py`. A prompt difference
+  *between* generators confounds H3. The `verbose` style exists only for the
+  §5.5 control and carries its own checkpoint label.
+- **Assertion figures are answered-only.** An all-rows figure (1.117/2.728) was
+  mixed into Limitations until 2026-10-07. See CLAUDE.md B27.
+- **Copy derived checkpoints before exploring.** `results.equivalence_table()`
+  and `conditional.py` both overwrite artifacts describing a different
+  population. Main-grid probe summaries are preserved at
+  `checkpoints/n1000_v3/pre_w2verbose_2026-09-18/`.
 
 ## 0. The one-line summary
 
@@ -231,14 +218,17 @@ demand.
    Deterministic. `src/textnorm.py` already has the right normalisation.
    Needed for the document-QA argument: 29 % detection is not a usable gate.
 
-5. **C1 / C2 floor and ceiling.** *~$3–4, built, never run.*
+5. **C1 / C2 floor and ceiling.** ✅ **RUN 2026-09-12** (Claude arm only); in
+   the paper as Section 9. *The "never run" text below is history.*
    `pct_of_oracle` is NaN and the 2×2 has no anchors. C1 also tests a validity
    threat: NQ and HotpotQA are Wikipedia, so the generators may answer from
    memory rather than from the retrieved context.
 
 6. **QASPER** — third dataset, ~$5. Also the least Wikipedia-like of the three.
 
-7. **ESA and re-ranking** — two of the four original contributions, never run.
+7. **ESA and re-ranking** — ✅ **both RUN 2026-09-12**, both negative, both in
+   the paper as Section 10. *The text below is history.* Originally: two of the
+   four original contributions, never run.
    **Decide with Berend whether they stay in the paper at all.** Under the new
    spine they are optional; under the old one they were required.
 
@@ -339,7 +329,9 @@ line-numbered ARR file (`main.pdf`) and a named reading copy
 (`main-preprint.pdf`). `paper/build_v6.js` and its docx are superseded.
 
 **⚠️ The blocking formatting problem is now length, not style.** Content
-(Sections 1–10) is **9.4 pages against ARR's 8-page limit**; Limitations and
+(Sections 1–10) was **9.4 pages against ARR's 8-page limit** when this was
+written; the body is now ~14 pages and the limit is deliberately not enforced
+(see the header). Limitations and
 References do not count, so ignore the 12-page total. Roughly **1.5 pages must
 come out** — over-length is a desk reject, not a reviewer complaint.
 

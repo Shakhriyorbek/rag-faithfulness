@@ -22,25 +22,39 @@ now the **testbed**, not the claim: it supplies matched-retrieval-quality
 systems whose faithfulness verdict can then be shown to flip with the metric.
 
 **Key contributions (v6):**
-1. Same 16,000 answers scored by **three evaluators** (NLI-max, claim-min,
-   AlignScore) — 2 of 4 nulls break under AlignScore alone
+1. Same 24,000 answers scored by **three evaluators** (NLI-max, claim-min,
+   AlignScore) — **2 of 6 cells** break under AlignScore, surviving Holm over 18
 2. A **falsification probe**: replace one grounded number with a value absent
-   from the context and re-score. Detection ranges 4%–90% across evaluators and
-   generators
+   from the context and re-score. Detection ranges **5.1%–89.4%** across
+   evaluators and generators. Also run with **entity** substitution, which
+   reproduces the generator ordering in 5 of 6 cells (the two error types are
+   NOT interchangeable — see B26)
 3. The **mechanism**: the score decays with the number of assertions an answer
-   contains (Claude 2.99/answer, GPT-4o-mini 1.18). Verbatim copying was tested
-   as the alternative explanation and rejected
+   contains (NQ, answered rows: Claude 3.08, qwen 1.77, GPT-4o-mini 1.25).
+   Verbatim copying was tested as the alternative explanation and rejected.
+   **Now established causally within one model** — see B25. ⚠️ Every assertion
+   figure in the paper is **answered-only**; an all-rows figure (1.117/2.728)
+   was mixed into Limitations until 2026-10-07 and is fixed
 4. Consequence for equivalence testing: one fabricated fact moves NLI-max by
    0.033–0.094, so a TOST margin of ±0.05 is about the size of one fabrication.
    The margin is reported as a **curve** (±0.01 to ±0.10), not a point
 
-Carried over as secondary: **RFG/nRFG** (diagnostics now, not the spine — see
-§5), **ESA** and **re-ranking** (never run; keep-or-drop pending with Berend).
+Carried over as secondary: **RFG/nRFG** (retired — see §5). **ESA** and
+**re-ranking** are now RUN and in the paper; both are negative results and both
+are Claude-arm only (see B24, item 21).
 
-**Experimental scale actually run:** 4 embedding models × 2 QA datasets (NQ,
-HotpotQA) × 2 generators × 1000 queries = **16,000 generations**, $13.46, zero
-API errors. Not 42,000 triples — do not quote that number; 7 models and QASPER
-are configured but were never run.
+**Experimental scale actually run (as of 2026-10-07):**
+- **Main grid:** 4 embedders × 2 datasets (NQ, HotpotQA) × 3 generators × 1000
+  = **24,000 generations**. This is the grid every headline rests on.
+- **jina-embeddings-v3:** a 5th embedder, both datasets, all 3 generators —
+  reported as a *positive control*, not a matched system (B24b).
+- **QASPER:** 5 embedders × 3 generators × 819 queries — a *boundary condition*,
+  not a third dataset. $5.22.
+- **qwen_verbose:** 5 embedders × 2 datasets, 10,000 answers, $0 — the W2
+  verbosity control (B25).
+- Plus C1/C2 anchors, context ablation, ESA, re-ranking (all Claude-arm only).
+Total paid ≈ **$48**. Never quote 42,000 triples. GTE-large and Instructor-XL
+are still the only configured models never run.
 
 ---
 
@@ -48,15 +62,15 @@ are configured but were never run.
 
 | Area | Status |
 |------|--------|
-| Paper draft | ✅ Complete, all supervisor feedback addressed. **Source is now `paper/acl/main.tex`** — the docx builder is superseded |
-| References verified | ✅ **All 24 verified 2026-09-03** against arXiv/ACL Anthology (see §6 and §6b). 5 wrong authors fixed earlier, 4 wrong *titles* found in the B3 pass; the jina "v5-text" entry is resolved (now [24], jina-embeddings-v3, arXiv:2409.10173) |
+| Paper draft | ✅ Complete and current. **Source is `paper/acl/main.tex`**; the docx builder is superseded. Two PDFs: `main-preprint.pdf` (named, **this is the one to send Berend**) and `main.pdf` (anonymous + line-numbered). Two automated review passes done — **3.5 Borderline Conference, soundness 4** |
+| References verified | ✅ 24 verified 2026-09-03 (§6, §6b); **31 entries now**, all cited, none orphaned. 6 added 2026-09-16..10-07 and each checked against source: Wallat (ICTIR 2025), Ju (arXiv:2604.25313), Xu (Findings EMNLP 2025), Steen (ACL 2023), ARES (**NAACL 2024**, not 2023), RAGVUE (EACL 2026 demos). ⚠️ **`dasigi-etal-2021` (QASPER) is the one entry never verified** against the Anthology |
 | Pipeline code | ✅ All of §8 built in `src/`; notebook is a reference artifact only |
 | Server access | ✅ Granted by Berend. **Fedora is now the only machine that can deploy** — the Windows laptop's key was revoked on both hosts 2026-08-28 |
-| Experiments | ✅ **Rung 2 done** — 16,000 real generations, NLI + AlignScore + claim-level, perturbation probe, TOST margin sweep |
+| Experiments | ✅ **All run.** 24,000-answer main grid + jina control + QASPER + qwen_verbose + C1/C2 + ablation + ESA + re-ranking. Nothing paid remains. See `reports/2026-09-16_all_results.md` and `reports/2026-10-07_reviews_and_verbosity_control.md` |
 | Correctness | ✅ **LLM judge over the full grid** (2026-08-30, $29.27, 0 errors). Containment is retired as the correctness signal — always run analyses with `--correct-source judge` |
 | Paper v6 | ✅ `paper/acl/main.tex` → `main.pdf` (anonymous, for ARR) and `main-preprint.pdf` (named, for Berend). `paper/build_v6.js` + its docx are **superseded — do not edit them**, an edit there will not reach the manuscript |
-| Format | ✅ **ACL, converted 2026-09-05** (`paper/acl/`, builds with `./build.sh` via tectonic). ⚠️ Content is **9.4 pages against ARR's 8-page limit** — cut ~1.5 pages before submitting, over-length is a desk reject |
-| Venue | 🎯 **ARR 12 October 2026** — one cycle feeds **NAACL 2027** (CORE A, Jun 1-5, San Francisco) **and COLING 2027** (CORE B, May 9-14, Macau); primary venue is chosen at commitment, 20-23 Dec 2026, with reviews in hand. Author is comfortable with B/C tier, which argues *for* this deadline rather than a smaller venue now. ESA/re-ranking dropped rather than delay for them. See `reports/2026-09-05_berend_report.md` §2.3 |
+| Format | ✅ **ACL** (`paper/acl/`, `./build.sh` via tectonic). **22 pages, 0 undefined refs, 0 overfull boxes.** The ARR 8-page body limit is NOT currently enforced — the paper deliberately carries every result for Berend. Body is ~14 pages, so **a submission to a venue with a hard page limit needs the supplementary sections moved to the appendix first** (Floor/Ceiling 587 w, ESA/re-rank 283 w, QASPER 400 w, §12.2 ~350 w; ACL appendices do not count) |
+| Venue | ⚠️ **The ARR 12 October 2026 deadline has passed and was not used** — the goal became a complete draft for Berend instead. Next ARR cycle or a direct venue submission is an open decision. The old plan (one ARR cycle feeding NAACL 2027 and COLING 2027, primary chosen at commitment) is in `reports/2026-09-05_berend_report.md` §2.3 and still describes the mechanism |
 
 **Backup:** 450 MB / 636 files at `~/rag-backup/checkpoints` on Fedora — the only
 copy of $42.73 of paid work outside gpu1. **Verified byte-identical to gpu1 on
@@ -83,7 +97,8 @@ the evaluator-dependence spine stands.
 
 **The evaluator-dependence spine was re-checked after the judge run and holds**
 (`reports/2026-08-30_evaluator_dependence_recheck.md`): the 2026-08-26 numbers
-reproduce exactly, and 2 of 4 nulls still break under AlignScore. But the
+reproduce exactly, and 2 of 4 nulls still break under AlignScore (**superseded:
+now 2 of 6 over 18 comparisons — see B23**). But the
 *identity* of those two cells depends on whether abstentions are decided by
 `is_abstention` or by the judge — NQ/Claude stops disagreeing, HotpotQA/Claude
 starts, both at p≈0.048. **`faithfulness_by_model` therefore defaults to
@@ -903,6 +918,76 @@ grounding check is 100% recall in all six pooled cells at **0.8-5.2% FPR**.
 
 ---
 
+**B25 — the verbosity mechanism is now CAUSAL, shown within one model.**
+Report: `reports/2026-10-07_reviews_and_verbosity_control.md`. The review's W2
+was that assertion count is confounded with model family. Fix: run Qwen2.5-7B
+twice over identical queries, weights and retrieved contexts with **one line**
+added to the prompt. 10 cells, 10,000 answers, $0, label `qwen_verbose`.
+
+Assertions 1.77 -> **4.90** (NQ) and 1.54 -> **4.99** (HotpotQA); words 34 -> 108
+and 26 -> 110. That overshoots Claude's 3.08, so the arm EXTENDS the axis.
+
+**Detection falls in all six evaluator x dataset cells, no CI overlapping:**
+NLI-max 35.1->10.4 and 54.8->17.4; claim-min 48.1->28.9 and 66.8->43.6;
+AlignScore 51.8->16.0 and 74.5->18.5.
+
+Three things it turned up that the run was not bought for:
+- **AlignScore is not an NLI model and falls furthest** (74.5->18.5, mean
+  response 0.494->0.127). So the structural bias attaches to **scalar
+  aggregation over a multi-assertion answer**, not to entailment — a
+  fine-tuned judge inherits it. This is the backbone of the new §2.4.
+- **claim-min keeps sensitivity and loses thresholdability.** Degrades least,
+  but absolute means collapse 0.693->0.234 (NQ) and 0.424->0.076 (HotpotQA).
+  A minimum over five assertions sits near zero whatever the answer says.
+- **The scale floor rises**: unrelated-document baseline 0.245 -> **0.509** on
+  HotpotQA, i.e. ABOVE the fixed 0.5 gate. Verbosity degrades a fixed threshold
+  twice over. Floor-anchored gating, reached by manipulation.
+
+⚠️ **The pre-registered prediction FAILED and that is the finding.** An arm at
+4.9 assertions was predicted to fall below the 5.1% of a generator at 3.08. It
+did not — **10.4%**. Answer structure explains most of the gap, not all, and
+the residual is **generator-specific** (same conclusion as B23 reached from the
+opposite direction). Do not claim monotonicity in assertion count across models.
+
+⚠️ **`qwen_verbose` is NOT a fourth generator.** Same weights. Holding the model
+fixed is what makes it a clean test of the length/identity confound and exactly
+what stops it saying anything about models trained differently. Counting it as a
+generator puts the same weights behind two rows. The verbosity **axis** is now
+measured 1.17–4.99; the model **population** is still three.
+
+**B26 — entity substitution and power were already measurable and unreported.**
+- **Entity cases had always been built** (`build_entity_case`) and the
+  checkpoints had always held them. The review's heaviest weakness (only one
+  error type) cost $0 to answer. Generator ordering reproduces in **5 of 6**
+  cells; NQ/claim-min inverts the two more verbose generators. The two error
+  types are **not interchangeable** — they agree within 0.05 for the tersest
+  generator and diverge in opposite directions for the other two.
+- **Power analysis:** MDE at 80% power is **0.012–0.060**, and in **16 of 18
+  cells it exceeds the spread actually observed**. Both significant cells clear
+  their own MDE. New: **AlignScore has the lowest MDE in all six cells** because
+  its paired per-query differences are far less noisy (sd 0.12–0.30 vs
+  0.20–0.48) on identical answers. So part of the evaluator-dependence is
+  **resolving power at fixed n**, not only response to a known error. The design
+  does not separate them and §7 now says so.
+
+**B27 — two population/convention slips, same class as B13.**
+- Limitations gave the generator span as 1.12–2.73 (**all rows, incl. refusals**)
+  while the abstract gives 3.08/1.77/1.25 (**answered-only**). Fixed 2026-10-07
+  to 1.17–2.77. **Every assertion figure in the paper is now answered-only.**
+- A draft sentence blended a pooled across-dataset word count with a
+  HotpotQA-only one. Now per-dataset.
+  **Rule: never quote a pooled figure beside a per-dataset one for the same
+  quantity.** This is the third instance; B13 was the first.
+
+**⚠️ A run has now silently done nothing and reported success THREE times**,
+each because a hardcoded default excluded what was being asked for: B10
+(`GENERATORS`), the QASPER `--datasets` default, and `faithfulness.py` /
+`claim_faithfulness.py` having no `--generators` flag at all. All three are
+fixed and the selected labels are **printed at startup**. Any new arm must have
+its label threaded through *and* echoed in the first lines of the log.
+
+---
+
 ### Code moves and reporting changes of 2026-09-01
 
 - **`src/metrics.py` is now `src/legacy/rfg.py`.** The gap metric is retired
@@ -946,7 +1031,7 @@ grounding check is 100% recall in all six pooled cells at **0.8-5.2% FPR**.
    the docx is rebuilt and exactly one paragraph moved; IEEE → ACL ✅ **converted
    2026-09-05** (`paper/acl/`, compiles clean, 0 undefined citations, all 234 prose
    fragments verified to survive verbatim). all closed. **The ARR page limit no longer
-   applies** — the goal is a complete draft for Berend, and the paper is 17
+   applies** — the goal is a complete draft for Berend, and the paper is 22
    pages. The six orphaned arms were added in commit 03951bd: jina as a
    positive control (2 of 6 -> 6 of 6 when included, which is the premise
    breaking, not a better result), QASPER as a boundary condition where the
@@ -975,8 +1060,11 @@ rewritten to fit.
 | **H5** | faithfulness-aware re-ranking cuts the worst model's RFG ≥15% | **not run** |
 
 The v6 spine is **measurement validity**: same queries, same answers, same
-test, different evaluator, different verdict (2 of 4 nulls break under
-AlignScore at p=0.0005). Details in
+test, different evaluator, different verdict. ⚠️ **The count is now 2 of 6 cells
+over an 18-comparison family** (B23), not the 2 of 4 at p=0.0005 recorded below
+— that figure predates the markdown fix (D1) and the open-weight arm. The
+progression 2/4 -> 1/4 -> 2/6 is documented in D1, B22 and B23; **2 of 6 is
+current**. Details in
 `reports/2026-08-26_evaluator_dependence.md` and
 `reports/2026-08-25_perturbation_check.md`.
 
