@@ -28,26 +28,36 @@
 \maketitle
 
 \begin{abstract}
-Faithfulness in retrieval-augmented generation is usually measured by asking a natural language inference model whether the retrieved context entails the generated answer, aggregated as a maximum over retrieved chunks. We hold a generation grid fixed --- four embedding models, two question answering datasets, three generators, 24,000 answers --- and vary only the evaluator. Across six dataset-generator cells, the conclusion about whether embedding choice affects faithfulness changes in two of them depending on which evaluator is used, and the cause is measurable in the evaluators, not in the retrieval systems. Replacing a grounded value in an answer with one absent from the context, the failure a document question answering system most needs to catch, moves the entailment score by 0.054 on Natural Questions for the most verbose generator against 0.451 for the tersest, and under that evaluator a fixed threshold catches 5-14\% of such edits on the two datasets against 57-71\%. The same probe with entities in place of numbers reproduces the gap. Answer structure accounts for most of that gap: the score falls as an answer accumulates assertions, and the three generators average 3.08, 1.77 and 1.25 of them. It does not account for all of it, since the generators still differ at a matched single assertion. Holding the model fixed and varying only its verbosity by prompt reproduces the effect within one model: detection falls from 35.1\% to 10.4\% under the entailment aggregate, and in all six evaluator-dataset cells. Including refusals in the evaluation population produces an apparent relationship between retrieval quality and faithfulness whose direction depends on the generator and which disappears once they are excluded. We report what these choices do to a concrete equivalence claim, and the conditions under which such a claim can be stated.
+Retrieval-augmented generation systems are often guarded by a faithfulness score that decides whether an answer is supported by the retrieved documents. Such scores usually come from natural language inference or trained alignment models, and prior work ranks them by how well they agree with human hallucination labels. It remains untested whether these scores catch the errors that matter, or whether a faithfulness comparison reflects the systems or the evaluator measuring them. We hold 24,000 answers fixed, from four embedding models, two question answering datasets and three generators, score them with three evaluators, and inject a known error by replacing one grounded value with one absent from the context. Under the most widely used entailment evaluator, a fixed threshold catches 5.1% of these falsifications for the most verbose generator but 56.6% for the tersest, because a single wrong value is diluted among many correct claims in a longer answer. As a result, a verbose generator can look more faithful simply because its errors are harder to detect, and two studies of the same systems can reach different conclusions only by using different evaluators. Faithfulness results should therefore name their evaluator and test their threshold on deliberately falsified answers.
 \end{abstract}
 
 \section{Introduction}
 \label{sec:intro}
-
-A document question answering system is given a set of uploaded files and must answer from them. If an invoice records a project budget of \$1,000, an answer stating \$1,500 fails in a specific way: fluent, on topic, citing the right document, wrong in the one place that matters. Such systems are typically guarded by a faithfulness score, a measure of whether the generated answer is supported by the retrieved text, with answers below a threshold suppressed or flagged.
-
-This paper asks what such a score measures. We do not propose a new evaluator. We take a fixed set of 24,000 generated answers, vary the measurement, and report where the measurement rather than the system decides the conclusion.
-
-Our contributions are:
-
+ 
+% Move 1: topic and why it matters
+A document question answering system is given a set of uploaded files and must answer from them. If an invoice records a project budget of \$1,000, an answer stating \$1,500 fails in a specific way: fluent, on topic, citing the right document, wrong in the one place that matters. Such systems are typically guarded by a faithfulness score, which measures whether the retrieved text supports the answer \citep{maynez-etal-2020}. The same scores are used to compare systems \citep{es-etal-2024,tamber-etal-2025}, so they decide both what users see and what papers conclude.
+ 
+% Move 2: current state of knowledge
+Many scorers ask a natural language inference model whether the retrieved context entails the answer, often taking the maximum over retrieved chunks. Others use a trained alignment model \citep[AlignScore;][]{zha-etal-2023} or a language model as judge \citep{saad-falcon-etal-2024,tamber-etal-2025}. Scorers are mostly evaluated against human hallucination labels \citep{honovich-etal-2022,tang-etal-2023,niu-etal-2024,bao-etal-2025}, or with minimal pairs in which a reference summary is edited to contain one error \citep{ma-etal-2023}.
+ 
+% Move 3: the gap
+Neither kind of evaluation tells us whether a scorer can separate the systems someone is actually comparing, and pairs built from reference text cannot reveal whether a scorer treats answers from different generators the same way. A faithfulness result also rests on choices that are easy to leave unstated, such as how scores are aggregated, which answers enter the average, and what margin counts as equivalent.
+ 
+% Move 4: aim, question, hypothesis
+This paper asks what such a score measures. We do not propose a new evaluator. We take 24,000 answers from a fixed grid of four embedding models, two datasets, Natural Questions \citep{kwiatkowski-etal-2019} and HotpotQA \citep{yang-etal-2018}, and three generators, score every answer with three evaluators (NLI-max, claim-min and AlignScore), and ask whether the verdict on embedding choice survives a change of evaluator. The grid is only a testbed; its retrieval systems span 4.4 and 11.9 NDCG@5 points on the two datasets while generation stays fixed. Our hypothesis is that a score that rates a whole answer at once reacts less to one wrong value when more claims surround it, so its sensitivity would depend on the generator.
+ 
+% Move 5: findings and structure
+Our main findings are:
 \begin{itemize}
-\item A controlled falsification experiment. Replacing one grounded value with a value absent from the retrieved context, everything else held fixed, measures evaluator sensitivity to the error type that matters (Section~\ref{sec:sensitivity}).
-\item Evidence that the sensitivity depends strongly on answer structure, not only on the evaluator: entailment scores fall as the number of assertions per answer grows, for all three generators tested (Section~\ref{sec:assertions}).
-\item A demonstration that the choice of evaluation population --- specifically, whether refusals are included --- can produce an apparent relationship between retrieval quality and faithfulness where none survives their exclusion (Section~\ref{sec:population}).
-\item What an equivalence claim about faithfulness requires: naming the evaluator, reporting the margin as a curve, and anchoring that margin to a measured effect size (Section~\ref{sec:equivalence}).
+\item The verdict on embedding choice changes with the evaluator in two of six dataset--generator cells, after Holm correction (Section~\ref{sec:verdict}).
+\item In a falsification probe that swaps one grounded number for a value absent from the context, NLI-max at a fixed threshold catches the edit in 5--14\% of the most verbose generator's answers and 57--71\% of the tersest's (Section~\ref{sec:sensitivity}).
+\item Making one model more verbose by prompt alone cuts that detection from 35.1\% to 10.4\% on Natural Questions, and detection falls under all three evaluators. Answer structure accounts for most of the gap, though not all of it (Section~\ref{sec:verbosity}).
+\item Averaging in refusals, or picking a different equivalence margin, can also change the conclusion (Sections~\ref{sec:population} and~\ref{sec:equivalence}).
 \end{itemize}
+Sections~\ref{sec:related} to~\ref{sec:setup} cover related work and setup, Sections~\ref{sec:anchors} to~\ref{sec:qasper} report secondary analyses, and Section~\ref{sec:discussion} gives recommendations for reporting faithfulness and choosing an evaluator.
 
-The embedding-model grid is a testbed rather than the object of study. It supplies retrieval systems spanning 4.4 and 11.9 NDCG@5 points on the two datasets, with generation and prompting held constant, which is what makes the comparison controlled.
+ 
+
 
 
 \section{Related Work}
