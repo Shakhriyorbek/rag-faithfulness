@@ -290,6 +290,8 @@ Adding a third generator made the correction stricter, eighteen comparisons rath
 
 The count of two is not invariant to the correction either. Two comparisons sit either side of alpha = 0.05 depending on which are treated as one family. NQ/Claude under AlignScore is p = 0.0081 uncorrected, adjusted to 0.122 over the eighteen in the table, 0.032 over the six sharing an evaluator, 0.024 over the three in its own cell. HotpotQA/GPT-4o-mini under claim-min is p = 0.0070, adjusted to 0.112, 0.042 and 0.014. Either smaller family makes the count four. Correcting within evaluator is defensible, since the six NLI tests establish which cells are null and so precede the question rather than competing with it. We still report the eighteen-comparison family, because it is the most conservative and was fixed before the correction was applied, and choosing a smaller one after seeing that it restores cells is a selection we could not account for. We give the alternative as well as the choice, because a count that moves with the multiplicity family depends on an analysis decision in the same way this paper reports for the choice of evaluator.
 
+The statistic moves it too, and in the less comfortable direction. Appendix~\ref{app:omnibus} replaces the paired test on the extreme pair with a permutation test that re-selects the extremes in every resample, so the cost of choosing them is paid: one cell survives Holm rather than two. A rank-based omnibus over the same four systems leaves none. The two counts answer different questions --- a practitioner comparing their adopted model against the best alternative is exposed to the extreme pair, and the omnibus asks whether the four differ at all --- but the paired figure is the most permissive of the three and we report all of them. The same appendix tests whether the evaluators disagree about the four systems, rather than merely returning different verdicts about them, and finds no detectable interaction in any of the six cells. Read with Appendix~\ref{app:standardised}, the defensible claim is that these evaluators resolve a common pattern with different acuity rather than seeing different patterns, which leaves the consequence for a published comparison unchanged and the mechanism narrower than evaluator disagreement.
+
 Appendix~\ref{sec:control} adds a system the test should separate, Appendix~\ref{sec:direction} shows that the direction of the difference depends on the dataset, and Appendix~\ref{sec:normalisation} describes a normalisation defect that decided one cell.
 
 
@@ -589,6 +591,41 @@ GPT-4o-mini & NLI-max & 510 & 0.027 & 0.041 \\
 \caption{Minimum detectable effect at 80\% power, two-sided paired test at $\alpha = 0.05$, against the spread observed in each cell. Bold marks the two cells that reach significance in Table~\ref{tab:7}; both have a spread exceeding their own MDE. AlignScore has the lowest MDE in every cell.}
 \label{tab:power}
 \end{table}
+
+
+\section{An omnibus test, and the system by evaluator interaction}
+\label{app:omnibus}
+
+The spread in Table~\ref{tab:7} is a maximum minus a minimum over four systems, so the two systems entering it are chosen for being extreme and its p-value is not adjusted for that choice. Two further tests remove that objection, and they qualify the headline.
+
+\textbf{An omnibus that re-selects the extremes.} Permuting system labels independently within each query and recomputing the range makes the selection part of the null, since the extremes are chosen afresh in every resample. Over 10,000 resamples, and Holm-corrected across the eighteen comparisons, \textbf{one cell survives} rather than two: HotpotQA/GPT-4o-mini under AlignScore, at permutation $p = 0.0008$. HotpotQA/Qwen under AlignScore is $p = 0.0090$ uncorrected and does not survive. A Friedman test over the same four systems, which asks the same question by ranks, leaves \textbf{no cell} significant after the same correction; its smallest uncorrected values are 0.0092 and 0.0101, on two cells the paired test does not pick out.
+
+So the count is 2 under a paired test on the extreme pair, 1 under a permutation test that pays for selecting that pair, and 0 under a rank-based omnibus. The paired figure is not wrong --- it is the test a practitioner comparing their adopted model against the best alternative would run --- but it is the most permissive of the three, and a reader should see all of them.
+
+\textbf{Do the evaluators disagree about the systems?} A verdict changing is not the same as two instruments ranking four systems differently. We test the second directly. Scores are standardised within evaluator, since the three share neither scale nor variance, and fitted as \texttt{z $\sim$ system * evaluator} with a random intercept per query, by maximum likelihood so that the fixed-effects likelihood ratio is valid.
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{llrrr}
+\toprule
+\textbf{Dataset} & \textbf{Generator} & $n$ & LR $\chi^2_6$ & $p$ \\
+\midrule
+NQ & Claude & 9,408 & 6.57 & 0.36 \\
+ & Qwen & 9,480 & 1.63 & 0.95 \\
+ & GPT-4o-mini & 7,536 & 2.42 & 0.88 \\
+\midrule
+HotpotQA & Claude & 6,204 & 3.18 & 0.79 \\
+ & Qwen & 5,988 & 7.08 & 0.31 \\
+ & GPT-4o-mini & 6,120 & 3.77 & 0.71 \\
+\bottomrule
+\end{tabular}
+\caption{Interaction between embedding system and evaluator, on scores standardised within evaluator, with a random intercept per query. A Wald test on the same six terms agrees to two decimal places in every row. No cell shows a detectable interaction.}
+\label{tab:interaction}
+\end{table}
+
+\textbf{The interaction is undetectable in all six cells}, $p$ from 0.31 to 0.95. Taken with Appendix~\ref{app:standardised}, where AlignScore's standardised effect is the larger in five of six cells, the coherent reading is that the three evaluators see much the same thing about these four systems and resolve it with different clarity, rather than disagreeing about it. A study using the common entailment aggregate then reports no difference and a study using AlignScore reports one, and both are reading the same underlying pattern through instruments of different acuity.
+
+That is a narrower claim than evaluator disagreement and it has the same practical consequence: the published verdict depends on the evaluator. It is also the more defensible one at this sample size, and we state it in preference to the stronger reading. What we cannot do is rule out disagreement, since an interaction test on four systems at these spreads inherits the resolution limits of Appendix~\ref{app:power}; absence of a detectable interaction is not evidence that none exists.
 
 
 \section{The headline count under each refusal rule}
