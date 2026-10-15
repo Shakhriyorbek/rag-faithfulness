@@ -1,0 +1,135 @@
+Review of When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation
+
+Submission: Anonymous ACL submission, full paper
+Recommendation: Major Revision
+Reviewer confidence: High on the experimental design and the statistical argument; moderate on coverage of the broader RAG-evaluation literature
+
+
+
+1. Summary of the submission
+
+The paper asks what a RAG faithfulness score measures, and specifically whether a system comparison conducted with such a score reflects the systems or the instrument. The authors hold a 24,000-answer grid fixed — four embedding models, two datasets at 1,000 queries each, three generators — giving 4 × 2 × 3 × 1,000 answers, and re-score every answer with three evaluators: NLI-max (DeBERTa-v3-large entailment probability, maximum over chunks), claim-min (the same model with sentence-level claim segmentation and a minimum over claims), and AlignScore (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). The retrieval systems span 4.4 and 11.9 NDCG@5 points on the two datasets while generation stays fixed (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.).
+
+Three analyses follow. First, a controlled falsification probe replaces one grounded numeric value with a value absent from the retrieved context and re-scores against identical chunks; under NLI-max at a fixed 0.5 gate, detection runs from 5.1% on the most verbose generator to 56.6% on the tersest (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). Second, the retrieval comparison is repeated under each evaluator: under the common evaluator no cell of the six dataset–generator cells shows a detectable difference, and under AlignScore two do, both on HotpotQA, neither on Claude (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). Third, the paper shows that pooling refusals into the faithfulness average manufactures a relationship with retrieval quality in all three generators, in opposite directions (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.), and that equivalence verdicts move with the margin chosen (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). The headline recommendations are to name the evaluator, report the evaluation population, prefer claim-level aggregation, put a deterministic check in front of the evaluator for symbolic content, and calibrate the equivalence margin against a measured effect (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.).
+
+The paper proposes no new scorer and says so repeatedly. Its contribution is a measurement study with unusually explicit controls and an unusually candid account of its own defects.
+
+
+
+2. Overall assessment
+
+This is a well-executed and, in places, exemplary measurement paper. The falsification probe is a genuinely useful instrument: because the replacement value is guaranteed absent from the context and the edit is applied to the systems' own answers, each evaluator is tested on the population it would actually score, which is a real advance over minimal pairs built from reference text (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). The refusal-pooling analysis is the kind of demonstration that changes practice, since it shows a pooled faithfulness column tracking NDCG@5 in every generator with opposite signs (ρ = +0.99, −0.98, −0.92) while excluding refusals collapses the spread from 0.085, 0.053 and 0.072 to 0.018, 0.003 and 0.029 (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). The TOST analysis and the floor-anchored gate are methodologically careful, and the pre-registered prediction that failed is reported as a failure (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.).
+
+My reservations are not that the work is unsound. They are that several of the paper's most quotable claims are stated more strongly than the design supports, and that the qualification the authors themselves provide is often displaced from the claim it qualifies. Because the paper is so transparent, the fix is mostly editorial tightening rather than new experiments — with one substantive exception (C1) that I regard as the review's central point.
+
+
+
+3. Strengths
+
+S1. The probe design is the paper's real contribution. The abstract states the two eligibility rules explicitly — a grounded value is replaced by one absent from the context — and the construction is close to prior counterfactual-substitution work while differing in purpose: those examples are manufactured to train a generator toward the context, these are manufactured to ask what a scorer does when the conflict is already there (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.).
+
+S2. Two gates, with the stricter one explicitly disavowed as an operating point. The floor-anchored gate sits at the 95th percentile of each evaluator's unrelated-document distribution, and the authors state that as an operating point it "would be too strict, since it sits above the mean untouched answer" (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.).
+
+S3. The population analysis is a clean, falsifiable demonstration. Both directions of bias are shown within one experiment — Claude's refusals score far below its attempts, Qwen's and GPT-4o-mini's far above theirs — and the paper draws the correct conclusion: "One experiment supports both readings and neither is about faithfulness," so anyone defending the pooled column "cannot fall back on a consistent direction of bias" (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.).
+
+S4. The multiplicity family is reported honestly. The authors give both the eighteen-comparison family and the smaller families that would restore cells, and state that adding a third generator made the correction stricter, eighteen comparisons rather than twelve, and the count rose anyway — while conceding that "the design does not guarantee that" (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.).
+
+S5. Defects are disclosed rather than buried. The markdown normalisation defect, which "decided one cell," is reported with its distribution: markdown appears in 76.0% of one generator's attempted answers against 1.3% and 0.3% for the other two, so one generator's formatting habits were entering a comparison between embedding systems; stripping it for all three removed the significance of NQ/Claude under AlignScore (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.).
+
+S6. Equivalence is tested, not inferred from nulls. The paper reports that the minimum detectable effect exceeds the observed spread in 16 of the 18 cells, so the nulls are a statement about resolution rather than identity, and turns to two one-sided tests instead (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.).
+
+S7. The instrument comparison is summarised in usable form. Table 14 arranges sensitivity, length sensitivity, resolving power, refusal behaviour, error coverage and false-positive rate side by side, and the authors note that these criteria "do not agree, and we are not proposing a weighting for them" (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.).
+
+
+
+4. Major concerns
+
+C1. The paper does not separate evaluator sensitivity from evaluator resolving power, and this leaves the headline claim underspecified. The paper states the confound itself: AlignScore needs 0.012 to 0.037 for the same sample size where the entailment aggregate needs 0.021 to 0.060, and "part of the difference between evaluators here is resolving power at fixed n, in addition to response to a known error" (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.)(When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). But the title and the abstract's "the evaluator decides the result" attribute the reversal to evaluator judgment. An instrument that resolves a small true effect is not the same as two instruments that disagree about what is true, and a reader is entitled to ask which one this paper demonstrates. The paper must either (a) reframe around "resolving power plus response," or (b) add the analysis that separates them — for example by subsampling AlignScore's paired population to match the variance of the entailment aggregate, or by reporting the two survivors under an equal-variance test. As written, the most consequential interpretive claim in the paper rests on a confound the paper identifies but does not address.
+
+C2. Abstract and title overclaim in three specific places. (i) "two studies of the same systems can reach different conclusions only by using different evaluators" (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.) — the body contradicts "only": pooling refusals produces different conclusions in all three generators (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.), and the margin choice does too (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). (ii) "a verbose generator can look more faithful simply because its errors are harder to detect" (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.) — the paper's own prediction failed here: an arm at 4.9 assertions detects 10.4% while the main grid's most verbose generator at 3.08 assertions detects 5.1%, and at matched assertion count the generators still differ (+0.102 against +0.409 and +0.485), with the residual on HotpotQA small enough to disappear (0.088 against 0.085), leading the authors to state that "a smooth verbosity axis does not explain it" (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). (iii) "We hold 24,000 answers fixed… and inject a known error" (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.) reads as though the whole grid was probed; the probe is a prefix of an already filtered population, and paired n is 784, 790 and 628 on NQ and 517, 499 and 510 on HotpotQA (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). These three edits are small and would cost the paper nothing.
+
+C3. The introduction's novelty framing is inconsistent with the paper's own related work. The abstract states it "remains untested whether these scores catch a wrong value in a grounded answer" (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). Section 2 then credits FactCC with rule-based edits "that include entity and number swaps," GO FIGURE with controlled diagnostic pairs, and BUMP with minimal pairs, and locates the probe within that second line with two differences: the substituted value is absent from the retrieved context, whereas FactCC draws replacements from the source document, and the edit is made to answers from the systems being compared, so each evaluator is tested on the population it would score (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). That is a defensible novelty claim, and it is narrower than "untested." The introduction should adopt it.
+
+C3b. The count of two is reported as a finding but is partly an analysis decision, and no omnibus test is run. The paper acknowledges that two comparisons sit either side of alpha = 0.05 depending on which comparisons are treated as one family, and that either smaller family would make the count four; it also states that the spread statistic is an extreme pair, that "an omnibus test would be stricter; we do not run one," and that it treats the statistic as descriptive. Given that the abstract leads with "two of six," the paper should either report a mixed-effects model with generator and evaluator as factors, or move the count out of the headline and into the body.
+
+C4. The justification for the spread statistic is weaker than the statistic. The paper argues the spread "is what a practitioner is exposed to, since they adopt one embedding model and stand to lose the distance to the best alternative," while conceding that its p-value "is not adjusted for that selection" and that the intermediate systems never enter it. A practitioner is exposed to their own model's shortfall from the best, not to the max-minus-min range. Either justify the statistic as a deliberately extreme sensitivity check, or report the direction across all four systems in the main table rather than only in an appendix.
+
+C5. The deterministic check's 100% recall is close to tautological, and its qualifications are displaced. Table 14 records the value check at 100% detection for both terse and verbose generators, against 57–71% and 5–14% for NLI-max, with a false-positive rate of 0.8–5.2% and "symbolic only" under error types covered (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). But the probe's second eligibility rule defines the replacement as a value absent from the context (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.), so a literal containment check must catch it by construction; the result validates the probe, not the check. The false-positive rate is also qualified elsewhere: the paper notes that counting numbers which assert nothing about the world, such as chunk indices and ordered-list markers, raises that rate on Claude's HotpotQA answers, and that the remainder are quantities the answer derives rather than copies, which a literal check also flags. Both qualifications belong beside the recommendation, not several paragraphs away. Note too that Table 14 marks the check as covering symbolic content only and records "none" for sensitivity to answer length (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.) — the right comparison, but it makes "no trained evaluator comes close" narrower than it sounds, since the check is not doing the same job.
+
+C6. Every result from Section 5 onward rests on a population rule the paper describes as unstable. The paper states that a refusal "is not an attempt at a grounded answer, so averaging it in carries a retrieval effect into a faithfulness number without looking as though it does" (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.), and that on HotpotQA the weakest retriever draws 0.378 to 0.398 refusals and the strongest 0.224 to 0.241 (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). It also reports that AlignScore is the only one of the three that scores refusals below attempted answers for every generator run, while under the other two refusals score above real answers for two generators and far below for the third (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). The Limitations further concede that the refusal rule is "a researcher degree of freedom as much as a finding," that swapping one defensible detector for another carries the uncorrected p-value across the conventional threshold in two of eight cells, that a shared helper's two implementations disagreed on 365 rows, and that without preamble stripping 107 refusals, all from one generator, would be graded as attempts. Given that this is a paper about how analysis choices change conclusions, a sensitivity table showing the headline count under each of the defensible refusal detectors would substantially strengthen the argument — and it is the natural companion to the multiplicity-family table the authors already provide.
+
+C7. The probe sample is a non-random prefix, and the intervals do not reflect that. The paper states that cases are the first 200 eligible answers per system, dataset and generator, in dataset order rather than by random sampling, so the scored set is a prefix of an already filtered population, ranging from a near-census in the smallest cells to roughly two fifths in the largest. The Wilson intervals reported alongside the detection rates (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.) assume the sampling the paper did not use. Either state that the prefix is treated as exchangeable with the eligible set and give a check — for example, detection rate by position within the prefix — or resample.
+
+C8. The verbosity arm changes at least three things at once, and the introduction's bullet omits this. The prompt line moved refusals (11.8% → 9.8% and 29.6% → 23.8%) and the scale floor (0.470 → 0.581 on NQ; 0.245 → 0.509 on HotpotQA) as well as assertion count (1.77 → 4.90 and 1.54 → 4.99) (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.)(When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). The body is scrupulous about this — the authors note that the two arms attempt slightly different questions and that on HotpotQA the manipulation pushes the unrelated-document baseline above the fixed 0.5 gate entirely, degrading a fixed threshold twice over (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). The abstract and the third introduction bullet report the 35.1% → 10.4% drop as "making one model more verbose by prompt alone" (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.), with no hint of the confounds. Since the arm is the paper's cleanest causal evidence, it should carry its caveats into the summary.
+
+C9. Two recommendations are stated more broadly than the evidence. First, "prefer claim-level aggregation to a maximum over the whole answer" omits that claim-min's absolute scores collapse under verbosity (mean 0.693 → 0.234 on Natural Questions and 0.424 → 0.076 on HotpotQA), so it "keeps its sensitivity at this verbosity while ceasing to be usable against a fixed threshold," and that the gain on the verbose generator's NQ cell is 5.1% to 25.1%, still a minority of known fabrications (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.)(When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). The bullet should carry the sentence the body already contains: "Resisting the structural bias and remaining thresholdable are separate properties" (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). Second, the claim-min aggregate is motivated by an assertion — "An answer is only as supported as its weakest assertion" — that is presented as definitional rather than as a design choice, with no citation or argument, and that is precisely the choice that drives the near-zero scores above. Framing it as a choice would strengthen rather than weaken the paper.
+
+C10. Constructed-versus-natural errors create an unreconciled tension. The Limitations cite an unrefereed preprint reporting that embedding-based detection separates constructed hallucinations at a 0% false-positive rate and naturally occurring ones at 100%, on the grounds that real hallucinations stay semantically closer to a faithful answer, and state that if this holds, every detection rate in the paper is an upper bound on what the same gate would catch in deployment. The Discussion nonetheless recommends calibrating equivalence margins against falsification effects. If constructed errors are systematically easier, that calibration is optimistic in a direction the paper can quantify. The two passages should be brought together.
+
+C11. Coverage and reproducibility gaps. Only numeric substitutions are tested, with an entity-substitution control; the paper says the probe "makes no attempt to cover the space of errors" (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). Omissions, dropped qualifiers, wrong relations and misattribution are untested, and dilution plausibly behaves differently for omissions — an entailment aggregate may miss them regardless of answer length, which would change the policy conclusion. Separately, generation uses a byte-identical prompt at temperature 0 with one prompt per generator (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.), so the verbosity effect is measured with no stochasticity estimate, and the submission does not state where code or artifacts are released — which matters for a paper whose central recommendation is to re-run the probe on one's own outputs. Two boundary conditions also deserve promotion out of the appendix: on a third dataset where retrieval fails under every system the evaluator ordering inverts, since the claim that "AlignScore responds most, claim-min next, NLI-max least" is established as holding "in all six cells" of the main grid (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.); and the Natural Questions sample retains only queries whose annotated answer falls inside the retained context window, which the authors say may be why the three NQ cells are null under every evaluator and which they cannot separate from hop structure.
+
+
+
+5. Minor concerns and editorial points
+
+
+
+
+
+"Comfortably above any usable threshold." The falsified Claude/NQ answer sits at 0.852 against a floor of 0.474 (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). It clears the fixed 0.5 gate; it does not clear the floor-anchored gate for that cell, which sits at the 95th percentile of the floor distribution (0.985) (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). State the comparison, not the adjective.
+
+
+
+The single-assertion residual is the strongest evidence in the paper and is under-emphasised. At one assertion the three generators are +0.102, +0.409 and +0.485, and the third sits between the others in aggregate but not once assertion count is held fixed, which is what makes the residual legible (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.). Consider a sentence in the abstract.
+
+
+
+Two systems were never run. The paper notes that the repository configures seven embedding models and that each additional model is a further generation pass over every dataset and generator, which is why the grid is a testbed rather than a survey; a sentence stating the compute cost would help readers judge whether that trade was avoidable.
+
+
+
+Line-level fix. Abstract, lines 024–027: replace "simply because" and "only" per C2 (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.).
+
+
+
+Where the ordering holds and where it does not. Table 14's summary of the three instruments is presented as a single comparison, but the QASPER inversion means one column of it is dataset-conditional; a footnote would prevent over-generalisation (When the Evaluator Decides the Result: Measuring Faithfulness in Retrieval-Augmented Generation, n.d.).
+
+
+
+6. Questions to the authors
+
+
+
+
+
+Can you report an omnibus test or a mixed-effects model with generator and evaluator as factors, so the headline count does not depend on an extreme-pair statistic whose p-value is unadjusted for selecting the extremes?
+
+
+
+Can you separate sensitivity from resolving power directly — for instance by subsampling AlignScore's paired population to match the variance of the entailment aggregate — rather than leaving the two confounded?
+
+
+
+Does the dilution mechanism reproduce for omission and relational errors, and not only substituted values?
+
+
+
+Were any reported numbers computed before the refusal-helper inconsistency was resolved, and what does the headline count look like under each of the defensible refusal detectors?
+
+
+
+What is the deterministic check's false-positive rate on answers that legitimately derive quantities rather than copy them, reported per cell rather than pooled?
+
+
+
+Is the probe's non-random prefix exchangeable with the eligible population? A detection rate by position within the prefix would settle it.
+
+
+
+7. Recommendation
+
+Major Revision. The measurement contribution is real and the paper's transparency is well above the norm for the venue, so I expect this to be publishable. My revision request is concentrated in two places: (a) reframe the central claim to separate resolving power from response to a known error, or supply the analysis that does so (C1); and (b) bring the abstract, introduction bullets and Discussion recommendations into line with the qualifications the body already contains (C2, C3, C8, C9). Concerns C3b through C7 and C10–C11 are addressable with sensitivity analyses and additional reporting rather than new data collection. I would be glad to review a revised version.
+
+
+
+If you'd like, I can compress this into a 150-word meta-review for the discussion phase, or convert the major concerns into a rebuttal-shaped checklist the authors can work through line by line.
