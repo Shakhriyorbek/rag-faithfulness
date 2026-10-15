@@ -586,8 +586,8 @@ What we can claim is bounded by the grid we measured on, and by the graders that
 \item Pairing on the queries every system answered removes exactly those queries where retrieval quality determined whether an answer was produced, so the comparison is conditional on a subset selected partly by the systems being compared. Substituting each system's own answered rows moves the spread by at most 0.022 and reorders the systems in three of six cells under NLI-max, but leaves the ordering unchanged in every cell that survives correction, including the one where all three generators agree. The pairing cannot explain disagreement between evaluators in any case, because it is identical across them.
 \item Where we do detect a difference it is small: 0.046 and 0.041, against retrieval spreads of 4.4 and 11.9 NDCG@5 points. They are detectable, but they are not large.
 \item The three evaluators receive byte-identical answers but not identical premises. The entailment scorer is given each of the five retrieved chunks separately, plus their concatenation truncated to the model's window, and the maximum is taken; the claim-level scorer applies that construction per extracted claim; AlignScore is given the concatenated context as one premise and performs its own splitting. Each scorer is used as its authors intend, but that means some of the difference reported in Section~\ref{sec:sensitivity} comes from premise granularity and not from evaluator sensitivity. We bound that share by re-scoring the same cases with the same entailment model on the concatenated premise alone. As a fraction of the NLI-max-to-AlignScore gap it runs from -0.55 to +0.20 across the six cells, and it is negative in four of them, meaning the concatenated premise makes the entailment model \emph{less} responsive to a falsified value, not more. So premise granularity does not account for AlignScore's advantage. In most cells it works against it. The hypothesis is normalised identically for all three scorers (Section~\ref{sec:normalisation}). It was not in an earlier version, and that difference alone decided one cell.
-\item Which answers count as refusals is fixed by a rule rather than given by the data, and that rule sets the evaluation population for every result from Section~\ref{sec:sensitivity} onward. It is a researcher degree of freedom as much as a finding. Swapping one defensible detector for another moves the rows nearest the boundary between refusing and attempting, and carries the uncorrected p-value across the conventional threshold in two of eight cells (Section~\ref{sec:graders}). Neither of those two survives correction for multiple comparisons, but the population every reported number rests on still depends on the choice. The rule used here strips the generators' standard preamble before matching; without that step 107 refusals, all from one generator, would be graded as attempts.
-\item The falsification cases are the first 200 eligible answers in dataset order for each system, dataset and generator, rather than a random sample of the eligible answers: 4,784 cases scored against 7,609 eligible across the grid. Eligibility requires a grounded numeric value in the answer together with a replacement value absent from the context, so the scored set is a prefix of an already filtered population. Cells whose eligible count is near 200 are close to a census; the largest cells are sampled at about two fifths.
+\item Which answers count as refusals is fixed by a rule rather than given by the data, and that rule sets the evaluation population for every result from Section~\ref{sec:sensitivity} onward. It is a researcher degree of freedom as much as a finding. Swapping one defensible detector for another moves the rows nearest the boundary between refusing and attempting, and carries the uncorrected p-value across the conventional threshold in two of eight cells (Section~\ref{sec:graders}). Neither of those two survives correction for multiple comparisons, but the population every reported number rests on still depends on the choice. The rule used here strips the generators' standard preamble before matching; without that step 107 refusals, all from one generator, would be graded as attempts. Appendix~\ref{app:refusalrule} reports the headline count under each of the three defensible rules available to us: all three select the same two cells, so the uncorrected p-values move with the rule while the corrected count does not.
+\item The falsification cases are the first 200 eligible answers in dataset order for each system, dataset and generator, rather than a random sample of the eligible answers: 4,784 cases scored against 7,609 eligible across the grid. Eligibility requires a grounded numeric value in the answer together with a replacement value absent from the context, so the scored set is a prefix of an already filtered population. Cells whose eligible count is near 200 are close to a census; the largest cells are sampled at about two fifths. Appendix~\ref{app:prefix} tests whether that prefix is exchangeable with the eligible set by regressing detection on position within it; no cell shows a trend that survives correction over the six tests.
 \item The repository configures seven embedding models. Four carry the matched comparison --- all-mpnet-base-v2 (contrastive), BGE-M3 (multilingual), E5-large-instruct (instruction-tuned) and text-embedding-3-small (proprietary) --- chosen to span pretraining paradigms and to include one closed-source arm. A fifth, jina-embeddings-v3 \citep{sturua-etal-2024}, was run over both datasets and all three generators and is reported in Section~\ref{sec:control} as a control on the matched set, not a member of it, because it fails the matched-quality precondition on Natural Questions. GTE-large and Instructor-XL remain unrun: each additional model is a further generation pass over every dataset and generator, and the grid is a testbed for the evaluator comparison rather than a survey of embedding models.
 
 \item The floor, ceiling and context-arrangement conditions of Section~\ref{sec:anchors} were run on the Claude arm only, and the geometric analysis and re-ranking of Section~\ref{sec:esa} on one embedding system. Neither set of conclusions has been shown to hold across generators, and the re-ranking result in particular is a single operating point ($\lambda = 0.6$) on a single system, so it bounds what that intervention achieved here. It says nothing about what such interventions can achieve in general.
@@ -859,6 +859,49 @@ GPT-4o-mini & 0.081 & 0.116 & \textbf{0.155} \\
 AlignScore's standardised effect exceeds the entailment aggregate's in five of six cells, by factors of 1.3 to 5.6. So the difference between these evaluators is not only that one is quieter. On the same answers, AlignScore resolves a larger difference between the retrieval systems relative to its own noise, which is a statement about what it measures rather than about its variance.
 
 Two qualifications. The exception matters: on NQ/GPT-4o-mini the two are indistinguishable and the ordering reverses, which is the cell with the tersest generator and the narrowest retrieval spread. And this analysis separates variance from response without identifying what AlignScore is responding to. It is consistent with AlignScore tracking a property of the retrieved context that the entailment aggregate discards when it takes a maximum over chunks, and we do not test that.
+
+
+
+\section{The headline count under each refusal rule}
+\label{app:refusalrule}
+
+Every result from Section~\ref{sec:sensitivity} onward is computed on the answers a rule calls attempts, and that rule is a researcher degree of freedom. Since this paper's argument is that such choices move conclusions, the count is reported under each defensible rule rather than only under the one we adopted (Table~\ref{tab:refusalrule}).
+
+Three rules are available. The adopted rule strips a leading ``Based on \ldots,'' preamble before an anchored phrase test, because both generators prepend one to refusals as well as to answers. The rule before that change is the same test without the stripping; it grades 107 genuine refusals as attempts, all from one generator. The third hands the decision to the judge model used for correctness.
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{llrr}
+\toprule
+\textbf{Rule} & \textbf{Cell} & spread & $p_{\mathrm{holm}}$ \\
+\midrule
+\multicolumn{4}{l}{\emph{adopted: anchored test, preamble stripped}} \\
+ & HotpotQA/Qwen & 0.0406 & 0.0187 \\
+ & HotpotQA/GPT & 0.0461 & 0.0090 \\
+\midrule
+\multicolumn{4}{l}{\emph{bare: no preamble stripping}} \\
+ & HotpotQA/Qwen & 0.0413 & 0.0187 \\
+ & HotpotQA/GPT & 0.0461 & 0.0090 \\
+\midrule
+\multicolumn{4}{l}{\emph{judge decides the refusal}} \\
+ & HotpotQA/Qwen & 0.0433 & 0.0108 \\
+ & HotpotQA/GPT & 0.0432 & 0.0119 \\
+\bottomrule
+\end{tabular}
+\caption{Cells breaking at $\alpha = 0.05$ after Holm correction over the eighteen comparisons, under each refusal rule. All three rules select the same two cells and no other cell reaches significance under any of them. Paired $n$ moves with the rule --- 499, 507 and 467 on HotpotQA/Qwen --- so the populations are not identical.}
+\label{tab:refusalrule}
+\end{table}
+
+All three rules give two of six, and they agree on which two. No cell breaks under one rule and not another. The Limitations note that swapping detectors carries an \emph{uncorrected} p-value across the conventional threshold in two of eight cells still holds, and the two statements are compatible: the uncorrected values move, and the corrected count does not. That the headline survives all three is a result about this grid and not a general guarantee, since all three rules are variations on anchored phrase matching and a rule built on different principles might not agree.
+
+\section{Is the probe's prefix exchangeable?}
+\label{app:prefix}
+
+Cases are the first 200 eligible answers in dataset order rather than a random 200, so the Wilson intervals beside each detection rate assume a sampling scheme we did not use. If detection does not vary with position inside the prefix, the prefix behaves like a random draw from the eligible set on the quantity being reported.
+
+Detection by quartile of position under the entailment aggregate, pooled over the four embedding systems: on Natural Questions 3.2, 3.1, 7.9 and 6.7\% for Claude, 40.4, 33.1, 30.7 and 36.2\% for Qwen, and 63.5, 55.4, 44.0 and 63.5\% for GPT-4o-mini; on HotpotQA 12.8, 13.7, 18.4 and 10.9\%, then 55.0, 58.3, 44.4 and 61.0\%, then 68.8, 71.2, 65.1 and 78.8\%. A Spearman test of per-case detection against position reaches $\alpha = 0.05$ in one of the six cells (NQ/Qwen, $\rho = -0.076$, $p = 0.048$), which does not survive correction over the six tests ($p \approx 0.29$) and corresponds to almost no relationship in any case. The quartile figures fluctuate without a direction.
+
+We therefore treat the prefix as exchangeable with the eligible set for the detection rates reported, which is what the intervals require. This checks position only. It does not rule out some other ordering effect in the datasets that happens not to show up as a monotone trend in detection.
 
 
 \section{The markdown normalisation defect}
