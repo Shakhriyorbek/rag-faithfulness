@@ -55,36 +55,33 @@
 \maketitle
 
 \begin{abstract}
-Retrieval-augmented generation systems are often guarded by a faithfulness score that decides whether an answer is supported by the retrieved documents. Such scores usually come from natural language inference or trained alignment models, and prior work ranks them by how well they agree with human hallucination labels. Those pairs are built by editing reference text, so they cannot show whether a scorer treats answers from different generators alike, or whether a faithfulness comparison reflects the systems or the evaluator measuring them. We hold 24,000 answers fixed, from four embedding models, two question answering datasets and three generators, and score all of them with three evaluators. Into 200 answers per system, dataset and generator we then inject a known error, replacing one grounded value with one absent from the retrieved context. Under the most widely used entailment evaluator, a fixed threshold catches 5.1% of these falsifications for the most verbose generator but 56.6% for the tersest, because a single wrong value is diluted among many correct claims in a longer answer. A verbose generator can therefore look more faithful partly because its errors are harder to detect, although answer length does not account for the whole difference between generators. Answer length does not explain the whole gap: held at a single assertion the three generators still respond by 0.102, 0.409 and 0.485, so part of it is a property of the generator that length does not capture. Comparing the four retrieval systems under each evaluator, whether that comparison returns a difference or a null depends on which evaluator scored it, in two of six dataset-generator cells. The evaluators are not shown to rank the systems differently; what separates them is resolving power, and resolving the same difference more sharply is enough to move the published verdict. Two studies of the same systems can also reach opposite conclusions through choices other than the evaluator: whether refusals enter the average, and what margin counts as equivalent. Faithfulness results should therefore name their evaluator and test their threshold on deliberately falsified answers.
+Retrieval-augmented generation is often guarded by a faithfulness score, which decides whether the retrieved documents support an answer. The same scores are used to compare systems, so they settle both what a user sees and what a paper concludes. Such scores are ranked by how well they agree with human hallucination labels, or tested on reference summaries edited to contain one error. Neither shows whether a scorer treats answers from different generators alike.
+
+We hold 24,000 answers fixed --- four embedding models, two question answering datasets, three generators --- score every answer with three evaluators, and then inject a known error into 200 answers per system, dataset and generator, replacing one grounded value with a value absent from the retrieved context. Under the most widely used entailment scorer, a fixed threshold catches 5.1\% of these edits on the most verbose generator and 56.6\% on the tersest: one wrong value is diluted among the correct claims around it. Length is not the whole story, since at a matched single assertion the three generators still respond by 0.102, 0.409 and 0.485.
+
+Comparing the four retrieval systems, whether that comparison returns a difference or a null depends on which evaluator scored it, in two of six dataset-generator cells. The evaluators are not shown to rank the systems differently; they differ in how small a difference they can resolve. Averaging in refusals, or choosing a different equivalence margin, moves the conclusion as well. A faithfulness result should name its evaluator and test its threshold on deliberately falsified answers.
 \end{abstract}
 
 \section{Introduction}
 \label{sec:intro}
- 
+
 % Move 1: topic and why it matters
-A document question answering system is given a set of uploaded files and must answer from them. If an invoice records a project budget of \$1,000, an answer stating \$1,500 fails in a specific way: fluent, on topic, citing the right document, wrong in the one place that matters. Such systems are typically guarded by a faithfulness score, which measures whether the retrieved text supports the answer \citep{maynez-etal-2020}. The same scores are used to compare systems \citep{es-etal-2024,tamber-etal-2025}, so they decide both what users see and what papers conclude.
- 
-% Move 2: current state of knowledge
-Many scorers ask a natural language inference model whether the retrieved context entails the answer, often taking the maximum over retrieved chunks. Others use a trained alignment model \citep[AlignScore;][]{zha-etal-2023} or a language model as judge \citep{saad-falcon-etal-2024,tamber-etal-2025}. Scorers are mostly evaluated against human hallucination labels \citep{honovich-etal-2022,tang-etal-2023,niu-etal-2024,bao-etal-2025}, or with minimal pairs in which a reference summary is edited to contain one error \citep{ma-etal-2023}.
- 
-% Move 3: the gap
-Neither kind of evaluation tells us whether a scorer can separate the systems someone is actually comparing, and pairs built from reference text cannot reveal whether a scorer treats answers from different generators the same way. A faithfulness result also rests on choices that are easy to leave unstated, such as how scores are aggregated, which answers enter the average, and what margin counts as equivalent.
- 
-% Move 4: aim, question, hypothesis
-This paper asks what such a score measures. We do not propose a new evaluator. We take 24,000 answers from a fixed grid of four embedding models, two datasets, Natural Questions \citep{kwiatkowski-etal-2019} and HotpotQA \citep{yang-etal-2018}, and three generators, score every answer with three evaluators (NLI-max, claim-min and AlignScore), and ask whether the verdict on embedding choice survives a change of evaluator. The grid is only a testbed; its retrieval systems span 4.4 and 11.9 NDCG@5 points on the two datasets while generation stays fixed. Our hypothesis is that a score that rates a whole answer at once reacts less to one wrong value when more claims surround it, so its sensitivity would depend on the generator.
- 
-% Move 5: findings and structure
+A document question answering system is given a set of uploaded files and must answer from them. If an invoice records a project budget of \$1,000, an answer stating \$1,500 fails in a specific way: fluent, on topic, citing the right document, wrong in the one place that matters. Such systems are typically guarded by a faithfulness score, which measures whether the retrieved text supports the answer \citep{maynez-etal-2020}. The same scores are used to compare systems \citep{es-etal-2024,tamber-etal-2025}, so they decide both what a user sees and what a paper concludes.
+
+% Move 2: state of knowledge, and the gap it leaves
+Most such scores ask a natural language inference model whether the retrieved context entails the answer, taking the maximum over retrieved chunks. Others use a trained alignment model \citep[AlignScore;][]{zha-etal-2023} or a language model as judge \citep{saad-falcon-etal-2024,tamber-etal-2025}. They are ranked by how well they agree with human hallucination labels \citep{honovich-etal-2022,tang-etal-2023,niu-etal-2024,bao-etal-2025}, or tested on reference summaries edited to contain one error \citep{ma-etal-2023}. Neither tells us whether a scorer can separate the systems someone is actually comparing, and pairs built from reference text cannot show whether a scorer treats answers from different generators alike.
+
+% Move 3: aim and hypothesis
+This paper asks what such a score measures. We do not propose a new one. We take 24,000 answers from a fixed grid --- four embedding models, two datasets \citep{kwiatkowski-etal-2019,yang-etal-2018}, three generators --- score every answer with three evaluators, and ask whether the verdict on embedding choice survives a change of evaluator. The grid is a testbed rather than the object of study: its retrieval systems span 4.4 and 11.9 NDCG@5 points on the two datasets while generation stays fixed. We expected that a score rating a whole answer at once would react less to one wrong value when more claims surround it, so its sensitivity would depend on the generator.
+
+% Move 4: findings
 Our main findings are:
 \begin{itemize}
-\item Whether a comparison of four embedding systems returns a difference or a null depends on which evaluator scored it, in two of six dataset--generator cells after Holm correction. The evaluators are not shown to rank the systems differently; they differ in how sharply they resolve the same pattern (Section~\ref{sec:verdict}).
-\item In a falsification probe that swaps one grounded number for a value absent from the context, NLI-max at a fixed threshold catches the edit in 5--14\% of the most verbose generator's answers and 57--71\% of the tersest's (Section~\ref{sec:sensitivity}).
-\item Making one model more verbose by prompt alone cuts that detection from 35.1\% to 10.4\% on Natural Questions, and detection falls under all three evaluators. The same prompt line also lowers the refusal rate and raises the score an unrelated document receives, so it does not vary answer length alone. Answer structure accounts for most of the gap between generators, though not all of it (Section~\ref{sec:verbosity}).
-\item Averaging in refusals, or picking a different equivalence margin, can also change the conclusion (Sections~\ref{sec:population} and~\ref{sec:equivalence}).
+\item Whether comparing the four systems returns a difference or a null depends on which evaluator scored it, in two of six dataset--generator cells after correcting for multiple tests. The evaluators are not shown to rank the systems differently; they differ in how small a difference they can resolve (Section~\ref{sec:verdict}).
+\item Swapping one grounded number in an answer for a value absent from the context, a fixed threshold under the entailment scorer catches the edit in 5--14\% of the most verbose generator's answers and 57--71\% of the tersest's (Section~\ref{sec:sensitivity}).
+\item Making one model more verbose by prompt alone cuts that detection from 35.1\% to 10.4\%, and detection falls under all three evaluators. The same prompt line also lowers the refusal rate and raises the score an unrelated document receives, so it does not vary answer length alone (Section~\ref{sec:verbosity}).
+\item Averaging in refusals, or choosing a different equivalence margin, changes the conclusion too (Sections~\ref{sec:population} and~\ref{sec:equivalence}).
 \end{itemize}
-Sections~\ref{sec:related} to~\ref{sec:setup} cover related work and setup, Sections~\ref{sec:anchors} to~\ref{sec:qasper} report secondary analyses, and Section~\ref{sec:discussion} gives recommendations for reporting faithfulness and choosing an evaluator.
-
- 
-
 
 
 \section{Related Work}
