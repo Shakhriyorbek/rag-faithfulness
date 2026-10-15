@@ -1,0 +1,14 @@
+\movedsub{What to do with a verbose generator}
+\label{sec:deploy}
+
+The detection rates above are low enough to raise a practical question the recommendations so far do not answer: given a generator that writes several assertions per answer, what should a system actually run? Our measurements support four steps, in order of how much they buy.
+
+\textbf{Put a deterministic check in front, for anything symbolic.} That it flags every falsification we constructed is a consequence of how the probe defines them, not a measurement of the check. The measurement is what it costs --- 0.8 to 5.2\% of untouched answers flagged --- and what the learned scorers do on the same cases, which is 5.1\% to 89.4\%. A check indifferent to answer length is worth having where the aggregates are not, and it cannot see unsupported prose, so it is a pre-filter and not a gate.
+
+\textbf{Do not put a fixed threshold on a long answer.} The scale floor moves with verbosity. Under the entailment aggregate, an untouched answer scored against an \emph{unrelated} document averages 0.245 for our terse arm on HotpotQA and 0.509 for the verbose one (Section~\ref{sec:verbosity}), so a 0.5 gate sits below the unrelated-document baseline for the verbose arm. Anchoring the gate to that floor costs one extra scoring pass over random contexts and makes the number mean the same thing across generators.
+
+\textbf{If you control the generator, constrain the answer.} This is the largest single lever we measured, and it is free. One added prompt line moved Qwen from 1.77 to 4.90 assertions and detection from 35.1\% to 10.4\%; the same lever is available in the other direction. Shortening answers buys more detection than switching evaluators does.
+
+\textbf{Choose the evaluator against the failure you care about.} Table~\ref{tab:choose} gives the properties. For separating two systems at a few hundred queries the binding constraint is resolving power, where AlignScore needs the smallest effect. For scoring a single verbose answer it is length robustness, where claim-min gives up the least --- with the caveat that its absolute scores fall near zero at five assertions, so it resists the bias without remaining thresholdable.
+
+None of this is a general recipe. Every rate above is a property of a particular generator, evaluator and dataset, and the point of the paper is that those properties are not transferable. What does transfer is the procedure: falsify a value in your own outputs, score the floor against random contexts, and read the detection rate you actually have rather than the one the evaluator's benchmark reports.

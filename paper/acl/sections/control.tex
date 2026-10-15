@@ -1,0 +1,12 @@
+\movedsub{A system the test should separate}
+\label{sec:control}
+
+Four of the six cells are null. A reader is entitled to ask whether the test detects anything at all, and the grid answers that without a new experiment.
+
+We ran a fifth embedding model, jina-embeddings-v3 \citep{sturua-etal-2024}, over both datasets and all three generators. On Natural Questions it retrieves badly. Its NDCG@5 is 0.685, where the other four sit between 0.786 and 0.830, and it widens the spread the comparison runs on from 4.4 points to 14.5. Paired TOST on per-query NDCG gives mean differences of 0.102 to 0.145 against the other four, at $p_{\mathrm{TOST}} = 1.0000$ each time. The test cannot place a system further from equivalence than that. HotpotQA is a different story. There jina falls inside the band, and its pair with text-embedding-3-small is the only pair in our grid that is both undifferentiated and TOST-equivalent at $\pm$0.02 (mean difference 0.0059, $p_{\mathrm{TOST}} = 0.0083$).
+
+Rerun Table~\ref{tab:7} over five systems instead of four, holding the test, the resampling and the correction fixed, and the count goes from two of six cells to six of six. Every cell differs under every evaluator.
+
+We read that as the precondition failing. This section asks what happens to systems that retrieve about equally well, and a system retrieving ten points worse ought to come out differently. It does, under all three evaluators. So the four nulls do not come from an instrument that never fires. At these sample sizes the procedure separates systems that differ and declines to separate the matched four.
+
+The control bounds our own framing too. Matched retrieval quality has to be checked rather than assumed from a plausible-looking set of models, and one of the five we ran fails the check on one of the two datasets.

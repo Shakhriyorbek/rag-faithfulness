@@ -1,0 +1,6 @@
+\movedsub{Membership Is Set by a Grader, and Graders Disagree}
+\label{sec:graders}
+
+Excluding refusals means deciding which answers are refusals, and a rule decides it. We compare two: a string match against the refusal templates the prompt offers, and a judge model shown the question, the reference answers and the answer. They agree on most rows, the judge finding four to five more refusals per hundred in every system without reordering them. The detector comparison below was computed on the two proprietary arms, so it covers eight of the twenty-four cells; the graded-correctness results in the next subsection cover all of them.
+
+A level shift that preserves the ordering is usually unremarkable. This one is not, because the rows it moves sit at the boundary between refusing and attempting. Swapping detectors moves nineteen rows on NQ/Claude and fifty-five on HotpotQA/Claude, and carries the uncorrected p across 0.05 in two of the eight cells it was run over: NQ/Claude under the entailment aggregate from 0.223 to 0.048, HotpotQA/Claude under AlignScore from 0.151 to 0.049. Both land within a thousandth of the threshold and neither survives correction. The number of cells whose verdict changes between evaluators is the same under either detector, but they are different cells, so we report the count and treat any single cell as undetermined.

@@ -1,0 +1,12 @@
+\movedsec{Geometric Analysis and Re-ranking}
+\label{sec:esa}
+
+One obvious response to any of this is to re-rank retrieved chunks by how well they support an answer. Whether that can work depends on a usable signal existing before the answer does. We tested for one.
+
+Two correlations are relevant and they are not interchangeable. Correlating a chunk's similarity to the query with its entailment of the \emph{gold} answer measures a static property of the embedding space. Correlating it with entailment of the \emph{query} measures what a re-ranker could condition on. We compute both, at $n = 200$ per system and dataset.
+
+Natural Questions gives a weak positive signal on both, and the two track each other: 0.146 to 0.217 for the gold-answer version, 0.131 to 0.226 for the query version, significant at $\alpha = 0.05$ in three of four systems each. HotpotQA gives nothing. The gold-answer correlation there is negative in all four systems ($-0.086$ to $-0.115$), and the query correlation sits between 0.037 and 0.077 with no $p$ below 0.27.
+
+Re-ranking behaves accordingly. Taking the top twenty for one system, re-ranking by entailment of the query at $\lambda = 0.6$ and regenerating, faithfulness on attempted answers moves $+0.008$ on Natural Questions (95\% CI $[-0.007, +0.023]$) and $-0.008$ on HotpotQA ($[-0.029, +0.012]$). Both intervals contain zero. The refusal rate does move, from 15.4\% to 19.0\% on Natural Questions. Re-ranking takes away context the generator had been using, and it declines instead of answering from less.
+
+Faithfulness-aware re-ranking is often proposed on the strength of a correlation like the one we find on Natural Questions. A correlation of 0.13 to 0.23 is not enough to convert into a gain. On HotpotQA there is no correlation to convert.

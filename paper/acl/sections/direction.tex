@@ -1,0 +1,6 @@
+\movedsub{Direction is dataset-dependent}
+\label{sec:direction}
+
+Where a difference exists it does not point the same way. Correlating NDCG@5 with mean faithfulness across the four systems, in all eighteen generator-evaluator combinations (Appendix~\ref{app:spearman}), splits the two datasets. Under NLI-max and AlignScore the split is exact: all six HotpotQA coefficients are positive, reaching +1.00 in each AlignScore cell, and all six Natural Questions coefficients are zero or negative, reaching -1.00 for Claude under NLI-max. Better retrieval accompanies more faithful answers on the multi-hop dataset and not on the single-hop one. Composing an answer out of several retrieved pieces plausibly makes grounding sensitive to how much of the evidence is present, where a single-fact answer is not. We do not test that. The experiment varies embedding model rather than manipulating retrieval quality, so none of this is an effect of NDCG@5 itself.
+
+Claim-min breaks the split. Two of its six combinations go the wrong way, both on the open-weight generator and in opposite directions on the two datasets. With two evaluators, or two generators, this table would have shown a clean dataset effect. The third of each is what shows the direction is not a property of the dataset alone.

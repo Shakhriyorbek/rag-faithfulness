@@ -1,0 +1,39 @@
+\movedsec{Floor, Ceiling and the Arrangement of Context}
+\label{sec:anchors}
+
+Everything above compares retrieval systems against each other. That comparison fixes neither endpoint, so we measured both. These conditions ran on the Claude arm only, at $n = 1000$ per dataset.
+
+\textbf{The floor.} Given no retrieved context at all, the generator answers 32.2\% of Natural Questions correctly and declines 15.5\% of the time. Both benchmarks are built on Wikipedia, so roughly a third of the single-hop result is available without retrieval. HotpotQA behaves differently: 20.9\% correct, with a 70.4\% refusal rate. Asked to compose across documents it does not have, the model mostly declines. Any claim that retrieval produced a correct answer on Natural Questions sits on top of this floor.
+
+\textbf{The ceiling.} Supplying the answer-bearing chunks and nothing else gives 77.0\% on Natural Questions and 86.8\% on HotpotQA. On HotpotQA that works as a ceiling, with the best of the four systems reaching 81.0\% of it and the worst 60.8\%. On Natural Questions three of the four exceed it, at 102.2\%, 102.6\% and 103.4\%.
+
+We report those unclipped, because the explanation is a design choice worth stating. Our oracle supplies answer-bearing chunks and nothing around them. That is less context than top-five retrieval, not more. Questions that need the surrounding material get refused under it, 12.9\% of the time here. It therefore ceilings evidence selection and not accuracy. On a single-hop dataset the extra material retrieval drags in pays for the extra noise. Where composition is the difficulty it stops paying.
+
+\textbf{Arrangement.} We vary how the gold evidence is presented, over 300 queries per condition (Table~\ref{tab:ablation}).
+
+Order is inert. Reversing or shuffling the evidence moves accuracy by at most 1.7 points on either dataset. Holding length at five chunks and moving a single gold chunk between the first, middle and last position spans 0.727 to 0.757 on Natural Questions and 0.503 to 0.530 on HotpotQA. At $k = 5$ we see no position effect.
+
+Subset is not inert, and it bites only where composition does. Cutting the context to one gold chunk costs Natural Questions two points and HotpotQA thirty-six. The refusal column explains the gap: HotpotQA refusals go from 7.3\% to 75.7\%. Handed half of a multi-hop chain, the model declines instead of completing it from memory. This is the same refusal machinery that Section~\ref{sec:population} shows will distort a faithfulness average if those answers are left in it, and retrieval quality is what triggers it here.
+
+\begin{table}[t]
+\centering\small
+\begin{tabular}{lcccc}
+\hline
+ & \multicolumn{2}{c}{NQ} & \multicolumn{2}{c}{HotpotQA} \\
+condition & acc. & ref. & acc. & ref. \\
+\hline
+all gold & .790 & .127 & .877 & .073 \\
+reversed & .773 & .123 & .890 & .063 \\
+shuffled & .790 & .123 & .880 & .070 \\
+one gold only & .770 & .170 & \textbf{.517} & \textbf{.757} \\
+one gold, first & .753 & .137 & .530 & .693 \\
+one gold, middle & .757 & .163 & .503 & .683 \\
+one gold, last & .727 & .153 & .510 & .723 \\
+distractors only & \textbf{.090} & .667 & \textbf{.150} & .913 \\
+\hline
+\end{tabular}
+\caption{Accuracy and refusal rate when the gold evidence is rearranged, $n = 300$ per condition, Claude. The last four conditions hold context length at five chunks. Order is inert. Losing half a multi-hop chain is not, and it converts into refusals instead of errors.}
+\label{tab:ablation}
+\end{table}
+
+Distractors alone give a second floor and it is not zero: 9.0\% and 15.0\% correct. That is consistent with the no-retrieval numbers above.

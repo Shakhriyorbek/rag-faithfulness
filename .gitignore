@@ -32,3 +32,14 @@ Thumbs.db
 
 # Node toolchain for paper/build_v*.js (installed 2026-08-30)
 paper/node_modules/
+
+# LaTeX build artifacts (paper/acl). The PDFs are committed deliberately so a
+# reader of the repo can see the manuscript without a TeX install; the logs and
+# aux files are not.
+paper/acl/*.log
+paper/acl/*.aux
+paper/acl/*.blg
+paper/acl/*.bbl
+paper/acl/*.out
+paper/acl/main-preprint.tex
+paper/acl/main-8page-preprint.tex

@@ -1,0 +1,14 @@
+\movedsec{When Retrieval Collapses}
+\label{sec:qasper}
+
+Both benchmarks above are Wikipedia, and both are ones these retrieval systems handle well. QASPER \citep{dasigi-etal-2021} is neither. We ran the same grid over 819 questions about NLP papers with all five embedding systems, and retrieval collapsed: NDCG@5 between 0.062 and 0.122, against 0.705 to 0.830 on the other two datasets, with Recall@5 of 8\% to 18\%.
+
+The cause is structural. QASPER is single-document question answering. Pooling 819 papers into one corpus of 13,876 chunks leaves a question like ``which multilingual approaches do they compare with?'' carrying no signal about which paper it belongs to. We would not offer this as a fair test of the retrievers.
+
+Refusals rise, to 27.8\%, 35.4\% and 45.0\% across the three generators, and between 2,254 and 2,955 answers per generator survive. On those answers, two orderings from the main grid invert.
+
+The generators swap places. GPT-4o-mini is the most faithful here under all three evaluators and Claude the least, reversing Section~\ref{sec:verdict}. The evaluators swap as well, and that matters more. Across all six cells of the main grid the three order identically, AlignScore above claim-min above NLI-max. On QASPER that survives for GPT-4o-mini alone. Claude reads NLI-max 0.712, AlignScore 0.629, claim-min 0.240.
+
+The 0.240 carries the information. Claim-min reports the least supported assertion in an answer, so a value that low says Claude is producing multi-assertion answers whose weakest component the context does not support. That is what we would expect when the context usually lacks the evidence and the generator answers anyway. NLI-max takes a maximum over chunks, finds something to entail, and reports 0.712 on the same answers.
+
+We keep this out of the main grid, and these numbers are not comparable to the ones above. A population where retrieval failed cannot test a claim about systems at matched retrieval quality. The inversion also has a competing explanation we cannot rule out: with Recall@5 between 8\% and 18\%, scores are compressed toward the bottom of each evaluator's range, and orderings among compressed scores can reverse through floor effects and distribution shift without any change in what the evaluators are sensitive to. Read this as one boundary observation, not as evidence that evaluator orderings are generally unstable across domains. What it establishes is narrower: the ordering held in every cell we measured where retrieval worked, and it stopped holding in the one regime we measured where retrieval did not.

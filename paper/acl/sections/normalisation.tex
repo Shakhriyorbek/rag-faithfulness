@@ -1,0 +1,6 @@
+\movedsub{A normalisation defect that produced a result}
+\label{sec:normalisation}
+
+An earlier version of this analysis reported two of the four cells then in the design rather than one. The difference was a change of text normalisation, not of test, data or population: the entailment scorer read the answer as the generator wrote it while the claim-level scorer stripped markdown first, so the two aggregates were not reading the same hypothesis. Markdown is unevenly distributed, appearing in 76.0\% of Claude's attempted answers against 1.3\% and 0.3\% for the other two, so one generator's formatting habits were entering a comparison between embedding systems. Stripping it for all three removed the significance of NQ/Claude under AlignScore, the cell Table~\ref{tab:7} still places just outside the threshold; neither cell that survives correction is affected, both being on generators that emit almost no markdown.
+
+How it was caught is the transferable part. The defect is invisible in every summary statistic and survives every significance test. What exposed it was an identity the two aggregates must satisfy exactly on single-assertion answers, which failed on all 131 formatted answers then in the grid by as much as 0.729 (Appendix~\ref{app:markdown}). Metrics that admit such an identity should be checked against it.
