@@ -66,6 +66,13 @@ def main():
                          '1000 for parity with the API arms')
     ap.add_argument('--models', default=None,
                     help='comma-separated model names (overrides mode default)')
+    ap.add_argument('--open-model-id', default=None,
+                    help='HuggingFace id for the open-weight arm. Defaults '
+                         'to config.OPEN_MODEL_ID. Changing it REQUIRES a '
+                         'distinct --open-label: the label alone scopes the '
+                         'checkpoint key, so a new model under the old label '
+                         'mixes two models answers into one checkpoint that '
+                         'resume would then treat as complete.')
     ap.add_argument('--open-label', default=None,
                     help='checkpoint label for the open-weight arm. '
                          'Defaults to config.OPEN_MODEL_LABEL. Give a '
@@ -96,6 +103,16 @@ def main():
     ap.add_argument('--yes', action='store_true',
                     help=f'authorize the paid phases {sorted(PAID_PHASES)}')
     args = ap.parse_args()
+
+    # Fail before any dataset load or model download: the label scopes the
+    # checkpoint key, so a new model under the default label would write its
+    # answers into the existing arm's checkpoint, and resume would then treat
+    # the mixture as complete. Cheap guard against an expensive silent error.
+    if args.open_model_id and not args.open_label:
+        raise SystemExit(
+            'error: --open-model-id requires --open-label. The label scopes '
+            'the checkpoint key; reusing the default label for a different '
+            'model mixes two models answers into one checkpoint.')
 
     phases = [p.strip() for p in args.phases.split(',') if p.strip()]
     unknown = set(phases) - set(ALL_PHASES)
@@ -162,6 +179,7 @@ def main():
         # being a footnote with its own scale.
         run_phase_llama(datasets, models, subset=args.open_subset,
                         label=args.open_label,
+                        model_id=args.open_model_id,
                         prompt_style=args.open_prompt_style)
     if 'd' in phases:
         from faithfulness import run_phase_d
