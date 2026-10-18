@@ -21,7 +21,7 @@ sys.path.insert(0, 'src')
 B = os.environ.get('RAG_CHECKPOINT_DIR', 'checkpoints/n1000_v3') + '/'
 M4 = ['all-mpnet-base-v2', 'BGE-M3', 'E5-large-instruct',
       'text-embedding-3-small']
-GENS = ['claude', 'qwen', 'gpt4omini']
+GENS = ['claude', 'qwen', 'gpt4omini', 'mistral']
 
 
 def cases(generator, dataset):

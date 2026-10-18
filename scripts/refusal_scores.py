@@ -17,7 +17,7 @@ EV = [('nli_scores', 'nli_max', 'NLI-max'),
 
 rows = []
 for pre, col, lab in EV:
-    for g in ['claude', 'qwen', 'gpt4omini']:
+    for g in ['claude', 'qwen', 'gpt4omini', 'mistral']:
         for ds in ['NQ', 'HotpotQA']:
             ref, att = [], []
             for m in M4:
@@ -39,6 +39,12 @@ for pre, col, lab in EV:
                                  gap=np.mean(ref) - np.mean(att)))
 
 t = pd.DataFrame(rows)
+if t.empty:
+    raise SystemExit(
+        'no checkpoints found under %r -- every pickle open failed and was\n'
+        'swallowed by the per-file except. Set RAG_CHECKPOINT_DIR to the\n'
+        'absolute data path; the code and data trees are siblings with\n'
+        'different names (rag-faithfulness vs rag_faithfulness).' % B)
 print('mean score on refusals:')
 print(t.pivot_table(index='evaluator', columns='generator', values='refusal').round(3).to_string())
 print('\nrefusal minus attempt (positive = refusals score HIGHER than real answers):')

@@ -24,7 +24,8 @@ import config
 from nli import NLIScorer
 from utils import checkpoint_exists, load_checkpoint, save_checkpoint
 
-GENERATORS = ['claude', 'gpt4omini', 'llama3', config.OPEN_MODEL_LABEL]
+GENERATORS = ['claude', 'gpt4omini', 'llama3', config.OPEN_MODEL_LABEL,
+              config.OPEN_MODEL2_LABEL]
 
 
 def _generation_checkpoints(model: str, ds_name: str, generators=None):

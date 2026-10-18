@@ -35,7 +35,7 @@ from utils import load_checkpoint  # noqa: E402
 
 M4 = ['all-mpnet-base-v2', 'BGE-M3', 'E5-large-instruct',
       'text-embedding-3-small']
-GENS = ['claude', 'qwen', 'gpt4omini']
+GENS = ['claude', 'qwen', 'gpt4omini', 'mistral']
 METRICS = [('nli', 'NLI-max'), ('align', 'AlignScore'), ('claim', 'Claim-min')]
 NRESAMP = 10000
 SEED = 42

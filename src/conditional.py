@@ -70,7 +70,8 @@ from utils import load_checkpoint, save_checkpoint
 # skipped, so listing one that has not been run is harmless — but OMITTING one
 # that has is not: 'gpt4omini' was absent until 2026-08-30 and the 2x2 silently
 # described Claude only, ignoring 8,000 paid generations.
-GENERATORS = ('claude', 'gpt4omini', 'llama3', config.OPEN_MODEL_LABEL)
+GENERATORS = ('claude', 'gpt4omini', 'llama3', config.OPEN_MODEL_LABEL,
+              config.OPEN_MODEL2_LABEL)
 # Sentinel model names for the embedder-independent conditions, so they can sit
 # in the same frame as the real models without pretending to be one.
 NO_RETRIEVAL = '(C1 no-retrieval)'

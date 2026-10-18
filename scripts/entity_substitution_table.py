@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Table: response to a falsified ENTITY (paper Section 5.2, Table 4).
 Read-only over perturb_* checkpoints. Run from the repo root."""
+import os
 import pickle, glob, os, numpy as np, pandas as pd
-B='/home/shakhriyorbekboltabaev/rag-backup/checkpoints/n1000_v3/'
+# Default is the laptop's backup mirror; RAG_CHECKPOINT_DIR points this at
+# gpu1's live tree, which is the only place a newly-run arm exists.
+B=os.environ.get('RAG_CHECKPOINT_DIR',
+                 '/home/shakhriyorbekboltabaev/rag-backup/checkpoints/n1000_v3')
+if not B.endswith('/'): B += '/'
 MODELS=['all-mpnet-base-v2','BGE-M3','E5-large-instruct','text-embedding-3-small']
-GENS=[('claude','Claude'),('qwen','Qwen'),('gpt4omini','GPT-4o-mini')]
+GENS=[('claude','Claude'),('qwen','Qwen'),('gpt4omini','GPT-4o-mini'),('mistral','Mistral')]
 EVAL=[('nli','NLI-max',''),('claim','Claim-min','claim_'),('align','AlignScore','align_')]
 def wilson(k,n,z=1.96):
     if n==0: return (float('nan'),)*2
@@ -31,13 +36,15 @@ for ds in ['NQ','HotpotQA']:
                     delta=sub['orig'].mean()-sub[cond].mean(),
                     det=det/elig if elig else np.nan,lo=lo,hi=hi,n_elig=elig))
 t=pd.DataFrame(rows)
-t.to_pickle('/tmp/claude-1000/-home-shakhriyorbekboltabaev-Documents-rag-faithfulness/84936299-5b8f-46c6-a4b0-665b55951e53/scratchpad/entity_table.pkl')
+if t.empty:
+    raise SystemExit('no perturb_* checkpoints under %r' % B)
+t.to_pickle(os.environ.get('RAG_ENTITY_TABLE', 'entity_table.pkl'))
 pd.set_option('display.width',220)
 for ds in ['NQ','HotpotQA']:
     print('='*100); print(ds)
     piv=t[t.dataset==ds].pivot_table(index=['evaluator','cond'],columns='generator',
         values=['delta','det'],aggfunc='first')
-    print(piv.reindex(columns=['Claude','Qwen','GPT-4o-mini'],level=1).round(3).to_string())
+    print(piv.reindex(columns=[gl for _, gl in GENS], level=1).round(3).to_string())
 print()
 print('=== ENTITY detail (n, eligible, Wilson CI) ===')
 print(t[t.cond=='entity'][['dataset','generator','evaluator','n','n_elig','orig','pert','delta','det','lo','hi']].round(4).to_string(index=False))

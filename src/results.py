@@ -28,7 +28,8 @@ from utils import checkpoint_exists, load_checkpoint, save_checkpoint
 
 # Order matters only for display. 'claude' stays the reference arm because it
 # is the one generator run over the full 7-model grid.
-GENERATORS = ['claude', 'gpt4omini', 'llama3', config.OPEN_MODEL_LABEL]
+GENERATORS = ['claude', 'gpt4omini', 'llama3', config.OPEN_MODEL_LABEL,
+              config.OPEN_MODEL2_LABEL]
 
 
 def bootstrap_significance(scores_a: List[float], scores_b: List[float],

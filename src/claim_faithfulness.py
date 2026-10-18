@@ -47,7 +47,8 @@ import config
 import textnorm
 from utils import checkpoint_exists, load_checkpoint, save_checkpoint
 
-GENERATORS = ['claude', 'gpt4omini', 'llama3', config.OPEN_MODEL_LABEL]
+GENERATORS = ['claude', 'gpt4omini', 'llama3', config.OPEN_MODEL_LABEL,
+              config.OPEN_MODEL2_LABEL]
 
 # Abbreviations that end in a period without ending a sentence.
 _ABBREV = (r'(?:Mr|Mrs|Ms|Dr|Prof|Inc|Ltd|Co|Corp|Jr|Sr|St|vs|etc|al|Fig|No'

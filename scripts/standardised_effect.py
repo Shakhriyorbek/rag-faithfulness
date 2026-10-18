@@ -37,7 +37,7 @@ def main():
     print('%-9s %-12s %9s %9s %9s' % ('dataset', 'generator', *[l for _, l in EVALUATORS]))
     align_wins = total = 0
     for ds in ['NQ', 'HotpotQA']:
-        for g in ['claude', 'qwen', 'gpt4omini']:
+        for g in ['claude', 'qwen', 'gpt4omini', 'mistral']:
             vals = {lab: standardised(ds, g, m) for m, lab in EVALUATORS}
             if any(v is None for v in vals.values()):
                 continue

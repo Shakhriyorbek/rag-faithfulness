@@ -238,9 +238,18 @@ class CostTracker:
             f'  GPT in/out toks:     {self.oai_chat_input_tokens:,} / '
             f'{self.oai_chat_output_tokens:,}\n'
             f'  Embedding tokens:    {self.embed_tokens:,}\n'
+            # Judge calls accumulate in their own counters, at the judge
+            # model's own rates. Without these two lines a judge-only run
+            # printed "Claude cost: $0.0000" beside a non-zero total, which
+            # reads like the total is wrong rather than the breakdown
+            # incomplete -- the $13.74 mistral run of 2026-10-16 showed
+            # 0 / 0 tokens for 7,600 graded rows.
+            f'  Judge in/out toks:   {self.judge_input_tokens:,} / '
+            f'{self.judge_output_tokens:,}\n'
             f'  Errors:              {self.errors}\n'
             f'  Claude cost:         ${self.claude_cost:.4f}\n'
             f'  GPT cost:            ${self.openai_chat_cost:.4f}\n'
+            f'  Judge cost:          ${self.judge_cost_accum:.4f}\n'
             f'  Embedding cost:      ${self.embedding_cost:.4f}\n'
             f'  Total cost:          ${self.cost:.4f}'
         )

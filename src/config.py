@@ -40,13 +40,22 @@ LLAMA_SUBSET  = 300      # open-weight validation queries per dataset
 OPEN_MODEL_ID    = 'Qwen/Qwen2.5-7B-Instruct'
 OPEN_MODEL_LABEL = 'qwen'
 
+# The second open-weight arm, added 2026-10-16 to answer the review's n=3
+# generator-coverage weakness. Run through the same LocalHFGenerator via
+# --open-label/--open-model-id, so prompt and decoding are byte-identical to
+# the qwen arm and only the weights differ. NOT a prompt-varied control:
+# qwen_verbose shares qwen's weights and is deliberately absent from this list.
+OPEN_MODEL2_ID    = 'mistralai/Mistral-7B-Instruct-v0.3'
+OPEN_MODEL2_LABEL = 'mistral'
+
 # The generator arms that actually have checkpoints, in report order. CLI
 # --generators defaults are built from this so a new arm cannot be generated
 # and then silently left out of an analysis. That is B10 exactly: the
 # module-level GENERATORS lists knew about gpt4omini while conditional.py did
 # not, and 8,000 paid rows described only Claude. 'llama3' is deliberately
 # absent — a legacy label with no checkpoints.
-ACTIVE_GENERATORS = ('claude', 'gpt4omini', OPEN_MODEL_LABEL)
+ACTIVE_GENERATORS = ('claude', 'gpt4omini', OPEN_MODEL_LABEL,
+                     OPEN_MODEL2_LABEL)
 
 ESA_N_SAMPLES = 200      # Queries per model×dataset for the ESA correlation
 
