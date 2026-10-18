@@ -22,8 +22,10 @@ now the **testbed**, not the claim: it supplies matched-retrieval-quality
 systems whose faithfulness verdict can then be shown to flip with the metric.
 
 **Key contributions (v6):**
-1. Same 24,000 answers scored by **three evaluators** (NLI-max, claim-min,
-   AlignScore) — **2 of 6 cells** break under AlignScore, surviving Holm over 18
+1. Same 32,000 answers scored by **three evaluators** (NLI-max, claim-min,
+   AlignScore) — **4 comparisons in 3 of 8 cells** break, surviving Holm over 24.
+   Two are AlignScore; the other two are Mistral-7B under **NLI-max and
+   claim-min**, so the dissent is no longer AlignScore-specific (see B28)
 2. A **falsification probe**: replace one grounded number with a value absent
    from the context and re-score. Detection ranges **5.1%–89.4%** across
    evaluators and generators. Also run with **entity** substitution, which
@@ -45,7 +47,8 @@ are Claude-arm only (see B24, item 21).
 
 **Experimental scale actually run (as of 2026-10-07):**
 - **Main grid:** 4 embedders × 2 datasets (NQ, HotpotQA) × 3 generators × 1000
-  = **24,000 generations**. This is the grid every headline rests on.
+  = **24,000 generations**, plus the Mistral-7B arm (2026-10-15) for
+  **32,000**. This is the grid every headline rests on.
 - **jina-embeddings-v3:** a 5th embedder, both datasets, all 3 generators —
   reported as a *positive control*, not a matched system (B24b).
 - **QASPER:** 5 embedders × 3 generators × 819 queries — a *boundary condition*,
@@ -63,13 +66,13 @@ are still the only configured models never run.
 | Area | Status |
 |------|--------|
 | Paper draft | ✅ Complete and current. **Source is `paper/acl/main.tex`**; the docx builder is superseded. Two PDFs: `main-preprint.pdf` (named, **this is the one to send Berend**) and `main.pdf` (anonymous + line-numbered). Two automated review passes done — **3.5 Borderline Conference, soundness 4** |
-| References verified | ✅ 24 verified 2026-09-03 (§6, §6b); **31 entries now**, all cited, none orphaned. 6 added 2026-09-16..10-07 and each checked against source: Wallat (ICTIR 2025), Ju (arXiv:2604.25313), Xu (Findings EMNLP 2025), Steen (ACL 2023), ARES (**NAACL 2024**, not 2023), RAGVUE (EACL 2026 demos). ⚠️ **`dasigi-etal-2021` (QASPER) is the one entry never verified** against the Anthology |
+| References verified | ✅ 24 verified 2026-09-03 (§6, §6b); **31 entries now**, all cited, none orphaned. 6 added 2026-09-16..10-07 and each checked against source: Wallat (ICTIR 2025), Ju (arXiv:2604.25313), Xu (Findings EMNLP 2025), Steen (ACL 2023), ARES (**NAACL 2024**, not 2023), RAGVUE (EACL 2026 demos). ✅ **`dasigi-etal-2021` (QASPER) verified 2026-10-16** against ACL Anthology 2021.naacl-main.365 — title, six authors in order, booktitle, pages 4599-4610, publisher and DOI all match; `month = jun` added. **All 31 entries have now been through the B3 check** |
 | Pipeline code | ✅ All of §8 built in `src/`; notebook is a reference artifact only |
 | Server access | ✅ Granted by Berend. **Fedora is now the only machine that can deploy** — the Windows laptop's key was revoked on both hosts 2026-08-28 |
 | Experiments | ✅ **All run.** 24,000-answer main grid + jina control + QASPER + qwen_verbose + C1/C2 + ablation + ESA + re-ranking. Nothing paid remains. See `reports/2026-09-16_all_results.md` and `reports/2026-10-07_reviews_and_verbosity_control.md` |
-| Correctness | ✅ **LLM judge over the full grid** (2026-08-30, $29.27, 0 errors). Containment is retired as the correctness signal — always run analyses with `--correct-source judge` |
+| Correctness | ✅ **LLM judge over all 32 matched cells.** 24 cells 2026-08-30 ($29.27); the mistral arm 2026-10-16 (8,000 rows, **$13.74**, 0 errors, 0 ungradable — see B29). Containment is retired as the correctness signal — always run analyses with `--correct-source judge`. The judge covers the matched grid **only**: jina, QASPER and the C1/C2/ablation conditions are still containment-graded, so their accuracy figures are not comparable with the grid's |
 | Paper v6 | ✅ `paper/acl/main.tex` → `main.pdf` (anonymous, for ARR) and `main-preprint.pdf` (named, for Berend). `paper/build_v6.js` + its docx are **superseded — do not edit them**, an edit there will not reach the manuscript |
-| Format | ✅ **ACL** (`paper/acl/`, `./build.sh` via tectonic). **22 pages, 0 undefined refs, 0 overfull boxes.** The ARR 8-page body limit is NOT currently enforced — the paper deliberately carries every result for Berend. Body is ~14 pages, so **a submission to a venue with a hard page limit needs the supplementary sections moved to the appendix first** (Floor/Ceiling 587 w, ESA/re-rank 283 w, QASPER 400 w, §12.2 ~350 w; ACL appendices do not count) |
+| Format | ✅ **ACL** (`paper/acl/`, `./build.sh` via tectonic). **30 pages (the two compact variants are 31), 0 undefined refs, 0 overfull boxes, 0 rendered ??.** The ARR 8-page body limit is NOT currently enforced — the paper deliberately carries every result for Berend. Body is ~14 pages, so **a submission to a venue with a hard page limit needs the supplementary sections moved to the appendix first** (Floor/Ceiling 587 w, ESA/re-rank 283 w, QASPER 400 w, §12.2 ~350 w; ACL appendices do not count) |
 | Venue | ⚠️ **The ARR 12 October 2026 deadline has passed and was not used** — the goal became a complete draft for Berend instead. Next ARR cycle or a direct venue submission is an open decision. The old plan (one ARR cycle feeding NAACL 2027 and COLING 2027, primary chosen at commitment) is in `reports/2026-09-05_berend_report.md` §2.3 and still describes the mechanism |
 
 **Backup:** 450 MB / 636 files at `~/rag-backup/checkpoints` on Fedora — the only
@@ -83,10 +86,16 @@ before it is acted on.
 
 **Correctness is now measured, and it moved the paper.** Containment is biased
 against the judge and **the sign of the bias is not constant**: it understates
-accuracy by 5-15 points in 12 cells but *overstates* by 3-7 points in the four
-HotpotQA cells under Claude, where long multi-hop answers mention a reference
-string while asserting something else (false positives 8.9-13.0% there against
-5.8-7.3% false negatives). Containment is a bound in **neither** direction — do
+accuracy by **5-16 points in 20 of the 24 cells where both signals exist** but
+*overstates* by **2-6 points** in the four HotpotQA cells under Claude, where
+long multi-hop answers mention a reference string while asserting something
+else (false positives 8.9-13.0% there against 5.8-7.3% false negatives). ⚠️ The
+earlier figures (5-15 in 12 cells, overstating 3-7) were a 2-generator
+measurement and the overstatement predates D4, which moved 80 Claude/HotpotQA
+rows to refusal; re-measured over all 24 judged cells 2026-10-16. **mistral has
+no `_scored` checkpoints**, so it is not in this comparison — the free
+correctness phase was never run on it, and running it would rewrite the 24
+published `_scored` files. Containment is a bound in **neither** direction — do
 not describe it as one. The judge never grades a refusal correct, so B12 is
 fully resolved. Two draft claims did not survive: **"more
 faithful when wrong" is false on NQ for both generators** (faith_gap -0.051 to
@@ -98,7 +107,7 @@ the evaluator-dependence spine stands.
 **The evaluator-dependence spine was re-checked after the judge run and holds**
 (`reports/2026-08-30_evaluator_dependence_recheck.md`): the 2026-08-26 numbers
 reproduce exactly, and 2 of 4 nulls still break under AlignScore (**superseded:
-now 2 of 6 over 18 comparisons — see B23**). But the
+now 4 of 24, in 3 of 8 cells — see B28**). But the
 *identity* of those two cells depends on whether abstentions are decided by
 `is_abstention` or by the judge — NQ/Claude stops disagreeing, HotpotQA/Claude
 starts, both at p≈0.048. **`faithfulness_by_model` therefore defaults to
@@ -979,12 +988,340 @@ measured 1.17–4.99; the model **population** is still three.
   **Rule: never quote a pooled figure beside a per-dataset one for the same
   quantity.** This is the third instance; B13 was the first.
 
-**⚠️ A run has now silently done nothing and reported success THREE times**,
-each because a hardcoded default excluded what was being asked for: B10
-(`GENERATORS`), the QASPER `--datasets` default, and `faithfulness.py` /
-`claim_faithfulness.py` having no `--generators` flag at all. All three are
-fixed and the selected labels are **printed at startup**. Any new arm must have
+**B28 — the fourth generator is run, and the dissent is no longer
+AlignScore's.** Mistral-7B-Instruct-v0.3, 8 matched cells + 2 jina cells,
+10,000 answers, $0, label `mistral`, run through the same `LocalHFGenerator`
+via `--open-label`/`--open-model-id` so prompt and decoding are byte-identical
+to the qwen arm. Scored with all three evaluators and the falsification probe
+(number + entity, 3 scorers x 10 cells). Chain log: `outputs/logs/mistral_chain.log`.
+
+**⚠️ THE HEADLINE IS NOW 4 COMPARISONS IN 3 OF 8 CELLS, OVER 24.** The family
+grew 18 -> 24 and the count rose anyway, for the second time. Survivors:
+HotpotQA/mistral/**nli** p_holm 0.0072 (spread **0.0796**, the largest in the
+table), HotpotQA/gpt4omini/align 0.0115, HotpotQA/qwen/align 0.0242,
+HotpotQA/mistral/**claim** 0.0378. The two pre-existing cells reproduced
+(0.0005 and 0.0011 uncorrected).
+
+**The important structural change.** Every break before this was AlignScore's,
+which invited the reading that AlignScore is simply the sharper instrument.
+Mistral breaks under the two NLI-based aggregates and **not** under AlignScore
+(p_holm 0.3330). So *which* evaluator dissents is generator-dependent.
+
+**But it is still a resolving-power story, not a disagreement story**, and the
+mixed model is what settles that: the system x evaluator interaction is
+**undetectable in all 8 cells** (p 0.31-0.96). Both mistral cells sit at 0.96
+(NQ 0.9649, HotpotQA 0.9616), so the weakest evidence of interaction anywhere
+is on the arm with the largest spread. ⚠️ **tab:interaction carried only the 6
+three-generator rows until 2026-10-16** — B28 recorded the 8-cell result and
+the table was never extended; the two mistral rows are now in it (n=8,304 and
+n=5,076). After
+standardising each evaluator's scale the three see the same pattern across
+systems; they differ in whether it clears significance. Do not write
+"the evaluators disagree"; write "no detectable interaction".
+
+Everything else that moved, all re-measured at 8 cells:
+- **Standardised effect** (C1): AlignScore > NLI-max in **5 of 8**, was 5 of 6.
+  Mistral reverses it in BOTH datasets, and the largest value in the table is
+  NLI-max's 0.177 on HotpotQA/mistral.
+- **Omnibus** (C3b): permutation re-selecting extremes **2 of 24** (was 1 of
+  18), Friedman **1 of 24** (was 0) — HotpotQA/mistral/nli is the first cell in
+  the project to survive all three tests. Friedman reproduced to 4 dp;
+  permutation p for the gpt cell moved 0.0008 -> 0.0015 because a fourth
+  generator consumes the shared RNG stream, not because data changed.
+- **Power**: MDE 0.012-0.064, median 0.036, above the observed spread in **20
+  of 24**. AlignScore still has the lowest MDE in **all 8** cells. Exactly the
+  4 Holm survivors clear their own MDE and no others do.
+- **Refusals**: **8,055 of 32,000 (25.2%)**, 11.8% (NQ/qwen) to **39.0%**
+  (HotpotQA/mistral — the highest cell in the grid). The 3-generator subset
+  still sums to **5,776**, so the old figure reproduced exactly.
+- **Assertions, answered-only**: mistral NQ **1.724**, HotpotQA **1.410**. The
+  published 3.08 / 1.77 / 1.25 reproduced to 3 dp. The generator span stays
+  **1.17-2.77** pooled per generator, so Limitations needed no change.
+- **Refusal-rule sensitivity**: all three rules select the **same 4
+  comparisons**; nothing breaks under one rule and not another.
+- **Entity substitution**: the number-vs-entity generator ordering reproduces
+  in **3 of 6 rows**, down from 5 of 6. Every failure is a transposition of
+  qwen and mistral, which sit within 0.03 of each other. The ordering of the
+  **extremes** (Claude lowest, GPT-4o-mini highest) holds in every row.
+- **Pairing / red flag 3**: spread moves by at most **0.0221** (the published
+  0.022 reproduced), ordering changes in 11 of 24. ⚠️ The old claim that the
+  ordering is unchanged in *every* surviving cell is **false** now:
+  HotpotQA/mistral/claim-min reorders, so no ordering is read off it.
+
+**The jina positive control, re-run at four generators and five systems**, goes
+from 4 comparisons in 3 of 8 cells to **8 in 5 of 8** — not to every cell, as it
+did at three generators (6 of 6). Three cells stay null (NQ/gpt4omini,
+NQ/mistral, HotpotQA/claude). What changes is *which* evaluator participates:
+with jina in, NLI-max breaks on NQ/qwen and claim-min in three further cells.
+Admitting one genuinely worse retriever makes the common evaluator register
+differences it otherwise calls null.
+
+⚠️ **`qwen_verbose` is still not a generator** (B25) and `mistral` is not a
+prompt control. `config.ACTIVE_GENERATORS` now has four labels and
+`OPEN_MODEL2_ID/LABEL` name the arm; seven `scripts/` and four `src/` lists had
+hardcoded generator tuples and all were threaded. Mistral's jina cells had claim-min and
+AlignScore but no NLI, because generation outran the chain's 8-cell gate; **NLI
+was backfilled 2026-10-16** (`--phase d` — `--phase e` is AlignScore and
+silently skips, exit 0, when the align env is absent), so all four generators
+now cover all five embedders under all three evaluators. **The LLM judge was run on mistral
+2026-10-16 and the correctness results are now four-generator** — see B29.
+
+**B29 — the judge now covers mistral, and the correctness results are
+four-generator.** 8 matched cells, 8,000 rows, `claude-opus-5` at
+`effort: low` — the same model and the same byte-identical prompt as the 24
+existing cells, because correctness figures across arms are otherwise not
+comparable. **$13.74** total ($0.7159 calibration + $13.02), **0 errors, 0
+ungradable**, 2026-10-16. Run as **four parallel workers over disjoint
+checkpoints** (one per embedder, `--budget 6` each): sequential was 37 rows/min
+and ~3.4 h. Two cells must never be shared between workers — each worker saves
+its whole `done` dict, so the later save would drop the other's rows and pay
+for them twice. Judged files were written laptop-side and rsynced **up** to
+gpu1 (the reverse of the usual direction); both trees verified at 8,000 rows.
+
+**Judge coverage is the matched grid and nothing else.** 32 judged checkpoints
+= 4 generators x 4 systems x 2 datasets. jina (13 files), QASPER (15), C1
+`norag_*` (6), C2 `oracle_*` (6) and the 48 `ctx_*` ablation files are **still
+containment-graded**, so the accuracy figures in the control, QASPER and
+floor/ceiling sections are not comparable with the grid's. The Limitations item
+that used to say "three of the four generators" now says this instead.
+
+What moved:
+- **`faith_gap` over one family of 32: 8 significant, all negative** (was 5 of
+  24). 5 positive-signed cells, none with a CI excluding zero. Correcting
+  **within each arm's 8 tests gives 9**, so the count depends on the family;
+  the paper reports the stricter one and names both.
+- **E5-instruct on NQ is negative under all four generators** (-0.105, -0.115,
+  -0.123, -0.125) and survives the family correction under **three** — Claude's
+  p_holm is 0.0720, just outside.
+- **mistral is the least accurate arm**: NQ 0.675-0.709, HotpotQA 0.433-0.535.
+  Its HotpotQA hit-and-wrong cell is **48.4%**, the largest in the grid.
+- The 2x2 ranges all widened: cell size **17-48%** (was 17-36), refusal share
+  of that cell **50-87%** (was 69-87), committed-and-wrong **4.5-11.4%** (was
+  4.5-7.9). The open-weight arms refuse least inside the cell and so leave the
+  largest committed-wrong share, which means cell size and interpretable
+  remainder do **not** order the generators the same way.
+- `n_correct_abstained` is **0 in all 32 cells** — the judge still never grades
+  a refusal correct.
+
+**⚠️ Six errors in the published paper found while doing this, none of them
+about mistral.** All fixed 2026-10-16.
+1. **QASPER's evaluator-ordering claim was wrong twice over.** It said the main
+   grid orders "AlignScore above claim-min above NLI-max" and that QASPER keeps
+   it "for GPT-4o-mini alone". By **mean score** the grid orders
+   **AlignScore > NLI-max > claim-min** in all 8 cells — claim-min is a minimum
+   over claims and is lowest everywhere, never in the middle. The sentence had
+   imported the **falsification-response** ordering (B23, where claim-min *is*
+   second) and compared it against absolute means. On QASPER the ordering holds
+   for **Qwen and GPT-4o-mini** (the latter by 0.003) and inverts for **Claude
+   alone**, which reads NLI-max 0.747 / AlignScore 0.625 / claim-min 0.249. Two
+   quantities under one ordering claim — the B27 class.
+2. **The `faith_gap` count's multiplicity family was mislabelled.** "Over all
+   twenty-four judged cells ... finds six" is the **per-arm** correction summed
+   across arms; over one family of 24 it is **five**. Same class as B21.
+3. **"survives correction in each"** was true only under the per-arm family.
+4. **`tab:interaction` had 6 rows, not 8.** B28 recorded the 8-cell result and
+   the table was never extended. Added: NQ/mistral n=8,304 LR=1.41 p=0.9649,
+   HotpotQA/mistral n=5,076 LR=1.47 p=0.9616.
+5. **The omnibus appendix contradicted itself**: its closing line said "2 under
+   a paired test, 1 under permutation, 0 under Friedman" while the paragraph
+   above it said 4 / 2 / 1. The closing line was the 18-comparison version.
+6. **"Intervals are 0.064 to 0.129 wide"** are **half**-widths. The widths are
+   0.129 to 0.259. Now written as $\pm$0.064 to $\pm$0.129.
+Also stale and fixed: jina described as "all three generators" twice (it is
+four), "four of the six cells are null" (five of eight), the entity prose
+saying "five of the six" against its own caption's three of six, and the
+containment-bias range (above).
+
+**Two traps worth remembering from this session.**
+- **`conditional.py` defaults `--models` to every configured model**, which
+  silently admits jina and changes the published numbers: Claude/NQ's
+  hit-and-wrong cell reads **18.2%** with jina in and **17.4%** without. Always
+  pass the matched four when reproducing a table.
+- **`pkill -f "llm_judge.py --judge claude"` matched its own shell**, because
+  the pattern appears in the `bash -c` command line. It killed the wrapper
+  along with the target. Use a pattern that cannot match itself
+  (`llm_judge[.]py`).
+
+**`cost_tracker.summary()` under-reported judge runs** and is fixed: judge
+tokens accumulate in their own counters, so a judge-only run printed
+`Claude in/out toks: 0 / 0` and `Claude cost: $0.0000` beside a correct
+non-zero total. It now prints a Judge tokens line and a Judge cost line.
+
+**B30 — the three open prose items are closed, and the prose pass found two
+more published errors.** 2026-10-16, after B29. Nothing here needed compute or
+money; two of the three were pure writing and the third was a lookup.
+
+**Item 3, the citation.** `dasigi-etal-2021` is verified against the live
+Anthology page for 2021.naacl-main.365: title, all six authors in order,
+booktitle, year, pages and DOI match, and `month = jun` was missing and is
+added. The bib entry carries the date and what was checked. Every one of the 31
+entries has now had the B3 treatment.
+
+**Item 2, review items C4, C9 and C10.** The review text is in
+`Review of When the Evaluator.txt`; C1-C3, C5-C8 and C11 were answered in
+earlier commits and these three were the remainder.
+- **C4** — the spread statistic was justified as "what a practitioner is
+  exposed to". It is not: someone who adopts one system loses the distance from
+  it to the best, which equals max-minus-min only when they adopted the worst of
+  the four. It is now presented as a deliberately extreme sensitivity check,
+  the largest shortfall the choice can produce, and the paragraph points at the
+  two omnibus tests that pay for the selection. **It also said "An omnibus test
+  would be stricter; we do not run one", which Appendix~`app:omnibus`
+  contradicts** — that appendix runs two. Fixed.
+- **C9** — the claim-min recommendation now carries the cost it was omitting:
+  absolute scores collapse to 0.234 and 0.076 at the verbose arm's verbosity, so
+  a fixed grounding gate ported onto it rejects almost everything, and
+  "resisting the structural bias and remaining thresholdable are separate
+  properties" is now in the bullet rather than 200 lines away. The Definitions
+  section also presented "an answer is only as supported as its weakest
+  assertion" as definitional; it is now stated as the design choice it is, with
+  the note that a minimum is the most severe aggregation available and is what
+  drives those near-zero scores.
+- **C10** — the constructed-versus-natural tension is reconciled where the
+  margin is set. If natural hallucinations are harder to separate (Sinha), one
+  real fabrication moves the score by less than the 0.049-0.095 we measure, so a
+  margin anchored on constructed errors is **permissive, never strict**. The
+  sign is fixed even though we cannot size it. Stated in `sec:equivalence`, in
+  the Discussion bullet and cross-referenced from the Limitations item.
+
+**Item 1, Berend's sentence-level pass.** Measured rather than eyeballed, with
+a sentence-length scan over `paper.tex` + `sections/`. Sentences of 45+ words
+went **28 to 0** and 40+ went **49 to 11**, the remainder being dense table
+captions. 61 edits in all, none of which changes a number: the rule was to split
+clauses and never drop a hedge, a population label or a scope qualifier, since
+in this paper those are the content. Two comma splices and one comma standing
+where a full stop belongs (Limitations item 1, "assertions per answer, The
+four generators") were fixed on the way, and the two Limitations items that both
+opened "Correctness is graded by..." now open differently.
+
+**⚠️ Two more published errors, found by rewriting the sentences that carried
+them.** Neither is about Mistral; both are the B27 class again.
+7. **`sections/direction.tex` contradicted itself.** Paragraph 1 was updated for
+   the fourth generator ("claim-min fails in four of eight, all four on the two
+   open-weight generators") and **paragraph 2 was left at the three-generator
+   version** ("two of its six combinations ... both on the open-weight
+   generator"). Rewritten from `tab:8`: Qwen inverts the split on both datasets
+   (+0.63 NQ, -0.40 HotpotQA) and Mistral-7B is positive on NQ (+0.80) and flat
+   on HotpotQA. Drop claim-min and 15 of the remaining 16 follow the split; drop
+   the two open-weight generators and all 12 do. Also "twenty-four
+   generator-evaluator combinations" now uses the glossary's own unit name,
+   dataset-generator-evaluator.
+8. **"The evaluator ordering is stable across these six cells" is false under
+   either quantity, and its own table shows it.** Counted off the published
+   `tab:2`: the full ordering AlignScore > claim-min > NLI-max holds in **4 of 6
+   by mean drop** (NLI-max edges claim-min on HotpotQA under Qwen, 0.270 against
+   0.264, and under GPT-4o-mini, 0.391 against 0.389) and **5 of 6 by detection**
+   (claim-min edges AlignScore on NQ/Claude, 25.1% against 24.1%). Two
+   quantities under one ordering claim, which is exactly error 1 of B29. What
+   survives, counted over all eight cells: **AlignScore has the largest mean
+   drop in every one**, and **claim-min detects more than NLI-max in every one**;
+   the full three-way ordering holds in **7 of 8 by detection and 5 of 8 by mean
+   drop**. The entity probe reproduces the pattern, 5 of 6 by detection with the
+   same NQ/Claude exception. The paper now names the quantity every time it
+   states the ordering, in the body and in `tab:choose`'s caption.
+   **The QASPER cross-reference attached to that claim was also wrong twice
+   over**: it said the ordering "inverts for two of the three generators" on
+   QASPER, but **the falsification probe was never run on QASPER** (0
+   checkpoints, verified) so the response ordering was never measured there, and
+   what `sec:qasper` actually reports is the **mean-score** ordering inverting
+   for **one** generator. The paper now says the probe did not leave these two
+   datasets.
+
+**`tab:2full` was not "in full".** The falsification probe covers four
+generators and both falsification tables carried three, while the Conclusion
+quotes four values (0.054 / 0.251 / 0.261 / 0.451) — the fourth had no table
+behind it. Mistral-7B's six rows are now in `tab:2full`, and **all eighteen
+published rows were reproduced from the checkpoints to the last digit before
+the new six were added** (orig, falsified, floor, detection at 0.5, Wilson
+interval and floor-gate detection all matched). Mistral: NQ 0.818/0.567 det
+34.3%, 0.695/0.411 det 48.2%, 0.856/0.415 det 51.8%; HotpotQA 0.604/0.317 det
+52.5%, 0.470/0.209 det 59.6%, 0.768/0.287 det 71.5%. **n = 595 on HotpotQA**,
+not 800: it has the highest refusal rate in the grid, so fewer answers carry a
+grounded value to falsify. **`tab:2` now carries all four generators too** (2026-10-18,
+at the author's direction). The first attempt, one row per generator-evaluator,
+was reverted: 24 rows in a single column overflowed it by 20.6pt and cost
+**three pages**. What works is the original six-row shape widened to four
+column blocks --- `table*`, `\footnotesize`, `\tabcolsep` 4pt, 14 columns ---
+which costs **one page** and no overfull box. Generators in both falsification
+tables are now ordered by assertions per answer, most first (Claude, Qwen,
+Mistral-7B, GPT-4o-mini), so the two extremes the bolding marks are the outer
+blocks. All 72 values in the rendered table were checked back against the
+checkpoint-derived figures: 0 mismatches. Two prose consequences: "the
+open-weight generator falls between at 0.574" no longer identifies one arm and
+now names both (Qwen 0.574 against a floor of 0.470, Mistral 0.567 against
+0.492), and the intermediate-position prediction is attributed to Qwen, which is
+the arm it was made for.
+
+**The last two three-generator tables are closed (2026-10-18), and the ninth
+published error came out of the second one.** Found by auditing all 17 table
+environments for generator coverage; `tab:refusalrule` lists only the cells
+that move, and `tab:ablation` and `tab:choose` are Claude-arm or per-evaluator
+by design, so these two were the whole remainder.
+
+Reproduce-then-extend, as for `tab:2full`. **All 30 published values of `tab:3`
+and all 90 of `tab:9` reproduced exactly** from `~/rag-backup/checkpoints/n1000_v3`,
+and so did the entire 24-comparison spread table behind `tab:7` — the four Holm
+survivors at 0.0072 (HotpotQA/mistral/nli, spread 0.0796), 0.0115, 0.0242 and
+0.0378, which is B28 to 4 dp. After the edit, 180 rendered values were checked
+back against the reference: **0 mismatches**. Pages 30/30/31/31, 0 undefined
+refs, 0 overfull boxes, 0 rendered `??`; 230 tests pass.
+
+- **`tab:3`** (`app:assertions`) now has 13 columns. Mistral-7B responds by
+  +0.385, +0.135, +0.077, +0.031, +0.082 under NLI-max and +0.385, +0.246,
+  +0.080, +0.075, +0.139 under claim-min, on n = 422, 201, 97, 50, 30. **The
+  old caption was Claude-only**: "under claim-level aggregation it does not
+  [decay]" is true of Claude alone — Qwen, Mistral and GPT-4o-mini all still
+  decline under claim-min, less steeply than under NLI-max. On Mistral at three
+  and four assertions the two aggregates nearly coincide (0.077/0.080,
+  0.031/0.075). Caption rewritten to say which generator does what.
+- **`tab:9`** (`app:tost`) now has 24 rows. NQ/Mistral is 0/6, 0/6, 4/6, 6/6,
+  6/6 under NLI-max, and **HotpotQA/Mistral is the only cell in the table where
+  $\pm$0.10 still leaves a pair non-equivalent** — under NLI-max (5/6) and
+  claim-min (5/6) both. That is the arm with the largest spread in `tab:7`,
+  so the two readings agree.
+
+**⚠️ Published error 9, and it is not about Mistral.** The body sentence "on
+HotpotQA nothing is equivalent below $\pm$0.05 in any cell" was **already false
+in the three-generator table it cited**: HotpotQA/Claude under AlignScore is
+2/6 at $\pm$0.02 and 5/6 at $\pm$0.03, and HotpotQA/GPT-4o-mini is 1/6 at
+$\pm$0.03 under both NLI aggregates. Counted over all 18 HotpotQA rows now,
+**four contain an equivalent pair below $\pm$0.05** and none is equivalent at
+$\pm$0.01. Same class as errors 1, 7 and 8: a claim stated over a table whose
+own cells contradict it.
+
+**Five prose figures were stale behind these two tables** and are fixed. The
+abstract quoted the single-assertion response as "the three generators ...
+0.102, 0.409 and 0.485" (now "the four generators ... between 0.102 and 0.485");
+median answer lengths were "55, 25 and 15 words" for four generators (now 55,
+25, 20, 15); single-assertion word means were "23.9, 19.5 and 16.1" (now
+23.9, 19.5, 17.2, 16.1 — the three published values reproduced exactly on the
+NQ probe sample, and are **not** the all-answered figures, which are 23.6/17.4/
+14.7/15.6); the "third generator makes that residual legible" paragraph now
+reads Mistral as a **replication** of Qwen (1.72 against 1.77 assertions,
++0.385 against +0.409 at one assertion, overlapping intervals — two separately
+trained models agreeing on both quantities, with Claude the outlier at +0.102);
+and the single-assertion identity check is **3,249 answers, max 2.33e-05** over
+the four-generator grid. The published 2,472 at 1.66e-05 was confirmed to be
+the three-generator figure before it was replaced, so the "7 of 140 formatted"
+sentence is now marked as the grid as it then stood (it is 12 of 152 now).
+
+**⚠️ A run has now silently done nothing, or silently dropped an arm, EIGHT
+times**, each because a hardcoded default excluded what was being asked for:
+B10 (`GENERATORS`), the QASPER `--datasets` default, `faithfulness.py` /
+`claim_faithfulness.py` having no `--generators` flag, and five more found
+while adding Mistral (B28) — three `scripts/` generator lists, a **second**
+hardcoded list inside `entity_substitution_table.py` that kept the new arm in
+the pickle but dropped it from the printed table, and `refusal_scores.py`
+resolving `checkpoints/` relative to the cwd, so on gpu1 every load failed into
+a bare `except: continue` and produced an empty frame. All are fixed, the
+selected labels are **printed at startup**, and the two scripts that silently
+returned nothing now raise with the resolved path named. Any new arm must have
 its label threaded through *and* echoed in the first lines of the log.
+**Two traps specific to gpu1:** the code tree (`~/rag-faithfulness`) and the
+data tree (`~/rag_faithfulness`) differ only by hyphen/underscore, so any
+script using a relative checkpoint path needs `RAG_CHECKPOINT_DIR`; and
+`python3 -I` hides the `pip install --user` site-packages, so numpy/statsmodels
+vanish under it.
 
 ---
 
@@ -1060,11 +1397,11 @@ rewritten to fit.
 | **H5** | faithfulness-aware re-ranking cuts the worst model's RFG ≥15% | **not run** |
 
 The v6 spine is **measurement validity**: same queries, same answers, same
-test, different evaluator, different verdict. ⚠️ **The count is now 2 of 6 cells
-over an 18-comparison family** (B23), not the 2 of 4 at p=0.0005 recorded below
-— that figure predates the markdown fix (D1) and the open-weight arm. The
-progression 2/4 -> 1/4 -> 2/6 is documented in D1, B22 and B23; **2 of 6 is
-current**. Details in
+test, different evaluator, different verdict. ⚠️ **The count is now 4
+comparisons in 3 of 8 cells over a 24-comparison family** (B28), not the 2 of 4
+at p=0.0005 recorded below — that figure predates the markdown fix (D1) and both
+open-weight arms. The progression 2/4 -> 1/4 -> 2/6 -> 3/8 is documented in D1,
+B22, B23 and B28; **3 of 8 cells / 4 of 24 comparisons is current**. Details in
 `reports/2026-08-26_evaluator_dependence.md` and
 `reports/2026-08-25_perturbation_check.md`.
 

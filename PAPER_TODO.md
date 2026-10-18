@@ -23,62 +23,115 @@ below — page length first.
 
 ---
 
-## Next session starts here — rewritten 2026-10-07
+## Next session starts here — rewritten 2026-10-16
 
-**The paper is finished to draft. Two automated review passes done. Everything
-is committed and pushed.** Latest report:
-`reports/2026-10-07_reviews_and_verbosity_control.md`. Prior:
-`reports/2026-09-16_all_results.md`.
+**The fourth generator is in and the paper is updated for it.** Mistral-7B ran
+2026-10-15 (CLAUDE.md B28) and closed the review's one weakness that writing
+could not fix. Latest reports: `reports/2026-10-07_reviews_and_verbosity_control.md`,
+then the B28 block in CLAUDE.md.
 
 | | |
 |---|---|
-| Paper | `paper/acl/main-preprint.pdf` — **22 pages, send this one to Berend** |
-| Build | 0 undefined refs, 0 overfull boxes, 230 tests pass |
-| Review | **3.5 Borderline Conference**, soundness 4, excitement 3.5 |
-| Red flags | all 13 closed or explicitly stated |
-| Berend's points | all 14 closed or explicitly stated |
+| Paper | `paper/acl/main-preprint.pdf` — **send this one to Berend** |
+| Build | 4 variants, **0 undefined refs, 0 overfull boxes, 0 rendered ??**; 230 tests pass |
+| Headline | **4 comparisons in 3 of 8 cells, Holm over 24** (was 2 of 6 over 18) |
+| Grid | **32,000 answers**, 8,055 refusals (25.2%) |
+| Generators | four: Claude Haiku 4.5, GPT-4o-mini, Qwen2.5-7B, Mistral-7B |
 | Experiments | all run; nothing paid remains |
-| Citations | 31 entries, all cited, 1 unverified (see below) |
-
-### The review named its own price for 4.0, and both halves are done
-
-Engage ARES/RAGVUE and say whether the problems reach past NLI-style evaluators
-(new §2.4), and give practitioners a decision pathway rather than cautions
-(new §12.1). The strongest argument turned out to be one we already had:
-**AlignScore is not an NLI model and the verbosity control hits it hardest**, so
-the structural bias attaches to scalar aggregation over a multi-assertion
-answer, not to entailment.
 
 ### What is actually left, in priority order
 
-1. **Generator coverage (n=3).** The review's named *downside* risk and the only
-   weakness writing cannot fix. Needs a fourth model run end to end.
-   `qwen_verbose` does **not** count — same weights (see CLAUDE.md B25).
-2. **Verify `dasigi-etal-2021`** (QASPER) against the ACL Anthology. The only
-   citation never put through the B3 check, and §6/§6b of CLAUDE.md is a list of
-   four wrong titles and five wrong author attributions.
-3. **Decide the venue.** The ARR 12 Oct 2026 deadline passed unused. A venue
-   with a hard 8-page limit needs the supplementary sections moved to the
-   appendix first — body is ~14 pages; the candidates and their word counts are
-   in the CLAUDE.md Format row.
-4. Optional: quantify the constructed-vs-natural error gap (review comment 3
-   suggests 50–100 hand-annotated natural errors). This is the caveat Sinha
-   supplies and we cannot currently size.
-5. Optional, free: context-ablation rows were never scored for faithfulness.
-6. Optional: re-ranking is one λ on one system.
+1. ~~Berend's sentence-level simplification pass~~ — **done 2026-10-16.**
+   Measured, not eyeballed: sentences of 45+ words went **28 to 0**, 40+ went
+   **49 to 11** (the rest are dense table captions). 61 edits, no number moved;
+   the rule was to split clauses and never drop a hedge, a population label or a
+   scope qualifier. The scan is reproducible — see B30.
+2. ~~Review items C4, C9, C10~~ — **done 2026-10-16.** C4 reframes the spread
+   as a deliberately extreme sensitivity check (the old practitioner
+   justification was simply wrong) and drops a sentence that contradicted the
+   omnibus appendix; C9 puts claim-min's thresholdability cost into the
+   recommendation and states its aggregation as a design choice; C10 reconciles
+   constructed-vs-natural where the margin is anchored, and names the direction
+   of the error — permissive, never strict. The review text is in
+   `Review of When the Evaluator.txt`; **every C item is now closed.**
+3. ~~Verify `dasigi-etal-2021`~~ — **done 2026-10-16** against ACL Anthology
+   2021.naacl-main.365. Title, six authors in order, booktitle, pages, publisher
+   and DOI all match; `month = jun` added. All 31 entries have now had the B3
+   check.
+4. **Decide the venue.** ⚠️ **The only item above that is still open, and it is
+   yours rather than a task.** A hard 8-page limit is served by
+   `main-8page.tex`, which already exists as the compact build of the same
+   source (30 pages, body ~14).
+
+### ~~One layout decision left behind by B30~~ — decided 2026-10-18
+
+`tab:2` now carries all four generators, as a six-row `table*` at
+`\footnotesize` with four column blocks. The row-per-generator-evaluator
+alternative was tried first and reverted: it overflowed the column by 20.6pt
+and cost three pages, against one page for the wide form. Both falsification
+tables are ordered by assertions per answer, most first, so the bolded extremes
+are the outer blocks. All 72 rendered values re-checked against the
+checkpoints, 0 mismatches.
+
+### ~~Two appendix tables are still three-generator~~ — closed 2026-10-18
+
+Both now carry four generators, ordered by assertions per answer like the two
+falsification tables. Every previously published value was reproduced from
+`~/rag-backup/checkpoints/n1000_v3` before a new row was added — all 30 values
+of `tab:3` and all 90 of `tab:9` matched to the last digit, and so did the whole
+24-comparison Holm family behind `tab:7` (the four survivors at 0.0072, 0.0115,
+0.0242 and 0.0378). After the edit, 180 rendered values re-checked against the
+reference: 0 mismatches.
+1. **`tab:3`** (`app:assertions`) — Mistral-7B at 1, 2, 3, 4, 5+ assertions
+   responds by +0.385, +0.135, +0.077, +0.031, +0.082 under NLI-max and
+   +0.385, +0.246, +0.080, +0.075, +0.139 under claim-min, on n = 422, 201, 97,
+   50, 30.
+2. **`tab:9`** (`app:tost`) — NQ/Mistral 0/6, 0/6, 4/6, 6/6, 6/6 under NLI-max;
+   HotpotQA/Mistral is the only cell in the table where $\pm$0.10 still leaves
+   a pair non-equivalent, under NLI-max and claim-min both.
+
+Five prose figures were stale behind them and are fixed: the abstract's
+three-generator single-assertion list, the median answer lengths (55, 25, 20,
+15 words), the single-assertion word means (23.9, 19.5, 17.2, 16.1), the
+"third generator" paragraph, and the single-assertion identity count
+(2,472 → 3,249, max 2.33e-05; the three-generator 2,472 at 1.66e-05 was
+confirmed first). **The `tab:9` body sentence was wrong independently of
+Mistral** — see error 9 in CLAUDE.md B30.
+5. ~~Mistral's jina cells have no NLI~~ — **done 2026-10-16**. The control now
+   covers four generators and five systems: 8 comparisons in 5 of 8 cells,
+   against 4 in 3 of 8 for the matched four.
+   ~~Still open and paid: the LLM judge was never run on Mistral~~ — **done
+   2026-10-16**: 8,000 rows, $13.74, 0 errors, 0 ungradable. Every
+   correctness-conditioned result is now a four-generator result over 32 judged
+   cells, and `faith_gap` over that family gives 8 significant, all negative
+   (was 5 of 24). See CLAUDE.md B29. **Nothing paid remains open.**
+6. Optional: quantify the constructed-vs-natural error gap (50-100 hand-annotated
+   natural errors). This is the caveat Sinha supplies and we cannot size.
+7. Optional, free: context-ablation rows were never scored for faithfulness;
+   re-ranking is still one lambda on one system.
 
 ### Do not regress
 
-- **Prompt parity.** `build_prompt`'s default is byte-identical across
-  generators and pinned by `tests/test_prompt_styles.py`. A prompt difference
-  *between* generators confounds H3. The `verbose` style exists only for the
-  §5.5 control and carries its own checkpoint label.
-- **Assertion figures are answered-only.** An all-rows figure (1.117/2.728) was
-  mixed into Limitations until 2026-10-07. See CLAUDE.md B27.
+- **Prompt parity.** `build_prompt`'s default is byte-identical across all four
+  generators, pinned by `tests/test_prompt_styles.py`. The two open-weight arms
+  differ only in weights; `qwen_verbose` shares qwen's weights and is a control,
+  not a generator.
+- **Assertion figures are answered-only** (B27), and `perturb_report`'s
+  assertion table is **all rows** — do not read one for the other. The paper's
+  single-assertion figures (0.102/0.409/0.485) come from the **NQ-only
+  identity-check subset**, n=91/413/680, not the pooled assertion bucket.
+- **State the population and the aggregation for every figure.** Three slips of
+  this class are on record (B13, B27, and the two caught in B28).
 - **Copy derived checkpoints before exploring.** `results.equivalence_table()`
-  and `conditional.py` both overwrite artifacts describing a different
-  population. Main-grid probe summaries are preserved at
-  `checkpoints/n1000_v3/pre_w2verbose_2026-09-18/`.
+  and `conditional.py` overwrite artifacts describing a different population.
+  Mistral's probe checkpoints are preserved at
+  `checkpoints/n1000_v3/preserve_mistral_2026-10-16/`.
+- **`~/rag-backup` and gpu1 both hold the Mistral arm**, generation, scores and
+  the 8 judged checkpoints (verified 8,000 judged rows on each, 2026-10-16).
+  The judged files were written laptop-side and pushed **up** to gpu1, which is
+  the reverse of the usual direction — check both trees after a judge run.
+
+---
 
 ## 0. The one-line summary
 
@@ -275,7 +328,7 @@ From the ChatGPT review Berend commissioned (2026-08-19).
 | 🔴 4 | Selective NQ sampling | ✅ **stated** — Limitations bullet; cannot be fixed without redrawing the corpus. The C1 floor now quantifies the related Wikipedia dependence at 32.2% answerable with no retrieval |
 | 🔴 5 | Causal language exceeds identification | ✅ **done** — swept in the v6 rewrite |
 | 🟠 6 | ±0.05 TOST margin unjustified | ✅ **done** — margin sweep + empirical anchor |
-| 🟠 7 | Correctness metric inadequate | ✅ **done** — LLM judge over all 24 cells |
+| 🟠 7 | Correctness metric inadequate | ✅ **done** — LLM judge over all 32 matched cells (24 on 2026-08-30, Mistral 2026-10-16) |
 | 🟠 8 | Only 4 embedders | ✅ **five now** — and the fifth is a positive control, not a survey entry |
 | 🟠 9 | Only 2 English benchmarks | ✅ **three now** (QASPER); all still English, stated as a limitation |
 | 🟠 10 | Only 2 closed-source generators | ✅ **done** — Qwen2.5-7B open-weight arm |
@@ -350,7 +403,9 @@ than delaying a cycle for them.
 
 - The **four-null** faithfulness table → now 2 nulls, 2 significant (AlignScore).
 - **"22/24 equivalent at ±0.05"** → the margin sweep table.
-- Every **accuracy / 2×2** figure → provisional until the LLM judge runs.
+- Every **accuracy / 2×2** figure → ~~provisional until the LLM judge runs~~
+  **judged, all 32 matched cells** (2026-10-16). The 2×2 is now generator-major
+  with eight rows; cell size 17-48%, committed-and-wrong 4.5-11.4%.
 - **H3 "not supported"** → keep, but add that the comparison was not measuring
   a stable quantity, since evaluator sensitivity differs ~10× between
   generators.
