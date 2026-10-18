@@ -13,7 +13,7 @@ We report those unclipped, because the explanation is a design choice worth stat
 
 Order is inert. Reversing or shuffling the evidence moves accuracy by at most 1.7 points on either dataset. Holding length at five chunks and moving a single gold chunk between the first, middle and last position spans 0.727 to 0.757 on Natural Questions and 0.503 to 0.530 on HotpotQA. At $k = 5$ we see no position effect.
 
-Subset is not inert, and it bites only where composition does. Cutting the context to one gold chunk costs Natural Questions two points and HotpotQA thirty-six. The refusal column explains the gap: HotpotQA refusals go from 7.3\% to 75.7\%. Handed half of a multi-hop chain, the model declines instead of completing it from memory. This is the same refusal machinery that Section~\ref{sec:population} shows will distort a faithfulness average if those answers are left in it, and retrieval quality is what triggers it here.
+Subset is not inert, and it bites only where composition does. Cutting the context to one gold chunk costs Natural Questions two points and HotpotQA thirty-six. The refusal column explains the gap: HotpotQA refusals go from 7.3\% to 75.7\%. Handed half of a multi-hop chain, the model declines instead of completing it from memory. This is the same refusal machinery that Section~\ref{sec:population} shows will distort a faithfulness average if those answers are left in it. Here retrieval quality is what triggers it.
 
 \begin{table}[t]
 \centering\small
