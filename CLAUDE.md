@@ -1325,6 +1325,137 @@ vanish under it.
 
 ---
 
+**B31 — Part 1A of the 2026-10-19 consistency audit: every remaining
+three-generator figure is gone (2026-10-19).** A full read of the PDF found 17
+places still carrying three- (or two-) generator numbers. All were recomputed
+from `~/rag-backup/checkpoints/n1000_v3`, and every already-published value
+reproduced exactly before anything was extended. Pages still 30/30/31/31, 0
+overfull, 0 undefined, 0 `??`.
+- **`tab:entity` gains the Mistral column** (NQ 0.203/26.9, 0.233/37.1,
+  0.399/45.4; HotpotQA 0.312/54.6, 0.266/60.0, 0.429/64.4), columns now in the
+  `tab:2` order. Number-vs-entity generator ordering is still 3 of 6, but one
+  of the three (NQ/AlignScore) holds only because Qwen and Mistral **tie** on
+  the numeric probe at 51.8%. On NQ/NLI-max the entity swap is NOT a near-tie
+  (Mistral 26.9% vs Qwen 10.8%). Evaluator ordering by entity detection is **7
+  of 8** cells (was "5 of 6"); the exception is still NQ/Claude.
+- **`tab:refusalrule` was stale twice over**: 2 rows per rule at the old
+  18-family p_holms (0.0187/0.0090). It now has all 4 survivors per rule, and
+  the adopted rows equal `tab:7`. The judge-rule paired n on HotpotQA/Mistral is
+  **404**, not the published 423. "All three rules are anchored phrase matching"
+  was false (the third is the judge).
+- **⚠️ D4's "107 refusals, all Claude's" is a two-generator figure.** Over the
+  four-generator grid the canonical rule differs from the bare one on **759**
+  rows: Claude 107, Qwen 50, **Mistral 602**, GPT 0. And it is almost all the
+  **wider phrase list**, not the preamble strip (626 need only the list, 2 only
+  the strip): Mistral opens 378 refusals with "The provided context does not".
+  "All four generators prepend the preamble" was false (Claude 97.5% of attempts,
+  Qwen 12.5%, Mistral 17.6%, GPT 0.2%).
+- **§6.1's detector comparison was the pre-D1 2026-08-30 recheck** (two arms,
+  two evaluators; 19/55 rows, p 0.223→0.048). Recomputed over all 24: 68/173
+  rows move on NQ/HotpotQA Claude; the same two comparisons cross uncorrected
+  0.05 (NQ/Claude/NLI 0.155→0.032, HotpotQA/Claude/align 0.063→0.022); the judge
+  adds up to 3.4 refusals per hundred, and reorders no cell.
+- Mistral figures added: markdown on attempts **0.2%**; copying overlap
+  **0.165** (lowest of four), r +0.046 [-0.008, +0.102]; refusals score below
+  attempts under all three evaluators, so Table 7 says "2 of 4 gens". Probe
+  cases are **6,179 scored of 9,286 eligible**; HotpotQA/Mistral is a full census
+  (595/595). MDE ranges: NLI-max .021–.061, claim-min .024–.064.
+- Also fixed: the Limitations survivor spreads (0.041–0.080), the "three NQ
+  cells", §7.3's "just outside" (p_holm 0.154), the Limitations item claiming the
+  contingency table was two-arm (it is 32 cells; item deleted), `tab:power`'s
+  "the two" (three), H.1's single "exception", "largest" → "exceeds NLI-max",
+  QASPER "three of the four generators, Mistral-7B excepted", and the abstract's
+  "up to 200 answers".
+**Part 1B, same day — the logic contradictions.** Main PDFs now **31 pages**
+(compact 31), 0 overfull/undefined/`??`.
+- "The ordering holds at either gate" was false: at the floor-anchored gate
+  the evaluator ordering breaks (AlignScore lowest on NQ/GPT, claim-min < NLI-max
+  on HotpotQA/Claude); the generator extremes hold in 5 of 6 rows (NQ/AlignScore
+  is the exception).
+- `tab:3` non-monotonicity described per generator (Claude never reverses, GPT
+  reverses twice), not "each once".
+- "Most responsive" on Claude/NQ is **claim-min 25.1%**, then AlignScore 24.1%.
+- "Shortening buys more than switching evaluators" is now scoped to Qwen (24.7 /
+  37.4 lost vs 16.7 / 19.7 gained) and flagged as **inferred**: length was only
+  ever varied upward. "It is free" dropped (it moves refusals; correctness
+  unmeasured).
+- "Answer structure is therefore causal" → within-one-model wording that names
+  the refusal/floor side effects. No "causal" remains in the paper.
+- The claim-level recommendation is scoped to checking individual answers.
+- §8 anchor: claim-min 0.093–0.179, AlignScore 0.243–0.364, per system over both
+  datasets (same population as NLI-max's 0.049–0.095; the old 0.165/0.247 were
+  NQ-pooled).
+- QASPER's generator reversal holds under NLI-max only (main grid: Claude 0.904 /
+  0.706); claim-min already ranks GPT first.
+- **`\movedref` / `\movedrefs`** print "Section(s)" in the full build and
+  "Appendix/Appendices" in the compact one. Use them for any reference into a
+  `sections/*.tex` label; 21 references converted ("Appendix 2.1" was wrong in
+  the main build, the rest were wrong in the compact one).
+- Small: six → eight tests (App. K), the geometric analysis uses no generator
+  (re-ranking is the Claude/one-system arm), "quadruples" → "almost fivefold".
+**Part 2, same day — the style pass.** Pages unchanged (31/31/31/31), clean.
+- Vague attribution removed: "established frameworks often separate refusals",
+  "re-ranking is often proposed", "the sample sizes people use" (now 400–800
+  paired queries per cell).
+- Repetition cut: §7.1's doubled "precondition failing", §7's doubled "all four
+  surviving comparisons are on HotpotQA", the third "statement about
+  resolution, not about the systems".
+- §9's distractor floor now explained (9.0/15.0% sits BELOW no-retrieval
+  32.2/20.9% because the model refuses 66.7/91.3% of the time), not "consistent".
+- §2.1's "will appear in any claim-decomposed metric" scoped to min-aggregation,
+  "we tested one".
+- Two em-dash asides, "OWN", `one\'s` (rendered "oneś"), mixed numerals
+  ("20 of the twenty-four" ×3, "4 / 2 / 1"), prose en-dash ranges, and two
+  Title-Case subsection headings fixed. Convention: Title Case for top-level
+  sections, sentence case for subsections and appendices.
+- Of 77 "X, not Y"/"rather than" sentences, only the repeated or ornamental ones
+  were trimmed (8); the rest state method choices and stay.
+**Part 3, same day — and it found a second mechanism.** Main PDFs 31 pages,
+compact 32, clean.
+- **⚠️ The "Claude-specific residual" travels with an attribution preamble.**
+  Claude opens 97.5% of attempts with "Based on / According to the provided
+  context," (Qwen 12.5%, Mistral 17.6%, GPT 0.2%). Single-assertion NQ, NLI-max:
+  Qwen +0.457 [.418,.495] without it vs **+0.129** [.076,.187] with it; Mistral
+  +0.426 vs **+0.162** [.091,.238]; Claude (all with it) **+0.102** [.064,.146],
+  inside both. 2+ assertions with it: 0.048 / 0.045 / 0.041. Same n as `tab:3`
+  (91, 413, 422, 680).
+- **Direct test RUN 2026-10-19** (`scripts/preamble_strip_rescore.py`, gpu1,
+  copied as a snapshot into `~/rag_faithfulness/outputs/preamble_rescore/` so
+  gpu1's git tree was not touched; result `checkpoints/n1000_v3/
+  preamble_strip_{nli,claim,align}.pkl`). Rebuilds the probe's own 2,722 cases
+  whose answer opens with the clause; as-written scores reproduce the
+  checkpoints with **max diff 0.0**. NLI-max, clause stripped from both answers:
+  single-assertion Claude NQ +0.102 → **+0.272** (diff [+0.098, +0.237]),
+  HotpotQA +0.149 → **+0.470**; detection 10.1→42.5% and 20.4→80.6%; Mistral NQ
+  +0.162 → +0.291. Closes the gap to unprefixed answers on HotpotQA, ~45% of it
+  on NQ. The clause also inflates the untouched answer (0.950 vs 0.788). **At 2+
+  assertions stripping changes ~nothing** (Claude NQ +0.038, else ~0), so the
+  earlier "2+ answers with the clause agree again" reading was wrong and is
+  gone: dilution carries the 2+ effect.
+- **claim-min and AlignScore finished 2026-10-19 19:26 UTC**, both reproducing
+  the checkpoints with max diff 0.0; all three result files are in the laptop
+  backup. Claim-min = NLI-max on 1 assertion; at 2+ stripping lifts Claude's
+  detection 28.0→39.1% (NQ) and 42.5→62.4% (HotpotQA), mean +0.032/+0.041.
+  **AlignScore is shielded too**, less: Claude single-assertion +0.497→+0.656
+  (NQ, diff [+0.120,+0.196]) and +0.678→+0.782 (HotpotQA); ~+0.025 at 2+. So
+  the clause is not an NLI-model quirk. In §5.4.
+- ⚠️ The 2026-10-21 backup dry run also listed **pre-existing analysis files
+  that differ between gpu1 and the backup** (`conditional_faithfulness_*`,
+  `faith_gap_significance_*`, `necessity_sufficiency_*`, `query_frame.pkl`, …).
+  They were deliberately NOT synced: which side holds the version behind the
+  paper is unverified. Check before any full `rsync`.
+- **The verbosity result survives the preamble.** qwen_verbose raised the
+  preamble share 24.2→47.2% (NQ), 8.2→27.6% (HotpotQA), but among no-preamble
+  answers NLI-max detection still falls 41.0→10.4% and 57.8→17.1%.
+- **Table 4's sign is the refusal wording.** HotpotQA: GPT refuses with the
+  bare template 100% and Qwen 92.5%, NLI-max 0.93 on it; Claude and Mistral
+  explain what the context lacks in 100% of refusals, NLI-max 0.31 / 0.36.
+- Worked example added to §5.1 (nq_98, all-mpnet: "March 8" → "March 13";
+  Claude NLI 0.985→0.983 vs GPT 0.905→0.068; AlignScore 0.971→0.054 /
+  0.986→0.018). §12.2 "barely matters" replaced with 56.6% vs 75.4%. "Most
+  widely used" / "most such scores" / "the configuration people deploy" are
+  softened, since no citation supports them.
+
 ### Code moves and reporting changes of 2026-09-01
 
 - **`src/metrics.py` is now `src/legacy/rfg.py`.** The gap metric is retired

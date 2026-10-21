@@ -5,28 +5,28 @@ A numeric substitution is one error type, and the pattern above could be specifi
 
 The verbosity effect survives the change of error type. Under the entailment aggregate on Natural Questions a falsified entity moves the score by 0.082 for the most verbose generator and 0.403 for the tersest, against 0.054 and 0.451 for numbers. Detection at the fixed gate is 9.1\% against 48.8\%, against 5.1\% and 56.6\%. The gap narrows slightly and does not close.
 
-Ordering by generator holds in three of the six dataset-evaluator combinations, against five of six when only three generators were compared. Every failure the fourth generator introduces is a transposition of Qwen and Mistral-7B, which sit within 0.03 of each other. The one exception that is not a near-tie is claim-min on Natural Questions, where the verbose generator is scored \emph{more} sensitively than the mid-length one (0.163 against 0.112, detection 25.9\% against 17.9\%). The ordering of the extremes survives throughout. Assertion count predicts the ordering well but it does not fix it.
+Ordering by generator holds in three of the six dataset-evaluator combinations, against five of six when only three generators were compared. Both failures the fourth generator introduces are transpositions of Qwen and Mistral-7B under NLI-max, and on the numeric probe those two sit within 0.03 of each other (0.351 against 0.343 on Natural Questions, 0.548 against 0.525 on HotpotQA), so little is needed to reorder them. On the entity probe the Natural Questions swap is not small: Mistral-7B detects 26.9\% of falsified entities and Qwen 10.8\%. The remaining failure, present with three generators too, is claim-min on Natural Questions, where Claude is scored \emph{more} sensitively than Qwen (0.163 against 0.112, detection 25.9\% against 17.9\%). The ordering of the extremes survives throughout. Assertion count predicts the ordering well but it does not fix it.
 
-Entity and numeric substitution are not interchangeable, and neither is uniformly the harder case. Both agree closely for the tersest generator, within 0.05 in every cell. They diverge for the other two, and in opposite directions. On HotpotQA the entailment aggregate responds roughly twice as strongly to a falsified entity as to a falsified number for the verbose generator (0.178 against 0.085). On Natural Questions the mid-length generator shows the reverse, by a wider factor (0.088 against 0.261). A claim that an evaluator does or does not catch fabrications is therefore a claim about a particular kind of fabrication. The two error types we tested do not license extrapolation to each other. They certainly do not license it for unsupported causal claims or contradicted negations, which we did not test.
+Entity and numeric substitution are not interchangeable, and neither is uniformly the harder case. Both agree closely for GPT-4o-mini and Mistral-7B, whose mean drops under the two error types differ by at most 0.048 and 0.052 across all six cells. They diverge for Claude and Qwen, and in opposite directions. On HotpotQA the entailment aggregate responds roughly twice as strongly to a falsified entity as to a falsified number for the verbose generator (0.178 against 0.085). On Natural Questions the mid-length generator shows the reverse, by a wider factor (0.088 against 0.261). A claim that an evaluator does or does not catch fabrications is therefore a claim about a particular kind of fabrication. The two error types we tested do not license extrapolation to each other. They certainly do not license it for unsupported causal claims or contradicted negations, which we did not test.
 
 \begin{table*}[t]
 \centering
 \small
-\begin{tabular}{llrrrrrr}
+\begin{tabular}{llrrrrrrrr}
 \toprule
- & & \multicolumn{2}{c}{\textbf{Claude Haiku 4.5}} & \multicolumn{2}{c}{\textbf{Qwen2.5-7B}} & \multicolumn{2}{c}{\textbf{GPT-4o-mini}} \\
-\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
-\textbf{Dataset} & \textbf{Evaluator} & $\Delta$ & Det. & $\Delta$ & Det. & $\Delta$ & Det. \\
+ & & \multicolumn{2}{c}{\textbf{Claude Haiku 4.5}} & \multicolumn{2}{c}{\textbf{Qwen2.5-7B}} & \multicolumn{2}{c}{\textbf{Mistral-7B}} & \multicolumn{2}{c}{\textbf{GPT-4o-mini}} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}\cmidrule(lr){9-10}
+\textbf{Dataset} & \textbf{Evaluator} & $\Delta$ & Det. & $\Delta$ & Det. & $\Delta$ & Det. & $\Delta$ & Det. \\
 \midrule
-NQ & NLI-max & 0.082 & 9.1\% & 0.088 & 10.8\% & 0.403 & 48.8\% \\
- & Claim-min & 0.163 & 25.9\% & 0.112 & 17.9\% & 0.431 & 53.4\% \\
- & AlignScore & 0.232 & 21.9\% & 0.290 & 33.1\% & 0.673 & 77.5\% \\
+NQ & NLI-max & 0.082 & 9.1\% & 0.088 & 10.8\% & 0.203 & 26.9\% & 0.403 & 48.8\% \\
+ & Claim-min & 0.163 & 25.9\% & 0.112 & 17.9\% & 0.233 & 37.1\% & 0.431 & 53.4\% \\
+ & AlignScore & 0.232 & 21.9\% & 0.290 & 33.1\% & 0.399 & 45.4\% & 0.673 & 77.5\% \\
 \midrule
-HotpotQA & NLI-max & 0.178 & 28.6\% & 0.267 & 54.1\% & 0.412 & 75.1\% \\
- & Claim-min & 0.132 & 38.2\% & 0.262 & 67.3\% & 0.412 & 75.9\% \\
- & AlignScore & 0.321 & 47.6\% & 0.463 & 69.4\% & 0.668 & 90.6\% \\
+HotpotQA & NLI-max & 0.178 & 28.6\% & 0.267 & 54.1\% & 0.312 & 54.6\% & 0.412 & 75.1\% \\
+ & Claim-min & 0.132 & 38.2\% & 0.262 & 67.3\% & 0.266 & 60.0\% & 0.412 & 75.9\% \\
+ & AlignScore & 0.321 & 47.6\% & 0.463 & 69.4\% & 0.429 & 64.4\% & 0.668 & 90.6\% \\
 \bottomrule
 \end{tabular}
-\caption{Response to a falsified \emph{entity}, on the same answers and the same fixed 0.5 gate as Table~\ref{tab:2}. $\Delta$ is the mean drop in score. n = 783, 740, 725 and 720 on NQ and 800, 771, 762 and 572 on HotpotQA; detection is computed over the cases scoring above the gate before falsification. With three generators the generator ordering of Table~\ref{tab:2} was reproduced in five of six rows. With four it is reproduced in three of six, and every failure is a transposition of the two adjacent mid-range generators, Qwen and Mistral-7B, whose detection rates differ by less than 0.03 in the rows that swap (0.541 against 0.546 under NLI-max on HotpotQA). The exception that does not fit that description is claim-min on NQ, where Claude and Qwen swap, as it did with three generators. The ordering of the extremes --- Claude lowest, GPT-4o-mini highest --- holds in every row under both error types.}
+\caption{Response to a falsified \emph{entity}, on the same answers and the same fixed 0.5 gate as Table~\ref{tab:2}. $\Delta$ is the mean drop in score. n = 783, 740, 720 and 725 on NQ and 800, 771, 572 and 762 on HotpotQA; detection is computed over the cases scoring above the gate before falsification. With three generators the generator ordering of Table~\ref{tab:2} was reproduced in five of six rows. With four it is reproduced in three of six, one of them (NQ under AlignScore) only because Qwen and Mistral-7B tie on the numeric probe at 51.8\%. Two of the three failures are transpositions of those two mid-range generators under NLI-max, which sit within 0.03 of each other on the numeric probe. The third is claim-min on NQ, where Claude and Qwen swap, as it did with three generators. Generators are ordered as in Table~\ref{tab:2}. The ordering of the extremes --- Claude lowest, GPT-4o-mini highest --- holds in every row under both error types.}
 \label{tab:entity}
 \end{table*}
