@@ -7,7 +7,7 @@ Everything above compares retrieval systems against each other. That comparison 
 
 \textbf{The ceiling.} Supplying the answer-bearing chunks and nothing else gives 77.0\% on Natural Questions and 86.8\% on HotpotQA. On HotpotQA that works as a ceiling, with the best of the four systems reaching 81.0\% of it and the worst 60.8\%. On Natural Questions three of the four exceed it, at 102.2\%, 102.6\% and 103.4\%.
 
-We report those unclipped, because the explanation is a design choice worth stating. Our oracle supplies answer-bearing chunks and nothing around them. That is less context than top-five retrieval, not more. Questions that need the surrounding material get refused under it, 12.9\% of the time here. It therefore ceilings evidence selection and not accuracy. On a single-hop dataset the extra material retrieval drags in pays for the extra noise. Where composition is the difficulty it stops paying.
+We report those unclipped, because the explanation is a design choice worth stating. Our oracle supplies answer-bearing chunks and nothing around them. That is less context than top-five retrieval, not more. Questions that need the surrounding material get refused under it, 12.9\% of the time on Natural Questions. It therefore ceilings evidence selection and not accuracy. On a single-hop dataset the extra material retrieval drags in pays for the extra noise. Where composition is the difficulty it stops paying.
 
 \textbf{Arrangement.} We vary how the gold evidence is presented, over 300 queries per condition (Table~\ref{tab:ablation}).
 
@@ -32,7 +32,7 @@ one gold, last & .727 & .153 & .510 & .723 \\
 distractors only & \textbf{.090} & .667 & \textbf{.150} & .913 \\
 \hline
 \end{tabular}
-\caption{Accuracy and refusal rate when the gold evidence is rearranged, $n = 300$ per condition, Claude. The last four conditions hold context length at five chunks. Order is inert. Losing half a multi-hop chain is not, and it converts into refusals instead of errors.}
+\caption{Accuracy and refusal rate when the gold evidence is rearranged, $n = 300$ per condition, Claude. These are the first 300 queries of each dataset, so ``all gold'' is the ceiling condition of the text on a subset. Its .790 and .877 differ from the ceiling's 77.0\% and 86.8\% because of the subset, and the ceiling run restricted to the same 300 queries gives .790 and .877 too. The last four conditions hold context length at five chunks. Order is inert. Losing half a multi-hop chain is not, and it converts into refusals instead of errors.}
 \label{tab:ablation}
 \end{table}
 

@@ -1456,6 +1456,31 @@ compact 32, clean.
   widely used" / "most such scores" / "the configuration people deploy" are
   softened, since no citation supports them.
 
+**B32 — the second-round review's editorial items (2026-10-25).** The review
+moved to Minor Revision; every item was wording, and no number was re-run.
+Three lookups behind the fixes, all against the laptop backup:
+- **⚠️ Refusals come from two sources, by design.** With `--correct-source
+  judge`, `correctness.load_correctness` takes `abstained` from the JUDGE
+  (`correctness.py:331`), so faith_gap and the 2x2 use the judge's refusal
+  flag and everything else uses `is_abstention`. §4 used to say "one rule
+  throughout"; it now names the exception. **220 rule-refusals (2.7% of
+  8,055) are graded correct by the judge**, all decline-then-answer rows
+  (e.g. nq_150, Alan Shearer). 0 judge-flagged refusals are graded correct.
+  The calibration's "tenth row" is nq_150.
+- **Table 6 "all gold" = the first 300 queries of the oracle condition.** The
+  ceiling run restricted to those 300 gives .790/.127 and .877/.073 exactly.
+- **Qwen's opening-clause share is 12.4% of attempts** (789/6,347, pooled,
+  canonical rule); the published 12.5% was the bare rule. §5.5's 24.2/8.2% is
+  the PROBE CASES, not attempts.
+- Mistral NQ's two +0.80 Spearman coefficients come from different rankings
+  (NLI-max swaps the top two systems vs NDCG@5, claim-min the bottom two).
+Text: refusal provenance in §4/§6.1/§6.2/Limitations/Discussion (the 365-row
+defect is past tense and predates every reported number); units named for the
+omnibus (permutation keeps HotpotQA/GPT/align + HotpotQA/Mistral/nli,
+Friedman the latter); §7 resolving power now "two parts" with the Mistral
+reversal; NLI-max named for .021–.061; "largely diluted"; "share no unit"
+dropped. Main PDFs 32 pages, compact 33, clean.
+
 ### Code moves and reporting changes of 2026-09-01
 
 - **`src/metrics.py` is now `src/legacy/rfg.py`.** The gap metric is retired
