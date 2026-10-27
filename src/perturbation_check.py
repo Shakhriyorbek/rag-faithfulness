@@ -416,7 +416,7 @@ class _Scorer:
                                 evaluation_mode='nli_sp')
         else:
             from nli import NLIScorer
-            self.m = NLIScorer()
+            self.m = NLIScorer(score_mode='ec' if kind == 'nli_ec' else 'entail')
             if kind == 'claim':
                 import claim_faithfulness
                 self.cf = claim_faithfulness
@@ -427,7 +427,9 @@ class _Scorer:
         # models directly, so the strip has to happen here or those two would
         # still see the raw string. Idempotent, so double-stripping is safe.
         answer = textnorm.strip_markdown(answer)
-        if self.kind == 'nli':
+        if self.kind in ('nli', 'nli_ec'):
+            # nli_ec: the same six premises and maximum, each scored as
+            # (1 + P(entail) - P(contradict)) / 2 instead of P(entail).
             return self.m.score_chunks(chunks, answer)['nli_max']
         if self.kind == 'nli_concat':
             # F5 diagnostic: the SAME NLI model on the SAME answer, but with
@@ -667,9 +669,12 @@ def main():
     ap.add_argument('--scope-n', type=int, default=None,
                     help='checkpoint scope N (default: config default)')
     ap.add_argument('--scorer', default='nli',
-                    choices=['nli', 'nli_concat', 'claim', 'align', 'numeric'],
+                    choices=['nli', 'nli_ec', 'nli_concat', 'claim', 'align',
+                             'numeric'],
                     help='nli = whole-answer max over chunks (the current '
-                         'metric); nli_concat = the same model on the '
+                         'metric); nli_ec = the same, scoring each premise as '
+                         '(1 + P(entail) - P(contradict)) / 2 (Steen et al. '
+                         '2023); nli_concat = the same model on the '
                          'concatenated premise only, no per-chunk max (the F5 '
                          'premise-granularity diagnostic); claim = min over '
                          'claims of max over chunks; align = AlignScore (needs '

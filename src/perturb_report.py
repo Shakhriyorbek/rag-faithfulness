@@ -28,7 +28,7 @@ import claim_faithfulness as cf
 import config
 from utils import checkpoint_exists, load_checkpoint, set_scope
 
-SCORERS = ('nli', 'nli_concat', 'claim', 'align', 'numeric')
+SCORERS = ('nli', 'nli_ec', 'nli_concat', 'claim', 'align', 'numeric')
 BUCKETS = ((1, 1, '1'), (2, 2, '2'), (3, 3, '3'), (4, 4, '4'), (5, 10 ** 6, '5+'))
 
 

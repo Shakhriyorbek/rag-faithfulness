@@ -32,7 +32,11 @@ _OOM = tuple({e for e in (getattr(torch, 'OutOfMemoryError', None),
 class NLIScorer:
     """DeBERTa-v3-large NLI scorer with config-resolved entailment index."""
 
-    def __init__(self, model_name: str = config.NLI_MODEL, device: str = None):
+    def __init__(self, model_name: str = config.NLI_MODEL, device: str = None,
+                 score_mode: str = 'entail'):
+        if score_mode not in ('entail', 'ec'):
+            raise ValueError(f'score_mode must be entail or ec, got {score_mode!r}')
+        self.score_mode = score_mode
         self.device = device or config.DEVICE
         print(f'Loading NLI model {model_name}...')
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -48,8 +52,13 @@ class NLIScorer:
                 f'{self.model.config.id2label}'
             )
         self.entailment_idx = label2id['entailment']
+        self.contradiction_idx = label2id.get('contradiction')
+        if score_mode == 'ec' and self.contradiction_idx is None:
+            raise ValueError(f'No "contradiction" label in {model_name} config')
         print(f'  labels: {self.model.config.id2label}')
-        print(f'  entailment index: {self.entailment_idx}')
+        print(f'  entailment index: {self.entailment_idx}  '
+              f'contradiction index: {self.contradiction_idx}  '
+              f'score: {score_mode}')
 
         self.batch_size = config.NLI_BATCH_SIZE or self._pick_batch_size()
         print(f'  batch size: {self.batch_size} '
@@ -89,8 +98,14 @@ class NLIScorer:
             max_length=512, padding=True
         ).to(self.device)
         logits = self.model(**inputs).logits
-        return torch.softmax(
-            logits, dim=-1)[:, self.entailment_idx].cpu().tolist()
+        probs = torch.softmax(logits, dim=-1)
+        if self.score_mode == 'ec':
+            # Steen et al. (2023): entailment minus contradiction, rescaled
+            # to [0, 1] so a 0.5 gate means "entailment outweighs
+            # contradiction" and the score stays on the other scorers' scale.
+            ec = probs[:, self.entailment_idx] - probs[:, self.contradiction_idx]
+            return ((1.0 + ec) / 2.0).cpu().tolist()
+        return probs[:, self.entailment_idx].cpu().tolist()
 
     def entailment_probs(self, pairs: List[Tuple[str, str]],
                          batch_size: int = None) -> List[float]:

@@ -1481,6 +1481,55 @@ Friedman the latter); §7 resolving power now "two parts" with the Mistral
 reversal; NLI-max named for .021–.061; "largely diluted"; "share no unit"
 dropped. Main PDFs 32 pages, compact 33, clean.
 
+**B33 — third review, experiments D1 and D2 (2026-10-25, $0, gpu1).** Run
+from a snapshot in `~/rag_faithfulness/outputs/d1d2/` (`run_d1d2.sh`, chain
+log `logs/chain.log`); 40 `perturb_nli_ec_*` + the `nli_concat` files are in
+the laptop backup. Every published probe row reproduced before anything new
+was read.
+- **D1, premise granularity in all 8 cells** (`--scorer nli_concat`, was
+  Claude/GPT only). Share of the NLI-max→AlignScore gap: mean drop −0.55 to
+  +0.20 (negative in 4), detection +0.01 to +0.62 (positive in all 8, because
+  the concatenated premise also lowers the untouched score). AlignScore beats
+  the entailment model on AlignScore's own premise in all 8, by both. In
+  Limitations and §4.
+- **D2, entailment minus contradiction** (Steen et al. 2023; new
+  `NLIScorer(score_mode='ec')`, `--scorer nli_ec`, rescaled (1+e−c)/2). New
+  App. `app:ec` / `tab:ec`, and §4's "fourth instrument" sentence replaced.
+  Floor-gate detection within 2 points of NLI-max in all 8 cells; native-scale
+  mean drop 1.17–1.29× NLI-max, still below AlignScore in all 8; at 0.5 it
+  detects 0.1–39.1% because its rescaled floor is 0.53–0.72 (gate artefact).
+  Claude lowest / GPT highest in all 8; verbosity arm still falls. Augmentation
+  and MC dropout NOT tried.
+- **⚠️ Published error 10:** four Mistral-7B floor-gate Wilson intervals in
+  `tab:2full` were too narrow (NQ claim-min, all three HotpotQA rows); point
+  estimates were right. Recomputed with the pooled gate the rest of the table
+  uses and fixed.
+- **⚠️ The QASPER default trap hit `perturbation_check` too**: `--datasets`
+  defaults to config.DATASETS. Always pass `--datasets NQ,HotpotQA --limit 200`
+  (the CLI default limit is 300).
+Main PDFs 33 pages, compact 34, clean; 230 tests pass.
+- **Tier A wording (same day).** The Limitations' pooled "1.17 to 2.77"
+  span (both datasets, per generator) sat beside per-dataset 4.90/4.99, the
+  B27 class again; it now reads per dataset: **NQ 1.25–3.08, HotpotQA
+  1.08–2.39** (recomputed: Claude 3.079/2.393, Qwen 1.767/1.538, Mistral
+  1.724/1.410, GPT 1.248/1.082, all attempted answers), axis about 2× / 3×.
+  §5.3's 3.08/1.77/1.72/1.25 is now labelled NQ, all attempted answers.
+  The four "earlier version" changelog notes are reworded as development
+  history (paper.tex retired-gap metric, the 365-row refusal defect, the
+  normalisation note; `sections/normalisation.tex`). Older entries above
+  that quote 1.17–2.77 describe the pooled figure, which the paper no
+  longer uses.
+- **Tier C, four references added (2026-10-27)**, each verified at a primary
+  source (Anthology .bib + PDF footer, or Crossref + Springer) and annotated in
+  `custom.bib`: Yu et al. survey (cited as CCIS vol 2301, 2025, pp. 102-120;
+  arXiv:2405.07437 is the 2024 preprint), Knollmeyer et al. (SN Computer
+  Science 7(5):576, June 2026), Filice et al. (IJCNLP-AACL 2025, pp.
+  1017-1037), RAG-Zeval (EMNLP 2025, **pp. 24925-24943: Crossref's
+  24936-24954 is wrong**; its arXiv title differs). Cited in Related Work,
+  `sections/beyond-nli.tex` and `sections/deploy.tex`, each only for what its
+  abstract says. **Bibliography now 54 entries.** PDFs 34 pages (all four
+  builds), clean.
+
 ### Code moves and reporting changes of 2026-09-01
 
 - **`src/metrics.py` is now `src/legacy/rfg.py`.** The gap metric is retired
