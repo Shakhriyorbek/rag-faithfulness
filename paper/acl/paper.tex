@@ -24,8 +24,8 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 
-\title{When the Evaluator Decides the Result:\
-       Measuring Faithfulness in Retrieval-Augmented Generation}
+\title{What a Faithfulness Score Can See: Injected Errors,\
+       Answer Length and Resolving Power in Retrieval-Augmented Generation}
 
 \author{Shakhriyorbek Boltabaev \\
   Institute of Informatics, University of Szeged \\
@@ -33,7 +33,7 @@
   \texttt{shakhriyorbekboltabaev@gmail.com}}
 
 % ─── Layout switch: one source, two builds ────────────────────────────────
-% Thirteen sections are secondary analyses. In the full build they sit inline
+% Eight sections are secondary analyses. In the full build they sit inline
 % where they are argued; in the compact build they move to the appendix, which
 % ACL does not count toward the page limit. Set by the wrapper that \inputs
 % this file (main.tex / main-8page.tex), so there is exactly one copy of every
@@ -54,16 +54,22 @@
   \newcommand{\movedref}{Section}
   \newcommand{\movedrefs}{Sections}
 \fi
+% Five further sections live in the appendix in BOTH builds: the floor/ceiling,
+% geometric and QASPER arms (one generator, or a failed-retrieval regime) and
+% the practical detail behind the Discussion. A subsection heading inside one
+% is promoted to a section there. Reference them as Appendix~\ref, never with
+% \movedref, which would print "Section" in the full build.
+\newcommand{\appendixinput}[1]{{\renewcommand{\movedsub}[1]{\section{##1}}\input{#1}}}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Retrieval-augmented generation is often guarded by a faithfulness score, which decides whether the retrieved documents support an answer. The same scores are used to compare systems, so they settle both what a user sees and what a paper concludes. Such scores are ranked by how well they agree with human hallucination labels, or tested on reference summaries edited to contain one error. Neither shows whether a scorer treats answers from different generators alike.
+Retrieval-augmented generation is often guarded by a faithfulness score, which decides whether the retrieved documents support an answer, and the same scores are used to compare systems. Such scores are ranked by how well they agree with human hallucination labels, or tested on reference summaries edited to contain one error. Neither shows whether a scorer registers the same error equally in answers from different generators, or how small a difference between systems it can resolve.
 
-We hold 32,000 answers fixed --- four embedding models, two question answering datasets, four generators --- and score every answer with three evaluators. We then inject a known error into up to 200 answers per system, dataset and generator, replacing one grounded value with a value absent from the retrieved context. Under a standard entailment scorer, a fixed threshold catches 5.1\% of these edits on the most verbose generator and 56.6\% on the tersest: one wrong value is largely diluted among the correct claims around it. Length is not the whole story, since at a matched single assertion the four generators still respond by between 0.102 and 0.485, and removing an opening ``according to the provided context'' clause from the answer closes part of that gap.
+We hold 32,000 answers fixed --- four embedding models, two question answering datasets, four generators --- and score every answer with three evaluators. Into up to 200 answers per system, dataset and generator we inject a known error, replacing one grounded value with a value absent from the retrieved context. Under a standard entailment scorer, a fixed threshold catches 5.1\% of these edits on the most verbose generator and 56.6\% on the tersest: one wrong value is largely diluted among the correct claims around it. Making one model more verbose by prompt alone reproduces the drop, under all three evaluators. Length is not the whole story, since at a matched single assertion the four generators still respond by between 0.102 and 0.485, and removing an opening ``according to the provided context'' clause from the answer closes part of that gap.
 
-Comparing the four retrieval systems, whether that comparison returns a difference or a null depends on which evaluator scored it, in three of eight dataset-generator cells. The evaluators are not shown to rank the systems differently; they differ in how small a difference they can resolve. Averaging in refusals, or choosing a different equivalence margin, moves the conclusion as well. A faithfulness result should name its evaluator and test its threshold on deliberately falsified answers.
+The evaluators also differ in resolving power. Comparing the four retrieval systems, whether the comparison returns a difference or a null depends on which evaluator scored it in three of eight dataset-generator cells, although the evaluators are not shown to rank the systems differently. Averaging in refusals, or choosing a different equivalence margin, moves the conclusion as well. A faithfulness threshold should be tested on deliberately falsified answers from the generator it guards, and a faithfulness result should name its evaluator.
 \end{abstract}
 
 \section{Introduction}
@@ -76,14 +82,14 @@ A document question answering system is given a set of uploaded files and must a
 Many such scores ask a natural language inference model whether the retrieved context entails the answer, taking the maximum over retrieved chunks. Others use a trained alignment model \citep[AlignScore;][]{zha-etal-2023} or a language model as judge \citep{saad-falcon-etal-2024,tamber-etal-2025}. They are ranked by how well they agree with human hallucination labels \citep{honovich-etal-2022,tang-etal-2023,niu-etal-2024,bao-etal-2025}, or tested on reference summaries edited to contain one error \citep{ma-etal-2023}. Neither tells us whether a scorer can separate the systems someone is actually comparing, and pairs built from reference text cannot show whether a scorer treats answers from different generators alike.
 
 % Move 3: aim and hypothesis
-This paper asks what such a score measures. We do not propose a new one. We take 32,000 answers from a fixed grid --- four embedding models, two datasets \citep{kwiatkowski-etal-2019,yang-etal-2018}, four generators --- score every answer with three evaluators, and ask whether the verdict on embedding choice survives a change of evaluator. The grid is a testbed rather than the object of study: its retrieval systems span 4.4 and 11.9 NDCG@5 points on the two datasets while generation stays fixed. We expected that a score rating a whole answer at once would react less to one wrong value when more claims surround it, so its sensitivity would depend on the generator.
+This paper asks what such a score can see. We do not propose a new one. We take 32,000 answers from a fixed grid --- four embedding models, two datasets \citep{kwiatkowski-etal-2019,yang-etal-2018}, four generators --- and score every answer with three evaluators. We ask two questions: whether a known error registers equally in answers from different generators, and how small a difference between retrieval systems each evaluator can resolve. The grid is a testbed rather than the object of study: its retrieval systems span 4.4 and 11.9 NDCG@5 points on the two datasets while generation stays fixed. We expected that a score rating a whole answer at once would react less to one wrong value when more claims surround it, so its sensitivity would depend on the generator.
 
 % Move 4: findings
 Our main findings are:
 \begin{itemize}
-\item Whether comparing the four systems returns a difference or a null depends on which evaluator scored it, in three of eight dataset--generator cells after correcting for multiple tests. The evaluators are not shown to rank the systems differently; they differ in how small a difference they can resolve (Section~\ref{sec:verdict}).
-\item Swapping one grounded number in an answer for a value absent from the context, a fixed threshold under the entailment scorer catches the edit in 5 to 14\% of the most verbose generator's answers and 57 to 71\% of the tersest's (Section~\ref{sec:sensitivity}).
+\item Swapping one grounded number in an answer for a value absent from the context, a fixed threshold under the entailment scorer catches the edit in 5 to 14\% of the most verbose generator's answers and 57 to 71\% of the tersest's. How many assertions an answer contains accounts for most of that gap (Section~\ref{sec:sensitivity}).
 \item Making one model more verbose by prompt alone cuts that detection from 35.1\% to 10.4\%, and detection falls under all three evaluators. The same prompt line also lowers the refusal rate and raises the score an unrelated document receives, so it does not vary answer length alone (Section~\ref{sec:verbosity}).
+\item The evaluators differ in resolving power, and that is enough to move a verdict. Whether comparing the four systems returns a difference or a null depends on which evaluator scored it, in three of eight dataset--generator cells after correcting for multiple tests, although no evaluator is shown to rank the systems differently (Section~\ref{sec:verdict}).
 \item Averaging in refusals, or choosing a different equivalence margin, changes the conclusion too (Sections~\ref{sec:population} and~\ref{sec:equivalence}).
 \end{itemize}
 
@@ -142,7 +148,7 @@ Correctness is measured against the gold answer, never against the context. Keep
 
 Two datasets are used, Natural Questions \citep{kwiatkowski-etal-2019} and HotpotQA \citep{yang-etal-2018}, at 1,000 queries each. Four embedding models index each corpus, and retrieval takes the top five chunks of 256 tokens with 32-token overlap. Four generators answer from a byte-identical prompt at temperature 0: two proprietary (Claude Haiku 4.5, GPT-4o-mini) and two open-weight run locally (Qwen2.5-7B-Instruct, Mistral-7B-Instruct-v0.3). The two open-weight arms share a decoding path and differ only in weights, which is what makes them two generators rather than one model prompted twice. That gives 4 x 2 x 4 x 1,000 = 32,000 answers, each re-scored by every evaluator. The four systems are all-mpnet-base-v2 (contrastive), BGE-M3 (multilingual), E5-large-instruct (instruction-tuned) and text-embedding-3-small (proprietary). They reach NDCG@5 of 0.786, 0.794, 0.806 and 0.830 on Natural Questions and 0.705, 0.809, 0.824 and 0.767 on HotpotQA, a spread of 4.4 and 11.9 points. They do not rank the same way on the two datasets (Appendix~\ref{app:retrieval}). A single prompt builder enforces parity, one user turn and no system message, since a prompt difference would confound every cross-generator comparison below.
 
-Four further arms run off the same grid, in \movedrefs~\ref{sec:control} to~\ref{sec:qasper}. A fifth embedding model, jina-embeddings-v3, was run over both datasets and all four generators. It serves as a control on the comparison and is not a member of the matched set. A third dataset, QASPER \citep{dasigi-etal-2021}, was run at 819 questions over all five embedding models and three of the four generators, Mistral-7B excepted. The floor, ceiling and context-arrangement conditions and the re-ranking analysis were run on the Claude arm; the geometric analysis uses no generator. Their scope is stated where they appear and again in the Limitations.
+Four further arms run off the same grid: the control of \movedref~\ref{sec:control}, and three reported in Appendices~\ref{sec:anchors} to~\ref{sec:qasper}. A fifth embedding model, jina-embeddings-v3, was run over both datasets and all four generators. It serves as a control on the comparison and is not a member of the matched set. A third dataset, QASPER \citep{dasigi-etal-2021}, was run at 819 questions over all five embedding models and three of the four generators, Mistral-7B excepted. The floor, ceiling and context-arrangement conditions and the re-ranking analysis were run on the Claude arm; the geometric analysis uses no generator. Their scope is stated where they appear and again in the Limitations.
 
 Three evaluators are compared, on identical inputs. NLI-max is (1) with a DeBERTa-v3-large \citep{he-etal-2023} inference model, a common choice in the work cited in Section~\ref{sec:related}. It uses the entailment probability alone. \citet{steen-etal-2023} show that an NLI scorer predicts faithfulness better when it also uses the contradiction probability, and better again with task-adapted training and Monte-Carlo dropout. We score the out-of-the-box configuration, since the question here is what published comparisons rest on, and we test the first of those changes directly. Re-scoring every falsification case as entailment minus contradiction (Appendix~\ref{app:ec}) leaves detection at the floor-anchored gate within two points of NLI-max in all eight dataset-generator cells. Claude stays the least detected generator and GPT-4o-mini the most, and AlignScore still has the larger mean drop in every cell. The contradiction term moves the scale, not what the scorer responds to. We did not try task-adapted training or Monte-Carlo dropout. Claim-min is (2) with the same model and sentence-level claim segmentation, chosen so no second generator enters the measurement loop. AlignScore \citep{zha-etal-2023} is an independently trained alignment model.
 
@@ -208,7 +214,7 @@ One case shows the comparison at its plainest. On the same Natural Questions que
 
 We predicted Qwen's intermediate position before that arm was run, from its assertion count alone (Section~\ref{sec:assertions}), and it holds in both datasets under all three evaluators. Mistral-7B, added later at a similar assertion count, lands in the same band: on Natural Questions the two agree to within a point under every evaluator, and on HotpotQA they differ by 2.3 to 7.2 detection points. The evaluators order consistently too, but the ordering has to name its quantity. AlignScore has the largest mean drop in all eight dataset-generator cells of the probe, and claim-min detects more falsifications than NLI-max in all eight. The full ordering --- AlignScore, then claim-min, then NLI-max --- holds in seven of the eight by detection rate and five of the eight by mean drop. Claim-min edges AlignScore on Natural Questions under Claude (25.1\% against 24.1\%), and NLI-max edges claim-min by mean drop on HotpotQA under three of the four generators. Generators differ in how far apart the evaluators are, not in which of them responds least.
 
-What stability there is belongs to this grid rather than to the evaluators, and we did not probe outside it. The falsification probe ran on these two datasets only, so we cannot say whether the detection ordering survives a regime where retrieval fails. A different ordering does not survive it: on QASPER the evaluators' ranking by mean score inverts for one of the three generators run there (\movedref~\ref{sec:qasper}). An ordering that looks like a property of the evaluators can be a property of the regime.
+What stability there is belongs to this grid rather than to the evaluators, and we did not probe outside it. The falsification probe ran on these two datasets only, so we cannot say whether the detection ordering survives a regime where retrieval fails. A different ordering does not survive it: on QASPER the evaluators' ranking by mean score inverts for one of the three generators run there (Appendix~\ref{sec:qasper}). An ordering that looks like a property of the evaluators can be a property of the regime.
 
 The evaluators do not share a floor, so detection rates only become comparable once the scale is normalised, and we report two gates. On Claude's NQ cell an untouched answer scored against an unrelated context averages 0.474 under NLI-max and 0.245 under claim-min. The distribution is heavy-tailed: its 95th percentile is 0.985 under NLI-max, so an unrelated document clears a fixed 0.5 gate nearly half the time. Our second gate sits relative to each evaluator's own floor rather than at a shared constant, which is why we call it floor-anchored, and we place it at that percentile. There, "detected" means the falsified answer is no longer better supported than an unrelated document --- the same statement on every scale. Read that way NLI-max detects 50.2\% of falsifications rather than 5.1\%, and its gap to GPT-4o-mini narrows from roughly elevenfold to under twofold. At that gate the extremes mostly hold: Claude detects least and GPT-4o-mini most in five of the six dataset-evaluator rows. The exception is AlignScore on Natural Questions, where the floor-anchored gate compresses the four generators into 75.5\% to 82.1\% and Claude edges Qwen. The evaluator ordering does not carry over to that gate. There AlignScore detects least of the three on NQ/GPT-4o-mini, and claim-min falls below NLI-max on HotpotQA/Claude (Appendix~\ref{app:falsification}). The floor-anchored gate is a comparison device, not an operating point: it sits above the mean untouched answer.
 
@@ -384,42 +390,26 @@ One limit on the anchor runs in a direction we can name. It is calibrated on err
 
 
 
-\movableblock{sections/anchors}
-
-\movableblock{sections/esa}
-
-\movableblock{sections/qasper}
-
 \section{Discussion}
 \label{sec:discussion}
 
-For work reporting RAG faithfulness:
+For work reporting RAG faithfulness, our measurements support six practices. Appendix~\ref{sec:discussion-detail} gives the evidence and caveats for each.
 
 \begin{itemize}
-\item Name the evaluator. "Faithfulness did not differ" is incomplete: in three of our eight cells the same data returns a difference under one evaluator and a null under another. That is a statement about which instrument was used. The evaluators are not shown to rank the systems differently, and the instrument is what the reader needs in order to know what the null is worth.
-\item Report the evaluation population, and whether membership depends on the system being compared. Pooling refusals here produced a column tracking retrieval quality in all four generators, in opposite directions, and the direction is predictable from whether that generator's refusals outscore its attempts (Table~\ref{tab:4}). Where a framework already scores refusals separately, this is a caution about aggregate reporting rather than a defect in the framework. It reached our own pipeline during development, where two implementations of the shared refusal rule disagreed on 365 rows. That is the more realistic failure: the rule exists, and two parts of the pipeline apply different versions of it. We found it before computing any number reported here, and every reported number comes from the single implementation that replaced both.
-\item When individual answers are being checked for a fabricated value, prefer claim-level aggregation to a maximum over the whole answer, most of all where answers carry several assertions. For comparing systems the relevant property is a different one (\movedref~\ref{sec:choosing}). Treat it as a partial remedy. It lifts detection on the verbose generator's NQ cell almost fivefold, from 5.1\% to 25.1\%, and 25.1\% is still a minority of known fabrications, against 61.0\% for the tersest generator under the same aggregate. The gap between generators narrows and does not close, so claim-min reduces the structural bias rather than removing it. It also costs something the maximum does not. Its absolute scores collapse at that verbosity, from a mean of 0.693 to 0.234 on Natural Questions and 0.424 to 0.076 on HotpotQA, because a minimum over five assertions sits near zero whatever the answer says. Resisting the structural bias and remaining thresholdable are separate properties, and claim-level aggregation buys the first at the cost of the second: a fixed grounding gate carried across to it unchanged would reject almost every verbose answer. Per-assertion thresholding, or weighting assertions by how much of the answer's content they carry, are the obvious next steps and we did not test them.
-\item For symbolic content, put a deterministic check in front of the evaluator. Requiring every value in an answer to appear in the retrieved context flags every falsification we constructed. That part is circular and we state it as such: our second eligibility rule defines the substituted value as absent from the retrieved context, so a containment test must catch it. The informative comparison is the other direction. A trained evaluator tested on the same cases reaches 89.4\% at best and 5.1\% at worst, so these edits are not hard to catch --- they are hard for an entailment aggregate to catch, and the check is indifferent to answer length where the aggregates are not. What the probe does measure about the check is its false-positive rate, 0.8\% to 5.2\% on untouched answers, and that rate is not circular.
+\item Test a faithfulness threshold on falsified answers from the generator it will guard. A fixed gate under the common entailment scorer catches 5.1\% of falsified values on the most verbose generator and 56.6\% on the tersest, so a threshold validated on one generator's answers does not transfer to another's. Score untouched answers against unrelated contexts as well, since that floor moves with verbosity (Appendix~\ref{sec:deploy}).
+\item Name the evaluator. "Faithfulness did not differ" is incomplete: in three of our eight cells the same data returns a difference under one evaluator and a null under another. The evaluators are not shown to rank the systems differently. They differ in resolving power, and the instrument is what the reader needs in order to know what a null is worth.
+\item Report the evaluation population, and whether membership depends on the system being compared. Pooling refusals here produced a column tracking retrieval quality in all four generators, in opposite directions, and the direction is predictable from whether that generator's refusals outscore its attempts (Table~\ref{tab:4}).
+\item When individual answers are being checked for a fabricated value, prefer claim-level aggregation to a maximum over the whole answer, and treat it as a partial remedy. It lifts the verbose generator's detection on Natural Questions from 5.1\% to 25.1\%, still a minority, and its absolute scores fall toward zero as answers lengthen, so a fixed gate carried over to it would reject almost every verbose answer.
+\item For symbolic content, put a deterministic check in front of the evaluator. That it catches our falsifications is circular, since the probe defines the substituted value as absent from the context. What we measure is its cost, 0.8\% to 5.2\% of untouched answers flagged, against detection of 5.1\% to 89.4\% for the learned evaluators on the same cases.
 \item Calibrate the margin against a measured effect before claiming equivalence. A falsification experiment of this kind costs nothing beyond re-scoring. Constructed errors are the easy case, so a margin anchored on them is permissive rather than strict (Section~\ref{sec:equivalence}).
 \end{itemize}
 
-For a document question answering system, the practical reading of Table~\ref{tab:2} is that a grounding threshold on a verbose generator catches a minority of falsified values: 5.1\% under the common evaluator, and 25.1\% under claim-min, the best of the three on that cell. That is the case for the deterministic check above, and two qualifications on it matter. Numbers that assert nothing about the world, such as chunk indices and ordered-list markers, are not expected in the retrieved text, and counting them raises that rate on Claude's HotpotQA answers to about 39\%. The rest are quantities the answer derives instead of copying, which a literal check also flags, so it complements an entailment score rather than replacing one.
-
-Checking symbolic content against the source is an old idea \citep{goodrich-etal-2019, nan-etal-2021, zhao-etal-2020}, and that numbers are a weak point is documented at the level of the representations too \citep{wallace-etal-2019}. We claim no novelty for it. We do claim the measurement that makes the case for it here, against three current evaluators on identical inputs, and note that a practitioner choosing an instrument needs to know which one works. Entailment is separately a loose proxy for attribution: the AIS framework \citep{rashkin-etal-2023} separates support by an identified source from general plausibility.
-
-What this paper adds is narrower than the check: the controlled minimal pair. One numeric value is replaced in an otherwise byte-identical generation, and the same case goes to all three evaluators. What is measured is each evaluator's response to a known error on identical input, not its agreement with a human label on some other corpus. That covers numeric values, four generators and two datasets.
-
-
-
-
-\movableblock{sections/deploy}
-
-\movableblock{sections/choosing}
+What this paper adds is the controlled minimal pair. One value is replaced in an otherwise byte-identical generation, and the same case goes to all three evaluators. What is measured is each evaluator's response to a known error on identical input, not its agreement with a human label on some other corpus. That covers numeric values, with entities as a second error type (\movedref~\ref{sec:entity}), four generators and two datasets.
 
 \section{Conclusion}
 \label{sec:conclusion}
 
-Holding a 32,000-answer generation grid fixed and varying only the faithfulness evaluator changes the conclusion about whether embedding choice affects faithfulness in four of twenty-four comparisons, which fall in three of eight dataset-generator cells, or in two comparisons in two cells under a test that pays for selecting the pair compared. The evaluators are not shown to disagree about the systems; they resolve the same differences with different resolving power, and that is sufficient to move a published verdict. The differences between evaluators are directly measurable. A falsified grounded value moves the common entailment aggregate by 0.054 on one generator, 0.251 and 0.261 on two more and 0.451 on a fourth, and how many assertions an answer contains accounts for most of that gap. A faithfulness result that does not name its evaluator, population, aggregation and equivalence margin is not reproducible in the sense that matters: another group making different standard choices on the same generations would reach a different conclusion.
+Injecting one known error into answers from a fixed 32,000-answer generation grid shows that a faithfulness score's sensitivity depends on the generator it scores. A falsified grounded value moves the common entailment aggregate by 0.054 on one generator, 0.251 and 0.261 on two more and 0.451 on a fourth, and how many assertions an answer contains accounts for most of that gap; making one model more verbose by prompt alone reproduces it. The evaluators also differ in resolving power. Varying only the evaluator changes the conclusion about whether embedding choice affects faithfulness in four of twenty-four comparisons, which fall in three of eight dataset-generator cells, or in two comparisons in two cells under a test that pays for selecting the pair compared. The evaluators are not shown to disagree about the systems, but a difference in resolving power is sufficient to move a published verdict. A faithfulness result that does not name its evaluator, population, aggregation and equivalence margin is not reproducible in the sense that matters: another group making different standard choices on the same generations would reach a different conclusion.
 
 \section*{Code and Data Availability}
 
@@ -432,7 +422,7 @@ What we can claim is bounded by the grid we measured on, and by the graders that
 
 \begin{itemize}
 \item Four embedding models, two English datasets, four generators. Two things this bounds should be separated, because our controls move one and not the other. The \emph{axis} the mechanism in Section~\ref{sec:assertions} runs along is assertions per answer. As prompted, the four generators span 1.25 to 3.08 assertions per attempted answer on Natural Questions and 1.08 to 2.39 on HotpotQA. The prompt-varied arm of Section~\ref{sec:verbosity} carries one of them to 4.90 and 4.99 on the same two datasets, where the effect continues in the direction the mechanism predicts. The span of the axis we have measured is therefore about twice the generators' own span on Natural Questions and three times on HotpotQA. The \emph{population} of models is four, and no control here changes that. Varying a prompt holds the weights fixed. That is what makes it a clean test of the confound between length and model identity, and equally what stops it saying anything about models trained differently, so the prompt-varied arm does not raise the population to five. All four are instruction-tuned chat models from broadly similar recipes, and two of them are 7B open-weight models. Part of the residual that answer structure fails to explain is an attribution clause that one generator uses on almost every answer. Removing it closes the single-assertion gap on HotpotQA and a little under half of it on Natural Questions, where the remainder is unexplained. Whether any of this holds for a much larger model, a much smaller one, or a different training regime is untested.
-\item Correctness is graded by the judge over the thirty-two cells of the matched grid and nowhere else. Within that grid it covers all four generators, so \movedref~\ref{sec:refusals} and every figure conditioned on correctness are four-generator results. Outside it the judge was not run. The jina control (\movedref~\ref{sec:control}), QASPER (\movedref~\ref{sec:qasper}) and the floor, ceiling and arrangement conditions (\movedref~\ref{sec:anchors}) are graded by string containment instead. The item below shows that containment is biased in both directions, by a margin that varies with the generator and the dataset. The accuracy figures reported for those arms are therefore not directly comparable with the matched grid's, and we do not pool them. Nothing in Sections~\ref{sec:sensitivity}, \ref{sec:verdict} or \ref{sec:equivalence} depends on that grading.
+\item Correctness is graded by the judge over the thirty-two cells of the matched grid and nowhere else. Within that grid it covers all four generators, so \movedref~\ref{sec:refusals} and every figure conditioned on correctness are four-generator results. Outside it the judge was not run. The jina control (\movedref~\ref{sec:control}), QASPER (Appendix~\ref{sec:qasper}) and the floor, ceiling and arrangement conditions (Appendix~\ref{sec:anchors}) are graded by string containment instead. The item below shows that containment is biased in both directions, by a margin that varies with the generator and the dataset. The accuracy figures reported for those arms are therefore not directly comparable with the matched grid's, and we do not pool them. Nothing in Sections~\ref{sec:sensitivity}, \ref{sec:verdict} or \ref{sec:equivalence} depends on that grading.
 
 \item The grader we use in place of string overlap is biased, and we chose it knowing the bias. Exact match is 0.000 in every cell we measured, because the generators do not emit bare answer spans. String containment is the obvious fallback, and it bounds accuracy in neither direction. Measured against the judge it understates accuracy by 5 to 16 points in twenty of the twenty-four cells where both signals exist. It overstates accuracy by 2 to 6 points in the four HotpotQA cells under Claude, where a long answer mentions a reference string while asserting something else. The judge is itself a language model reading model output, and we have not checked it against a human annotator on this data.
 \item Retrieval hit is defined as the gold answer string appearing in the retrieved context. This is a strong definition, and it does not separate retrieval failure from failures of composition, entity resolution or inference once the evidence is present.
@@ -444,7 +434,7 @@ What we can claim is bounded by the grid we measured on, and by the graders that
 \item The falsification cases are the first 200 eligible answers in dataset order for each system, dataset and generator, rather than a random sample of the eligible answers: 6,179 cases scored against 9,286 eligible across the grid. Eligibility requires a grounded numeric value in the answer together with a replacement value absent from the context, so the scored set is a prefix of an already filtered population. Cells whose eligible count is near 200 are close to a census, and HotpotQA/Mistral-7B is one; the largest cells are sampled at about two fifths. Appendix~\ref{app:prefix} tests whether that prefix is exchangeable with the eligible set by regressing detection on position within it; no cell shows a trend that survives correction over the eight tests.
 \item The repository configures seven embedding models. Four carry the matched comparison --- all-mpnet-base-v2 (contrastive), BGE-M3 (multilingual), E5-large-instruct (instruction-tuned) and text-embedding-3-small (proprietary) --- chosen to span pretraining paradigms and to include one closed-source arm. A fifth, jina-embeddings-v3 \citep{sturua-etal-2024}, was run over both datasets and all four generators and is reported in \movedref~\ref{sec:control} as a control on the matched set, not a member of it, because it fails the matched-quality precondition on Natural Questions. GTE-large and Instructor-XL remain unrun: each additional model is a further generation pass over every dataset and generator, and the grid is a testbed for the evaluator comparison rather than a survey of embedding models.
 
-\item The floor, ceiling and context-arrangement conditions of \movedref~\ref{sec:anchors} were run on the Claude arm only. The geometric analysis of \movedref~\ref{sec:esa} covers the four matched systems and uses no generator, and re-ranking was run on one embedding system with Claude. Neither the anchor conditions nor re-ranking has been shown to hold across generators, and the re-ranking result in particular is a single operating point ($\lambda = 0.6$) on a single system, so it bounds what that intervention achieved here. It says nothing about what such interventions can achieve in general.
+\item The floor, ceiling and context-arrangement conditions of Appendix~\ref{sec:anchors} were run on the Claude arm only. The geometric analysis of Appendix~\ref{sec:esa} covers the four matched systems and uses no generator, and re-ranking was run on one embedding system with Claude. Neither the anchor conditions nor re-ranking has been shown to hold across generators, and the re-ranking result in particular is a single operating point ($\lambda = 0.6$) on a single system, so it bounds what that intervention achieved here. It says nothing about what such interventions can achieve in general.
 
 \item The oracle condition supplies answer-bearing chunks only. That is narrower context than top-five retrieval, so it ceilings evidence selection and not accuracy, and retrieval exceeds it on Natural Questions. Defining the ceiling as gold passages in full would raise it, at the cost of comparability with what retrieval actually produces.
 
@@ -459,6 +449,11 @@ What we can claim is bounded by the grid we measured on, and by the graders that
 \bibliography{custom}
 
 \appendix
+% The compact build carries more than 26 appendix sections, past \Alph's Z.
+% Continue as AA, AB, ... rather than renumbering.
+\makeatletter
+\renewcommand{\thesection}{\ifnum\c@section>26 A\@Alph{\numexpr\c@section-26\relax}\else\@Alph\c@section\fi}
+\makeatother
 
 \section{Retrieval quality of every system run}
 \label{app:retrieval}
@@ -876,11 +871,15 @@ Sizing the defect before the fix, on 300 answers per cell, stripping markdown lo
   \input{sections/normalisation}
   \input{sections/direction}
   \input{sections/control}
-  \input{sections/anchors}
-  \input{sections/esa}
-  \input{sections/qasper}
-  \input{sections/beyond-nli}
-  \input{sections/deploy}
-  \input{sections/choosing}
 \fi
+% ─── Both builds: sections that always sit in the appendix ───
+\appendixinput{sections/anchors}
+\appendixinput{sections/esa}
+\appendixinput{sections/qasper}
+\ifnum\COMPACTLAYOUT=1
+  \input{sections/beyond-nli}
+\fi
+\appendixinput{sections/discussion-detail}
+\appendixinput{sections/deploy}
+\appendixinput{sections/choosing}
 \end{document}

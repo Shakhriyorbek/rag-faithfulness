@@ -6,7 +6,7 @@
 #   main-8page.pdf             compact layout, anonymous + line-numbered
 #   main-8page-preprint.pdf    compact layout, named
 #
-# "Compact" moves the thirteen secondary sections into the appendix, which ACL
+# "Compact" moves eight more secondary sections into the appendix, which ACL
 # does not count toward the page limit. Both layouts contain every sentence;
 # only placement differs, which is the point -- two hand-maintained .tex files
 # drifted twice without a build error.

@@ -7,7 +7,13 @@
 
 ## 1. What this project is
 
-**Paper title (v6, 2026-08-26):** *When the Evaluator Decides the Result*
+**Paper title (2026-10-27, third review, Tier B):** *What a Faithfulness Score
+Can See: Injected Errors, Answer Length and Resolving Power in
+Retrieval-Augmented Generation*. Reframed to lead with the probe; the verdict
+flip is now presented as a resolving-power consequence (see B34).
+Superseded: v6 *"When the Evaluator Decides the Result"* — the reviewer showed
+the headline (4 of 24 → 2 → 1, no detectable interaction) was too fragile to
+title the paper.
 Superseded: v5 *"Retrieval Quality Predicts Correctness, Not Faithfulness"* —
 contradicted by its own data (false on HotpotQA, and evaluator-dependent).
 Older still: *"Beyond Retrieval Quality: How Embedding Architecture Affects
@@ -1529,6 +1535,28 @@ Main PDFs 33 pages, compact 34, clean; 230 tests pass.
   `sections/beyond-nli.tex` and `sections/deploy.tex`, each only for what its
   abstract says. **Bibliography now 54 entries.** PDFs 34 pages (all four
   builds), clean.
+
+**B34 — Tier B: reframe and restructure (2026-10-27).** At the author's
+direction: title option 2 and the reviewer's "measurement study" framing.
+No number changed.
+- **Title, abstract, intro aim and findings, Conclusion opening** now lead with
+  the probe (generator-dependent sensitivity, assertion-count mechanism,
+  within-model verbosity) and present the evaluator-dependent verdict as
+  resolving power. Intro findings reordered: sensitivity, verbosity, verdict,
+  population/margin.
+- **Five sections now sit in the appendix in BOTH builds** via the new
+  `\appendixinput` (promotes `\movedsub` to `\section`): `anchors`, `esa`,
+  `qasper`, `deploy`, `choosing`, plus a new `sections/discussion-detail.tex`
+  holding the Discussion's long elaborations (all its citations kept). The
+  body Discussion is six short recommendations, led by "test the threshold on
+  falsified answers from the generator it guards". **Reference these with
+  `Appendix~\ref`, never `\movedref`** (which prints "Section" in the full
+  build). Eight sections remain `\movableblock`.
+- Full-build body: Conclusion moved from p.20 to **p.17**; compact p.13. All
+  four PDFs 35 pages, 0 overfull/undefined/`??`.
+- ⚠️ **The compact build now has more than 26 appendix sections**, which
+  overflowed `\Alph` ("Counter too large"). `\thesection` after `\appendix`
+  continues AA, AB, … Do not remove it.
 
 ### Code moves and reporting changes of 2026-09-01
 
