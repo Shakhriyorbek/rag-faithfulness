@@ -1558,6 +1558,34 @@ No number changed.
   overflowed `\Alph` ("Counter too large"). `\thesection` after `\appendix`
   continues AA, AB, … Do not remove it.
 
+**B35 — third review, D3: an LLM fact-checker on the probe (2026-10-29/30,
+$0, gpu1).** Bespoke-MiniCheck-7B (CC BY-NC, revision pinned in
+`src/minicheck.py` after reading its remote code), `--scorer minicheck`,
+which writes TWO checkpoints per cell from one pass: `perturb_minicheck_*`
+(whole answer as one claim) and `perturb_minicheck_sent_*` (min over nltk
+sentences, the published aggregation). 40 cells (4 generators + qwen_verbose),
+80 files, in the laptop backup. Snapshot run in `~/rag_faithfulness/outputs/d3/`.
+New App. `app:minicheck` / `tab:minicheck` (80 values checked, 0 mismatches,
+via `scripts/d3_minicheck_table.py`, which also reproduces tab:2full).
+- **Whole-answer detection @0.5: 80.6–97.5%** (NLI-max 5.1–70.5). Claude still
+  lowest on both datasets (82.7 / 80.6); generator gap ~15 pts vs 52/57.
+- **Verbosity still costs it 31 and 40 pts** (95.9→65.2, 91.0→51.0), vs 25/37
+  for NLI-max; untouched pass rate rises 83/82→88%, so it is lost sensitivity.
+- **Per-sentence = the claim-min trade**: 94–99% detection everywhere, but only
+  32% / 16% of verbose untouched answers pass 0.5.
+- Floor gate unsuited (random-context mean 0.016–0.044); read at 0.5.
+- ⚠️ **"Any scalar aggregate inherits the bias, including a fine-tuned judge"
+  is gone from beyond-nli.** The level depends on the scorer; the dependence on
+  assertion count is present in every scorer run. Abstract, intro, §4,
+  verbosity, Discussion, Conclusion, deploy and discussion-detail updated.
+- **Three transformers-5 traps with this model**: its bundled tokenizer splits
+  into characters (encode with `tokenizer.json`), the rotary `inv_freq` buffer
+  is left uninitialised → all-NaN logits (recomputed after load), and its code
+  calls the removed `DynamicCache.from_legacy_cache` (use_cache=False). gpu1
+  also needed `nltk` (`~/nltk_data` must be `go-w` or nltk refuses it) and
+  `sentencepiece`. README example reproduced 0.987/0.009 vs 0.984/0.011.
+- PDFs 36 pages (all four), 0 overfull/undefined/`??`.
+
 ### Code moves and reporting changes of 2026-09-01
 
 - **`src/metrics.py` is now `src/legacy/rfg.py`.** The gap metric is retired

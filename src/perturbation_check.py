@@ -404,6 +404,10 @@ class _Scorer:
         self.kind = kind
         if kind == 'numeric':
             return                              # deterministic, no model
+        if kind == 'minicheck':
+            from minicheck import MiniCheckScorer
+            self.m = MiniCheckScorer()
+            return
         if kind == 'align':
             from alignscore import AlignScore
             import os
@@ -444,6 +448,10 @@ class _Scorer:
             return self.cf.score_claims(chunks, answer, self.m)['claim_min']
         if self.kind == 'numeric':
             return 1.0 if numeric_grounding_check(answer, chunks) else 0.0
+        if self.kind == 'minicheck':
+            # Two aggregates from one pass, {'minicheck': ..,
+            # 'minicheck_sent': ..}; run_check writes one checkpoint per key.
+            return self.m.score(chunks, answer)
         # AlignScore takes the whole context as one premise.
         return float(self.m.score(contexts=[' '.join(chunks)],
                                   claims=[answer])[0])
@@ -457,9 +465,12 @@ def run_check(model, ds_name, gen, limit, nli):
     if not generations:
         return None
 
-    suffix = '' if nli.kind == 'nli' else f'_{nli.kind}'
-    ck_out = f'perturb{suffix}_{gen}_{model}_{ds_name}'
-    if checkpoint_exists(ck_out):
+    kinds = (['minicheck', 'minicheck_sent'] if nli.kind == 'minicheck'
+             else [nli.kind])
+    ck_outs = {k: f"perturb{'' if k == 'nli' else '_' + k}_{gen}_{model}_{ds_name}"
+               for k in kinds}
+    ck_out = ck_outs[nli.kind]
+    if all(checkpoint_exists(c) for c in ck_outs.values()):
         print(f'  [skip] {ck_out}')
         return load_checkpoint(ck_out)
 
@@ -471,25 +482,33 @@ def run_check(model, ds_name, gen, limit, nli):
 
     print(f'  [{gen}/{model}/{ds_name}] {len(cases)} eligible cases '
           f'of {len(generations)} answers -> scoring 4 conditions')
-    rows = []
+    rows = {k: [] for k in kinds}
+
+    def _as_dict(v):
+        return v if isinstance(v, dict) else {nli.kind: v}
+
     for i, c in enumerate(cases, 1):
         if i % 50 == 0:
             print(f'    {i}/{len(cases)}')
-        orig = nli.score(c['chunks'], c['answer'])
-        num = nli.score(c['chunks'], c['num_answer'])
-        ent = (nli.score(c['chunks'], c['ent_answer'])
+        orig = _as_dict(nli.score(c['chunks'], c['answer']))
+        num = _as_dict(nli.score(c['chunks'], c['num_answer']))
+        ent = (_as_dict(nli.score(c['chunks'], c['ent_answer']))
                if c['ent_answer'] else None)
-        rnd = (nli.score(c['random_chunks'], c['answer'])
+        rnd = (_as_dict(nli.score(c['random_chunks'], c['answer']))
                if c['random_chunks'] else None)
-        rows.append({
-            'query_id': c['query_id'],
-            'num_from': c['num_from'], 'num_to': c['num_to'],
-            'num_kind': c['num_kind'],
-            'ent_from': c['ent_from'], 'ent_to': c['ent_to'],
-            'orig': orig, 'number': num, 'entity': ent, 'random': rnd,
-        })
-    save_checkpoint(ck_out, rows)
-    return rows
+        for k in kinds:
+            rows[k].append({
+                'query_id': c['query_id'],
+                'num_from': c['num_from'], 'num_to': c['num_to'],
+                'num_kind': c['num_kind'],
+                'ent_from': c['ent_from'], 'ent_to': c['ent_to'],
+                'orig': orig[k], 'number': num[k],
+                'entity': ent[k] if ent else None,
+                'random': rnd[k] if rnd else None,
+            })
+    for k in kinds:
+        save_checkpoint(ck_outs[k], rows[k])
+    return rows[nli.kind]
 
 
 def floor_gate(rows, pct: float = 95.0):
@@ -670,7 +689,7 @@ def main():
                     help='checkpoint scope N (default: config default)')
     ap.add_argument('--scorer', default='nli',
                     choices=['nli', 'nli_ec', 'nli_concat', 'claim', 'align',
-                             'numeric'],
+                             'numeric', 'minicheck'],
                     help='nli = whole-answer max over chunks (the current '
                          'metric); nli_ec = the same, scoring each premise as '
                          '(1 + P(entail) - P(contradict)) / 2 (Steen et al. '
@@ -679,7 +698,11 @@ def main():
                          'premise-granularity diagnostic); claim = min over '
                          'claims of max over chunks; align = AlignScore (needs '
                          'PYTHONPATH=~/align_env); numeric = deterministic '
-                         'value-presence check, no model required')
+                         'value-presence check, no model required; minicheck = '
+                         'Bespoke-MiniCheck-7B, writing perturb_minicheck_* '
+                         '(whole answer as one claim) and '
+                         'perturb_minicheck_sent_* (min over sentences, the '
+                         'published aggregation)')
     args = ap.parse_args()
 
     if args.scope_n:
