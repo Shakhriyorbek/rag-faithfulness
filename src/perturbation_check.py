@@ -253,8 +253,16 @@ def _donor_supports(other, numbers) -> bool:
     return any(num_in_text(n, ctx) for n in numbers)
 
 
-def build_cases(generations, limit):
-    """Eligible perturbation cases from one generation checkpoint."""
+def build_cases(generations, limit, sample='first'):
+    """Eligible perturbation cases from one generation checkpoint.
+
+    sample='first' keeps the first `limit` eligible answers in dataset order
+    (every published table). sample='random' (third review, D4) builds every
+    eligible case and keeps a seeded random `limit` of them, in dataset order.
+    Donor contexts are drawn in the same pass either way, so a case that both
+    samples share is byte-identical in both, and the subset does not depend on
+    the scorer.
+    """
     donors = _collect_donor_entities(generations)
     rng = random.Random(SEED)
     pool = [g for g in generations if g.get('retrieved_texts')]
@@ -302,8 +310,15 @@ def build_cases(generations, limit):
             'random_chunks': ((other.get('retrieved_texts') or [])[:config.TOP_K]
                               if other else []),
         })
-        if len(cases) >= limit:
+        if sample == 'first' and len(cases) >= limit:
             break
+    if sample == 'random' and len(cases) > limit:
+        keep = sorted(random.Random(SEED).sample(range(len(cases)), limit))
+        print(f'    [sample] random {limit} of {len(cases)} eligible; '
+              f'{sum(i < limit for i in keep)} also in the first {limit}')
+        cases = [cases[i] for i in keep]
+    elif sample == 'random':
+        print(f'    [sample] census: {len(cases)} eligible <= {limit}')
     if n_donor_fallback:
         print(f'    [donor] {n_donor_fallback}/{len(cases)} random contexts '
               f'kept despite supporting a value in the answer '
@@ -457,7 +472,7 @@ class _Scorer:
                                   claims=[answer])[0])
 
 
-def run_check(model, ds_name, gen, limit, nli):
+def run_check(model, ds_name, gen, limit, nli, sample='first'):
     ck_gen = f'generated_{gen}_{model}_{ds_name}'
     if not checkpoint_exists(ck_gen):
         return None
@@ -467,14 +482,15 @@ def run_check(model, ds_name, gen, limit, nli):
 
     kinds = (['minicheck', 'minicheck_sent'] if nli.kind == 'minicheck'
              else [nli.kind])
-    ck_outs = {k: f"perturb{'' if k == 'nli' else '_' + k}_{gen}_{model}_{ds_name}"
+    tail = '' if sample == 'first' else f'_rand{limit}'
+    ck_outs = {k: f"perturb{'' if k == 'nli' else '_' + k}_{gen}_{model}_{ds_name}{tail}"
                for k in kinds}
     ck_out = ck_outs[nli.kind]
     if all(checkpoint_exists(c) for c in ck_outs.values()):
         print(f'  [skip] {ck_out}')
         return load_checkpoint(ck_out)
 
-    cases = build_cases(generations, limit)
+    cases = build_cases(generations, limit, sample)
     if not cases:
         print(f'  [{gen}/{model}/{ds_name}] no eligible cases '
               f'(of {len(generations)} answers)')
@@ -685,6 +701,11 @@ def main():
                     default=','.join(config.ACTIVE_GENERATORS))
     ap.add_argument('--limit', type=int, default=300,
                     help='max cases per (model, dataset, generator)')
+    ap.add_argument('--sample', default='first', choices=['first', 'random'],
+                    help='first = the first --limit eligible answers (every '
+                         'published table); random = a seeded random --limit '
+                         'of all eligible answers, written to *_rand{limit} '
+                         'checkpoints (third review, D4)')
     ap.add_argument('--scope-n', type=int, default=None,
                     help='checkpoint scope N (default: config default)')
     ap.add_argument('--scorer', default='nli',
@@ -709,6 +730,7 @@ def main():
         from utils import set_scope
         set_scope(args.scope_n)
     print(f'  [scope] checkpoints -> {config.CHECKPOINT_DIR}')
+    print(f'  [sample] {args.sample}, limit {args.limit}')
 
     models = ([m.strip() for m in args.models.split(',')] if args.models
               else [c['name'] for c in config.EMBEDDING_MODELS])
@@ -722,7 +744,7 @@ def main():
     for ds in datasets:
         for gen in gens:
             for model in models:
-                rows = run_check(model, ds, gen, args.limit, nli)
+                rows = run_check(model, ds, gen, args.limit, nli, args.sample)
                 if rows:
                     fn = (summarise_numeric if args.scorer == 'numeric'
                           else summarise)
@@ -763,8 +785,9 @@ def main():
           + (f'   entity {de.mean():+.4f}' if de.size else '')
           + (f'   random-context floor {rn.mean():.3f}' if rn.size else ''))
     save_checkpoint(
-        'perturb_summary' if args.scorer == 'nli'
-        else f'perturb_summary_{args.scorer}', summaries)
+        ('perturb_summary' if args.scorer == 'nli'
+         else f'perturb_summary_{args.scorer}')
+        + ('' if args.sample == 'first' else f'_rand{args.limit}'), summaries)
     return 0
 
 

@@ -1586,6 +1586,46 @@ via `scripts/d3_minicheck_table.py`, which also reproduces tab:2full).
   `sentencepiece`. README example reproduced 0.987/0.009 vs 0.984/0.011.
 - PDFs 36 pages (all four), 0 overfull/undefined/`??`.
 
+**B36 — third review, D5: natural hallucinations from RAGTruth (2026-11-02,
+$0, gpu1).** `src/ragtruth_check.py` (data sha256-pinned; `RAGTRUTH_DIR`,
+gpu1 copy at `~/rag_faithfulness/data/ragtruth/`), measures pre-specified in
+`scripts/ragtruth_table.py`. QA task, quality "good", refusals dropped
+(canonical rule + RAGTruth's "Unable to answer based on given passages"):
+**5,593 attempted answers, 1,700 hallucinated**, six generators none of
+which is ours. Checkpoints `ragtruth_{nli,claim,align,minicheck,
+minicheck_sent}` (id→score), in the laptop backup. Snapshot run in
+`outputs/d5/`. New App. `app:ragtruth`, `tab:ragtruth` + `tab:ragtruthgen`
+(91 values checked, 0 mismatches).
+- **AUROC**: NLI-max 0.654 < claim-min 0.735 < AlignScore 0.795 < MC sent.
+  0.823 ≈ MC whole 0.837 — the probe's ordering. NLI-max lowest or tied in
+  all six generators.
+- **Dilution on natural errors, every scorer**: detection rises with the
+  hallucinated share of the answer (AlignScore 18.0→62.4%, NLI-max
+  25.0→41.3%, MC 75.5→91.5%), low/high intervals disjoint in all five. Not
+  length in disguise: share vs assertions rho −0.07.
+- AUROC lowest in the longest assertion tertile for every scorer; the min
+  aggregates' false rejection climbs with length (claim 54→77%, MC sent.
+  39→84%) — the thresholdability trade again.
+- **Constructed vs natural (post hoc, labelled)**: probe AUROC untouched vs
+  falsified is NLI .749/.671, claim .740/.660, align .903/.888, MC
+  .968/.947 (NQ/HotpotQA). So natural errors are harder by 0.09–0.14 for
+  AlignScore and MiniCheck and **not clearly harder for NLI-max / claim-min**.
+  Sinha's direction, nowhere near its extreme. The Limitations, §8 anchor
+  paragraph and Discussion bullet 6 now say this instead of assuming it;
+  "its sign is fixed" is now "where there is a difference".
+- RAGTruth has no paired drop, so the margin error is still not sized.
+- ⚠️ **The D3 commit had displaced `tab:ec`'s discussion paragraph** ("Three
+  things follow from Table ec") to the end of `app:minicheck`; moved back.
+- PDFs 38 pages (all four), clean.
+
+**D4 (random 200, running 2026-11-02)**: `perturbation_check --sample random`
+builds every eligible case and keeps `random.Random(42).sample` of 200,
+written to `perturb*_..._rand200`; shared cases are byte-identical to the
+first-200 ones (verified on all 32 cells). 6,179 cases, **1,667 new**; the
+five HotpotQA cells with ≤200 eligible (4 Mistral, GPT/all-mpnet) are a
+census, so D4 changes nothing there. Measures pre-specified in
+`scripts/d4_random_table.py`. Snapshot run in `outputs/d4/` (tmux `d4`).
+
 ### Code moves and reporting changes of 2026-09-01
 
 - **`src/metrics.py` is now `src/legacy/rfg.py`.** The gap metric is retired
