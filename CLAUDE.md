@@ -27,25 +27,27 @@ decide whether a RAG faithfulness result exists at all? The embedding grid is
 now the **testbed**, not the claim: it supplies matched-retrieval-quality
 systems whose faithfulness verdict can then be shown to flip with the metric.
 
-**Key contributions (v6):**
-1. Same 32,000 answers scored by **three evaluators** (NLI-max, claim-min,
-   AlignScore) — **4 comparisons in 3 of 8 cells** break, surviving Holm over 24.
-   Two are AlignScore; the other two are Mistral-7B under **NLI-max and
-   claim-min**, so the dissent is no longer AlignScore-specific (see B28)
-2. A **falsification probe**: replace one grounded number with a value absent
-   from the context and re-score. Detection ranges **5.1%–89.4%** across
-   evaluators and generators. Also run with **entity** substitution, which
-   reproduces the generator ordering in 5 of 6 cells (the two error types are
-   NOT interchangeable — see B26)
-3. The **mechanism**: the score decays with the number of assertions an answer
-   contains (NQ, answered rows: Claude 3.08, qwen 1.77, GPT-4o-mini 1.25).
-   Verbatim copying was tested as the alternative explanation and rejected.
-   **Now established causally within one model** — see B25. ⚠️ Every assertion
-   figure in the paper is **answered-only**; an all-rows figure (1.117/2.728)
-   was mixed into Limitations until 2026-10-07 and is fixed
-4. Consequence for equivalence testing: one fabricated fact moves NLI-max by
-   0.033–0.094, so a TOST margin of ±0.05 is about the size of one fabrication.
-   The margin is reported as a **curve** (±0.01 to ±0.10), not a point
+**Key contributions (current, after the third review — 2026-11-02):**
+1. A **falsification probe**: replace one grounded number (or entity) with a
+   value absent from the context and re-score. NLI-max detection at the 0.5
+   gate runs **5.1% (Claude) to 70.5%** across generators; five scorers now
+   run on it (NLI-max, claim-min, AlignScore, entailment-minus-contradiction
+   D2, Bespoke-MiniCheck-7B D3). The generator dependence shrinks under
+   MiniCheck (80.6–97.5%) and does not vanish.
+2. The **mechanism**: the score is diluted by the number of assertions an
+   answer contains (NQ, attempted answers: Claude 3.08, Qwen 1.77, Mistral
+   1.72, GPT-4o-mini 1.25), plus an opening attribution clause (B31). Shown
+   within one model by prompt-only verbosity (B25), and on RAGTruth natural
+   hallucinations: every scorer catches a hallucination less often the
+   smaller its share of the answer (D5, B36). Copying rejected.
+3. The evaluator-dependent verdict, presented as **resolving power**: 4 of 24
+   comparisons in 3 of 8 cells survive Holm (2 under permutation, 1 under
+   Friedman), with no detectable system x evaluator interaction (B28). Since
+   2026-11-02 tab:7 carries MDE and the standardised effect beside each spread.
+4. Population (refusal pooling flips sign by generator) and the equivalence
+   margin, reported as a curve and anchored on one fabricated fact
+   (NLI-max 0.049–0.095 on Claude); on RAGTruth natural errors are harder only
+   for AlignScore/MiniCheck, so the anchor errs permissive.
 
 Carried over as secondary: **RFG/nRFG** (retired — see §5). **ESA** and
 **re-ranking** are now RUN and in the paper; both are negative results and both
@@ -72,13 +74,13 @@ are still the only configured models never run.
 | Area | Status |
 |------|--------|
 | Paper draft | ✅ Complete and current. **Source is `paper/acl/main.tex`**; the docx builder is superseded. Two PDFs: `main-preprint.pdf` (named, **this is the one to send Berend**) and `main.pdf` (anonymous + line-numbered). Two automated review passes done — **3.5 Borderline Conference, soundness 4** |
-| References verified | ✅ 24 verified 2026-09-03 (§6, §6b); **31 entries now**, all cited, none orphaned. 6 added 2026-09-16..10-07 and each checked against source: Wallat (ICTIR 2025), Ju (arXiv:2604.25313), Xu (Findings EMNLP 2025), Steen (ACL 2023), ARES (**NAACL 2024**, not 2023), RAGVUE (EACL 2026 demos). ✅ **`dasigi-etal-2021` (QASPER) verified 2026-10-16** against ACL Anthology 2021.naacl-main.365 — title, six authors in order, booktitle, pages 4599-4610, publisher and DOI all match; `month = jun` added. **All 31 entries have now been through the B3 check** |
+| References verified | ✅ **54 entries** (2026-11-02), all cited. Every entry has had the B3 check against a primary source (Anthology/arXiv/Crossref/publisher); the last four (Yu, Knollmeyer, Filice, RAG-Zeval) were added and verified in B33 Tier C. See §6/§6b for the corrections that must not be reintroduced |
 | Pipeline code | ✅ All of §8 built in `src/`; notebook is a reference artifact only |
 | Server access | ✅ Granted by Berend. **Fedora is now the only machine that can deploy** — the Windows laptop's key was revoked on both hosts 2026-08-28 |
 | Experiments | ✅ **All run.** 24,000-answer main grid + jina control + QASPER + qwen_verbose + C1/C2 + ablation + ESA + re-ranking. Nothing paid remains. See `reports/2026-09-16_all_results.md` and `reports/2026-10-07_reviews_and_verbosity_control.md` |
 | Correctness | ✅ **LLM judge over all 32 matched cells.** 24 cells 2026-08-30 ($29.27); the mistral arm 2026-10-16 (8,000 rows, **$13.74**, 0 errors, 0 ungradable — see B29). Containment is retired as the correctness signal — always run analyses with `--correct-source judge`. The judge covers the matched grid **only**: jina, QASPER and the C1/C2/ablation conditions are still containment-graded, so their accuracy figures are not comparable with the grid's |
 | Paper v6 | ✅ `paper/acl/main.tex` → `main.pdf` (anonymous, for ARR) and `main-preprint.pdf` (named, for Berend). `paper/build_v6.js` + its docx are **superseded — do not edit them**, an edit there will not reach the manuscript |
-| Format | ✅ **ACL** (`paper/acl/`, `./build.sh` via tectonic). **30 pages (the two compact variants are 31), 0 undefined refs, 0 overfull boxes, 0 rendered ??.** The ARR 8-page body limit is NOT currently enforced — the paper deliberately carries every result for Berend. Body is ~14 pages, so **a submission to a venue with a hard page limit needs the supplementary sections moved to the appendix first** (Floor/Ceiling 587 w, ESA/re-rank 283 w, QASPER 400 w, §12.2 ~350 w; ACL appendices do not count) |
+| Format | ✅ **ACL** (`paper/acl/`, `./build.sh` via tectonic). **2026-11-02: main and main-preprint 37 pages, the two compact variants 38; 0 undefined refs, 0 overfull boxes, 0 rendered ??.** Five secondary sections sit in the appendix in both builds (B34); the full-build body ends at the Conclusion on p.17. The ARR 8-page body limit is NOT enforced — a hard-limit venue needs further cuts |
 | Venue | ⚠️ **The ARR 12 October 2026 deadline has passed and was not used** — the goal became a complete draft for Berend instead. Next ARR cycle or a direct venue submission is an open decision. The old plan (one ARR cycle feeding NAACL 2027 and COLING 2027, primary chosen at commitment) is in `reports/2026-09-05_berend_report.md` §2.3 and still describes the mechanism |
 
 **Backup:** 450 MB / 636 files at `~/rag-backup/checkpoints` on Fedora — the only
@@ -1625,6 +1627,42 @@ first-200 ones (verified on all 32 cells). 6,179 cases, **1,667 new**; the
 five HotpotQA cells with ≤200 eligible (4 Mistral, GPT/all-mpnet) are a
 census, so D4 changes nothing there. Measures pre-specified in
 `scripts/d4_random_table.py`. Snapshot run in `outputs/d4/` (tmux `d4`).
+**Done 2026-11-02 23:15 UTC (ALLDONE, exit 0 x4), written up 2026-11-03**
+as `tab:prefixrand` in `app:prefix` (72 values checked, 0 mismatches), plus
+a sentence in §4 and the Limitations first-200 item. 4,512 shared + 1,667
+added cases. Shared cases: NLI/claim/align identical, MiniCheck max diff
+0.004 with **0 detection flips** at 0.5. |Δdet@0.5| max 2.4, median 0.4
+points over 40 combinations; random inside the first-200 Wilson interval in
+39/40 (exception NQ/Claude/MC-sent 98.9→96.9, saturated). All orderings
+identical on both samples: AlignScore largest drop 8/8, claim>NLI det 8/8,
+Claude-lowest/GPT-highest 8/10 (both misses are MC-sent, both samples). The
+first-200 sample stays the published one. 164 `_rand200` files in the
+laptop backup. Main PDFs 38 pages, clean.
+
+**B37 — third review, presentation items and D6 preparation (2026-11-02,
+while D4 ran).** No number changed.
+- **"Table 7 mixes quantities that are not comparable"** was `tab:choose`
+  (the reviewer's Table 7; their Table 8 with NDCG 0.766 was `tab:1`).
+  Rebuilt as four blocks, each one quantity on one population (probe
+  detection; RAGTruth AUROC; MDE in score units; refusal-vs-attempt count),
+  MiniCheck added as a column, and the value check taken **out** of the table
+  (its 100% is by construction; only its 0.8–5.2% FPR is measured).
+- **"Appendix tables are cited heavily from the main text"**: `tab:power` and
+  `tab:standardised` are merged into body `tab:7` (Spread, MDE, Std., p_holm
+  per dataset; † permutation survivor, ‡ also Friedman) and deleted from the
+  appendix; §7 and §8 now point at the columns and state the interaction
+  result (p 0.31–0.96) inline. All 72 moved values parsed from the old tables
+  and cross-checked (0 spread mismatches, 20/24 MDE > spread, AlignScore
+  lowest MDE in 8/8, Std. Align > NLI in 5/8). Main PDFs 37 pages.
+- **D6 is prepared, not run**: it needs a person. `scripts/d6_human_sample.py`
+  drew 200 items (25 per dataset x generator, seed 42; judge labels 121 C /
+  20 I / 59 R) into `reports/d6/annotation_sheet.csv` (blinded: question,
+  reference, answer only); the unblinding key is checkpoint `d6_key` in the
+  laptop backup. Guide: `reports/d6_annotation_guide.md` (judge definitions
+  verbatim). `scripts/d6_human_agreement.py` gives agreement + kappa (3-way,
+  correct-vs-not, refusal-vs-not), confusion, per generator/dataset, every
+  disagreement, and `--second` for inter-annotator agreement. The sheet
+  script refuses to overwrite an existing sheet.
 
 ### Code moves and reporting changes of 2026-09-01
 

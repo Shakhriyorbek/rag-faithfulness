@@ -181,7 +181,7 @@ The \textbf{spread} in a cell is the difference in mean faithfulness between the
 
 A faithfulness score is only useful if it responds when an answer stops being faithful, so we construct that condition directly. For each answer containing a numeric value that appears in the retrieved context, we replace the value with one that does not appear there, preserve the surface format, and re-score against the same chunks. Two eligibility rules carry the design: the original value must be present, or the answer was never grounded, and the replacement must be absent, or the altered answer is accidentally supported and a low score is correct behaviour.
 
-Cases are taken deterministically, in dataset order rather than by random sampling: the first 200 eligible answers per system, dataset and generator. The scored set is therefore a prefix of an already filtered population: 6,179 cases against 9,286 eligible. HotpotQA/Mistral-7B is a full census, 595 of 595, because it has fewer than 200 eligible answers on every system. The rest run from a near-census on GPT-4o-mini (800 of 882 on NQ) to two fifths on Claude (800 of 1,946).
+Cases are taken deterministically, in dataset order rather than by random sampling: the first 200 eligible answers per system, dataset and generator. The scored set is therefore a prefix of an already filtered population: 6,179 cases against 9,286 eligible. HotpotQA/Mistral-7B is a full census, 595 of 595, because it has fewer than 200 eligible answers on every system. The rest run from a near-census on GPT-4o-mini (800 of 882 on NQ) to two fifths on Claude (800 of 1,946). A seeded random 200 per cell gives the same detection rates to within 2.4 points (Appendix~\ref{app:prefix}).
 
 Two controls accompany it: an entity substitution, which makes a comparable edit to a named entity instead of a value, and the untouched answer scored against another query's context, which gives the floor of each evaluator's scale. Cases are rebuilt deterministically, so all three evaluators see identical inputs.
 
@@ -326,47 +326,48 @@ The amount carried can be large. Pooled spreads run 0.053 to 0.085 for Claude, Q
 
 We compare the four retrieval systems on faithfulness, refusals excluded, paired on a common query subset, with a paired bootstrap of 10,000 resamples.
 
-The result of this section is narrow, and we state it before the table. Which evaluator is used decides whether a comparison of these systems returns a difference or a null. It does not follow that the evaluators rank the systems differently, and a direct test finds no evidence that they do (Appendix~\ref{app:omnibus}). What separates them is resolving power, and it has two parts. AlignScore's paired per-query differences are less noisy, so it has the smallest minimum detectable effect in every cell (Appendix~\ref{app:power}). After that variance is divided out, its standardised effect is also larger in five of eight cells (Appendix~\ref{app:standardised}), but not on Mistral-7B, where the entailment aggregate has the larger response in both datasets. Both parts lead to the same consequence for a published comparison.
+The result of this section is narrow, and we state it before the table. Which evaluator is used decides whether a comparison of these systems returns a difference or a null. It does not follow that the evaluators rank the systems differently, and a direct test finds no evidence that they do: a mixed model of system by evaluator shows no detectable interaction in any of the eight cells, $p$ from 0.31 to 0.96 (Appendix~\ref{app:omnibus}). What separates them is resolving power, and it has two parts. AlignScore's paired per-query differences are less noisy, so it has the smallest minimum detectable effect in every cell (MDE in Table~\ref{tab:7}). After that variance is divided out, its standardised effect is also larger than NLI-max's in five of eight cells (Std.\ in Table~\ref{tab:7}), but not on Mistral-7B, where the entailment aggregate has the larger response in both datasets. Both parts lead to the same consequence for a published comparison.
 
 \begin{table*}[t]
 \centering
 \small
-\begin{tabular}{llrrrr}
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{llrrrrrrrr}
 \toprule
- & & \multicolumn{2}{c}{\textbf{Natural Questions}} & \multicolumn{2}{c}{\textbf{HotpotQA}} \\
-\cmidrule(lr){3-4}\cmidrule(lr){5-6}
-\textbf{Generator} & \textbf{Evaluator} & Spread & p (Holm) & Spread & p (Holm) \\
+ & & \multicolumn{4}{c}{\textbf{Natural Questions}} & \multicolumn{4}{c}{\textbf{HotpotQA}} \\
+\cmidrule(lr){3-6}\cmidrule(lr){7-10}
+\textbf{Generator} & \textbf{Evaluator} & Spread & MDE & Std. & p (Holm) & Spread & MDE & Std. & p (Holm) \\
 \midrule
-Claude Haiku 4.5 & NLI-max & 0.0107 & 1.000 & 0.0232 & 1.000 \\
- & Claim-min & 0.0216 & 1.000 & 0.0345 & 0.898 \\
- & AlignScore & 0.0114 & 0.154 & 0.0164 & 1.000 \\
+Claude Haiku 4.5 & NLI-max & 0.0107 & 0.021 & 0.051 & 1.000 & 0.0232 & 0.046 & 0.062 & 1.000 \\
+ & Claim-min & 0.0216 & 0.038 & 0.057 & 1.000 & 0.0345 & 0.050 & 0.085 & 0.898 \\
+ & AlignScore & 0.0114 & 0.012 & 0.094 & 0.154 & 0.0164 & 0.025 & 0.082 & 1.000 \\
 \midrule
-Qwen2.5-7B & NLI-max & 0.0055 & 1.000 & 0.0123 & 1.000 \\
- & Claim-min & 0.0076 & 1.000 & 0.0181 & 1.000 \\
- & AlignScore & 0.0072 & 1.000 & \textbf{0.0406} & \textbf{0.024} \\
+Qwen2.5-7B & NLI-max & 0.0055 & 0.025 & 0.022 & 1.000 & 0.0123 & 0.060 & 0.026 & 1.000 \\
+ & Claim-min & 0.0076 & 0.032 & 0.024 & 1.000 & 0.0181 & 0.049 & 0.046 & 1.000 \\
+ & AlignScore & 0.0072 & 0.016 & 0.045 & 1.000 & \textbf{0.0406} & 0.035 & 0.145 & \textbf{0.024} \\
 \midrule
-GPT-4o-mini & NLI-max & 0.0130 & 1.000 & 0.0267 & 1.000 \\
- & Claim-min & 0.0151 & 1.000 & 0.0378 & 0.140 \\
- & AlignScore & 0.0080 & 1.000 & \textbf{0.0461} & \textbf{0.012} \\
+GPT-4o-mini & NLI-max & 0.0130 & 0.022 & 0.066 & 1.000 & 0.0267 & 0.041 & 0.081 & 1.000 \\
+ & Claim-min & 0.0151 & 0.024 & 0.071 & 1.000 & 0.0378 & 0.040 & 0.116 & 0.140 \\
+ & AlignScore & 0.0080 & 0.015 & 0.062 & 1.000 & \textbf{0.0461} & 0.037 & 0.155 & \textbf{0.012}$^{\dagger}$ \\
 \midrule
-Mistral-7B & NLI-max & 0.0167 & 1.000 & \textbf{0.0796} & \textbf{0.007} \\
- & Claim-min & 0.0155 & 1.000 & \textbf{0.0699} & \textbf{0.038} \\
- & AlignScore & 0.0030 & 1.000 & 0.0305 & 0.333 \\
+Mistral-7B & NLI-max & 0.0167 & 0.032 & 0.056 & 1.000 & \textbf{0.0796} & 0.061 & 0.177 & \textbf{0.007}$^{\dagger\ddagger}$ \\
+ & Claim-min & 0.0155 & 0.039 & 0.042 & 1.000 & \textbf{0.0699} & 0.064 & 0.149 & \textbf{0.038} \\
+ & AlignScore & 0.0030 & 0.018 & 0.017 & 1.000 & 0.0305 & 0.037 & 0.114 & 0.333 \\
 \bottomrule
 \end{tabular}
-\caption{The same comparison under three evaluators, Holm-corrected over the twenty-four comparisons in the table. Four comparisons, falling in three of the eight dataset-generator cells, change verdict at alpha = 0.05 and survive correction, and all four are on HotpotQA: two under AlignScore, and on Mistral-7B one each under NLI-max and claim-min. Queries, answers, refusal handling and test are identical throughout. Paired n is 784, 790, 628 and 692 on NQ and 517, 499, 510 and 423 on HotpotQA. With 10,000 resamples the smallest attainable non-zero p is 1e-4, so the cell at p = 0.0003 uncorrected is 3 extreme resamples of 10,000, not a clamped floor.}
+\caption{The same comparison under three evaluators, Holm-corrected over the twenty-four comparisons in the table. Spread is the difference in mean faithfulness between the best and worst of the four systems. MDE is the minimum detectable effect at 80\% power for a two-sided paired test at $\alpha = 0.05$, and Std.\ is the spread divided by the standard deviation of the same pair's per-query differences, which removes each evaluator's variance (Appendix~\ref{app:power}). Spread and MDE are on the evaluator's own scale; Std.\ is unitless and is the only one of the three comparable across evaluators. Bold marks the four comparisons that change verdict at alpha = 0.05 after correction, in three of the eight dataset-generator cells, all on HotpotQA. $\dagger$: also survives a permutation test that re-selects the extreme pair in every resample; $\ddagger$: also survives a Friedman test over all four systems (Appendix~\ref{app:omnibus}). Queries, answers, refusal handling and test are identical throughout. Paired n is 784, 790, 628 and 692 on NQ and 517, 499, 510 and 423 on HotpotQA. With 10,000 resamples the smallest attainable non-zero p is 1e-4, so the cell at p = 0.0003 uncorrected is 3 extreme resamples of 10,000, not a clamped floor.}
 \label{tab:7}
 \end{table*}
 
 The statistic is the spread, the difference in mean faithfulness between the best and worst of the four systems, with a p-value from a paired bootstrap over that pair re-centred at zero \citep{dror-etal-2018}. We report it as a deliberately extreme sensitivity check, and not as the loss a practitioner should expect. Someone who adopts one of these systems stands to lose the distance from it to the best of the four. That equals the spread only when the system they adopted is the worst one, and is smaller under the other three choices. The spread is the largest shortfall the choice can produce, which is the right quantity for asking whether the choice can matter at all and the wrong one for asking what it costs on average. It also summarises two systems picked for being the extremes, so its p-value is not adjusted for that selection and the two intermediate systems never enter it. Appendix~\ref{app:omnibus} runs two tests that do pay for the selection. The permutation test retains two of the four comparisons, in two dataset-generator cells, and the rank-based omnibus retains one. The direction across all four systems is in \movedref~\ref{sec:direction}.
 
-Under the common evaluator one of the eight cells shows a detectable difference, on Mistral-7B; under the evaluator Section~\ref{sec:sensitivity} measures as most responsive to known errors, two do. All four surviving comparisons are on HotpotQA, which has the wider retrieval spread, and all four Natural Questions cells are null. That may be a property of how the Natural Questions sample is drawn rather than of the evaluators. It retains only queries whose annotated answer falls inside the retained context window, which leaves a constrained single-hop task with less for an embedding model to get wrong. We cannot separate that from the two datasets differing in hop structure. Appendix~\ref{app:power} reports what each cell could have detected: the minimum detectable effect at 80\% power is 0.012 to 0.064, above the observed spread in twenty of the twenty-four dataset-generator-evaluator cells, and it is lowest under AlignScore in all eight. Part of the difference between evaluators here is resolving power at fixed $n$, not only response to a known error. Appendix~\ref{app:standardised} separates the two: dividing each spread by its own paired standard deviation removes the variance term, and AlignScore's standardised effect still exceeds the entailment aggregate's in five of eight cells. So lower variance is not the whole of it: in five cells AlignScore also responds more strongly relative to its noise. On Mistral-7B the ordering reverses and the entailment aggregate is the more responsive of the two in both datasets, consistent with that arm breaking on HotpotQA under NLI-max and claim-min and not under AlignScore. A result reported only under the first would describe the resolution of the instrument, not a property of the systems. None of the four is on Claude, whose answers the entailment aggregate resolves least well.
+Under the common evaluator one of the eight cells shows a detectable difference, on Mistral-7B; under the evaluator Section~\ref{sec:sensitivity} measures as most responsive to known errors, two do. All four surviving comparisons are on HotpotQA, which has the wider retrieval spread, and all four Natural Questions cells are null. That may be a property of how the Natural Questions sample is drawn rather than of the evaluators. It retains only queries whose annotated answer falls inside the retained context window, which leaves a constrained single-hop task with less for an embedding model to get wrong. We cannot separate that from the two datasets differing in hop structure. The MDE column of Table~\ref{tab:7} reports what each cell could have detected: the minimum detectable effect at 80\% power is 0.012 to 0.064, above the observed spread in twenty of the twenty-four dataset-generator-evaluator cells, and it is lowest under AlignScore in all eight. Part of the difference between evaluators here is resolving power at fixed $n$, not only response to a known error. The Std.\ column separates the two: dividing each spread by its own paired standard deviation removes the variance term, and AlignScore's standardised effect still exceeds the entailment aggregate's in five of eight cells. So lower variance is not the whole of it: in five cells AlignScore also responds more strongly relative to its noise. On Mistral-7B the ordering reverses and the entailment aggregate is the more responsive of the two in both datasets, consistent with that arm breaking on HotpotQA under NLI-max and claim-min and not under AlignScore. A result reported only under the first would describe the resolution of the instrument, not a property of the systems. None of the four is on Claude, whose answers the entailment aggregate resolves least well.
 
 Each added generator made the correction stricter --- twelve comparisons, then eighteen, now twenty-four --- and the count rose each time. The design does not guarantee that. Adding generators also qualified what had been the sharpest result here: under AlignScore on HotpotQA, three of the four generators rank the four systems identically (all-mpnet $<$ text-embedding-3-small $<$ BGE-M3 $<$ E5-instruct), where under NLI-max no two of those three agree. Mistral-7B is the exception, ranking them text-embedding-3-small $<$ all-mpnet $<$ E5-instruct $<$ BGE-M3, and it is also the one generator whose AlignScore spread is not distinguishable from zero (Table~\ref{tab:7}), so that ordering is read off differences inside its own noise. Read the agreement carefully in any case. The generators are independent of each other but answer from the \emph{same} retrieved contexts, so this is three generators agreeing about a property of the shared retrieval, not three replications. What it establishes is that one evaluator resolves that property consistently across most generators and another does not, on identical inputs.
 
 The count of four is not invariant to the correction either. Three comparisons sit either side of alpha = 0.05 depending on which are treated as one family. NQ/Claude under AlignScore is p = 0.0081 uncorrected, adjusted to 0.154 over the twenty-four in the table, 0.049 over the eight sharing an evaluator, 0.024 over the three in its own cell. HotpotQA/GPT-4o-mini under claim-min is p = 0.0070, adjusted to 0.140, 0.049 and 0.014. HotpotQA/Mistral-7B under AlignScore is p = 0.0185, adjusted to 0.333, 0.093 and 0.019. Correcting within evaluator makes the count six and correcting within cell makes it seven. Correcting within evaluator is defensible, since the eight NLI tests establish which cells are null and so precede the question rather than competing with it. We still report the twenty-four-comparison family, because it is the most conservative and was fixed before the correction was applied, and choosing a smaller one after seeing that it restores cells is a selection we could not account for. We give the alternative as well as the choice, because a count that moves with the multiplicity family depends on an analysis decision in the same way this paper reports for the choice of evaluator.
 
-The statistic moves it too, and in the less comfortable direction. Appendix~\ref{app:omnibus} replaces the paired test on the extreme pair with a permutation test that re-selects the extremes in every resample, so the cost of choosing them is paid: two comparisons survive Holm rather than four, HotpotQA/GPT-4o-mini under AlignScore and HotpotQA/Mistral-7B under NLI-max. A rank-based omnibus over the same four systems leaves one comparison, the second of those. The two counts answer different questions. A practitioner comparing their adopted model against the best alternative is exposed to the extreme pair, while the omnibus asks whether the four differ at all. The paired figure is the most permissive of the three, so we report all of them. The same appendix tests whether the evaluators disagree about the four systems, rather than merely returning different verdicts about them, and finds no detectable interaction in any of the eight cells. Read with Appendix~\ref{app:standardised}, the defensible claim is that these evaluators resolve a common pattern with different resolving power. That leaves the consequence for a published comparison unchanged and makes the mechanism narrower than evaluator disagreement.
+The statistic moves it too, and in the less comfortable direction. Appendix~\ref{app:omnibus} replaces the paired test on the extreme pair with a permutation test that re-selects the extremes in every resample, so the cost of choosing them is paid: two comparisons survive Holm rather than four, HotpotQA/GPT-4o-mini under AlignScore and HotpotQA/Mistral-7B under NLI-max. A rank-based omnibus over the same four systems leaves one comparison, the second of those. The two counts answer different questions. A practitioner comparing their adopted model against the best alternative is exposed to the extreme pair, while the omnibus asks whether the four differ at all. The paired figure is the most permissive of the three, so we report all of them. The same appendix tests whether the evaluators disagree about the four systems, rather than merely returning different verdicts about them, and finds no detectable interaction in any of the eight cells. Read with the Std.\ column of Table~\ref{tab:7}, the defensible claim is that these evaluators resolve a common pattern with different resolving power. That leaves the consequence for a published comparison unchanged and makes the mechanism narrower than evaluator disagreement.
 
 
 \movableblock{sections/control}
@@ -378,7 +379,7 @@ The statistic moves it too, and in the less comfortable direction. Appendix~\ref
 \section{What an Equivalence Claim Requires}
 \label{sec:equivalence}
 
-Five of the eight cells in Table~\ref{tab:7} show no detectable difference under any evaluator. Appendix~\ref{app:power} puts the minimum detectable effect above the observed spread in twenty of the twenty-four dataset-generator-evaluator cells, so an effect the size of the one we measured would usually not have been detected. A null here is not evidence of equivalence, so we test for equivalence directly with two one-sided tests \citep{schuirmann-1987}. TOST turns on the margin, and the margin is a judgement about what difference would matter. We sweep it from $\pm$0.01 to $\pm$0.10 and report the curve (Appendix~\ref{app:tost}).
+Five of the eight cells in Table~\ref{tab:7} show no detectable difference under any evaluator. Table~\ref{tab:7} puts the minimum detectable effect above the observed spread in twenty of the twenty-four dataset-generator-evaluator cells, so an effect the size of the one we measured would usually not have been detected. A null here is not evidence of equivalence, so we test for equivalence directly with two one-sided tests \citep{schuirmann-1987}. TOST turns on the margin, and the margin is a judgement about what difference would matter. We sweep it from $\pm$0.01 to $\pm$0.10 and report the curve (Appendix~\ref{app:tost}).
 
 The curve is steep. On NQ/Claude under NLI-max no pair is equivalent at $\pm$0.01, four of six are at $\pm$0.02 and all six at $\pm$0.03. HotpotQA needs a far wider margin. No pair there is equivalent at $\pm$0.01 under any evaluator, and below $\pm$0.05 only four of its eighteen generator-evaluator rows contain any equivalent pair at all: AlignScore on Claude, which reaches five of six at $\pm$0.03, and AlignScore on Mistral-7B and both NLI-based aggregates on GPT-4o-mini, with one each. At the other end, HotpotQA under Mistral-7B is the only cell where $\pm$0.10 still leaves a pair non-equivalent, under NLI-max and under claim-min. Stating equivalence means choosing a column, and the choice does most of the work.
 
@@ -431,7 +432,7 @@ What we can claim is bounded by the grid we measured on, and by the graders that
 \item Where we do detect a difference it is small: 0.041 to 0.080 in mean faithfulness across the four surviving comparisons, all on HotpotQA, whose systems span 11.9 NDCG@5 points. They are detectable, but they are not large.
 \item The three evaluators receive byte-identical answers but not identical premises. The entailment scorer is given each of the five retrieved chunks separately, plus their concatenation truncated to the model's window, and the maximum is taken. The claim-level scorer applies that construction per extracted claim. AlignScore is given the concatenated context as one premise and performs its own splitting. Each scorer is used as its authors intend, but that means some of the difference reported in Section~\ref{sec:sensitivity} comes from premise granularity and not from evaluator sensitivity. We bound that share by re-scoring the same cases with the same entailment model on the concatenated premise alone. We ran that control in all eight dataset-generator cells, and the answer depends on which quantity is asked about, so we give both. As a fraction of the NLI-max-to-AlignScore gap in mean drop it runs from -0.55 to +0.20, negative in four cells: by that measure a concatenated premise makes the entailment model \emph{less} responsive. As a fraction of the gap in detection at the 0.5 gate it runs from +0.01 to +0.62 and is positive in all eight, because the concatenated premise also lowers the untouched answer's score and so moves more answers across the gate. What holds under both is the comparison that matters: AlignScore exceeds the same entailment model given AlignScore's own premise in every one of the eight cells, by mean drop and by detection. Premise granularity accounts for at most about three fifths of the detection gap and none of the mean-drop gap in half the cells, so it does not account for AlignScore's advantage. The hypothesis is normalised identically for all three scorers (\movedref~\ref{sec:normalisation}). Before that normalisation was applied during development, the difference alone decided one cell.
 \item Which answers count as refusals is fixed by a rule rather than given by the data, and that rule sets the evaluation population for every result from Section~\ref{sec:sensitivity} onward. It is a researcher degree of freedom as much as a finding. Swapping one defensible detector for another moves the rows nearest the boundary between refusing and attempting, and carries the uncorrected p-value across the conventional threshold in two of the twenty-four comparisons (\movedref~\ref{sec:graders}). Neither of those two survives correction for multiple comparisons, but the population every reported number rests on still depends on the choice. The rule used here matches a wider list of declining openings than the prompt's own refusal sentence and strips a leading preamble first; without those two extensions 759 refusals would be graded as attempts, 602 of them Mistral-7B's. Appendix~\ref{app:refusalrule} reports the headline count under each of the three defensible rules available to us. The rule used here, the same rule without its two extensions, and the judge's classification all select the same four comparisons, so the uncorrected p-values move with the rule while the corrected count does not.
-\item The falsification cases are the first 200 eligible answers in dataset order for each system, dataset and generator, rather than a random sample of the eligible answers: 6,179 cases scored against 9,286 eligible across the grid. Eligibility requires a grounded numeric value in the answer together with a replacement value absent from the context, so the scored set is a prefix of an already filtered population. Cells whose eligible count is near 200 are close to a census, and HotpotQA/Mistral-7B is one; the largest cells are sampled at about two fifths. Appendix~\ref{app:prefix} tests whether that prefix is exchangeable with the eligible set by regressing detection on position within it; no cell shows a trend that survives correction over the eight tests.
+\item The falsification cases are the first 200 eligible answers in dataset order for each system, dataset and generator, rather than a random sample of the eligible answers: 6,179 cases scored against 9,286 eligible across the grid. Eligibility requires a grounded numeric value in the answer together with a replacement value absent from the context, so the scored set is a prefix of an already filtered population. Cells whose eligible count is near 200 are close to a census, and HotpotQA/Mistral-7B is one; the largest cells are sampled at about two fifths. Appendix~\ref{app:prefix} tests whether that prefix is exchangeable with the eligible set in two ways. Detection shows no trend with position that survives correction over the eight tests. A seeded random 200 per cell, scored with four scorers, moves detection at 0.5 by at most 2.4 points (median 0.4), and every ordering the paper reports holds on it.
 \item The repository configures seven embedding models. Four carry the matched comparison --- all-mpnet-base-v2 (contrastive), BGE-M3 (multilingual), E5-large-instruct (instruction-tuned) and text-embedding-3-small (proprietary) --- chosen to span pretraining paradigms and to include one closed-source arm. A fifth, jina-embeddings-v3 \citep{sturua-etal-2024}, was run over both datasets and all four generators and is reported in \movedref~\ref{sec:control} as a control on the matched set, not a member of it, because it fails the matched-quality precondition on Natural Questions. GTE-large and Instructor-XL remain unrun: each additional model is a further generation pass over every dataset and generator, and the grid is a testbed for the evaluator comparison rather than a survey of embedding models.
 
 \item The floor, ceiling and context-arrangement conditions of Appendix~\ref{sec:anchors} were run on the Claude arm only. The geometric analysis of Appendix~\ref{sec:esa} covers the four matched systems and uses no generator, and re-ranking was run on one embedding system with Claude. Neither the anchor conditions nor re-ranking has been shown to hold across generators, and the re-ranking result in particular is a single operating point ($\lambda = 0.6$) on a single system, so it bounds what that intervention achieved here. It says nothing about what such interventions can achieve in general.
@@ -788,84 +789,20 @@ Mistral-7B & NQ & 26.3\% & 57.9\% & 11.1\% \\
 \section{What the comparison could have detected}
 \label{app:power}
 
-Five of the eight cells in Table~\ref{tab:7} are null under every evaluator, and \movedref~\ref{sec:control} shows the procedure separates systems that genuinely differ. Neither of those says what size of effect it would have caught. Table~\ref{tab:power} gives the minimum detectable effect at 80\% power for a two-sided paired test at $\alpha = 0.05$, computed from the observed standard deviation of the paired per-query differences between the best and worst system in each cell.
+Five of the eight cells in Table~\ref{tab:7} are null under every evaluator, and \movedref~\ref{sec:control} shows the procedure separates systems that genuinely differ. Neither of those says what size of effect it would have caught. The MDE column of Table~\ref{tab:7} gives the minimum detectable effect at 80\% power for a two-sided paired test at $\alpha = 0.05$, computed from the observed standard deviation of the paired per-query differences between the best and worst system in each cell.
 
 Two things follow, and the first is a caution about our own null results. The minimum detectable effect runs from 0.012 to 0.064 with a median of 0.036, and in twenty of the twenty-four dataset-generator-evaluator cells it exceeds the spread actually observed. Where we report no detectable difference, an effect the size of the one we measured would usually not have been detected. The nulls bound what a practitioner would notice at this sample size; they are not evidence that the systems are identical, which is why Section~\ref{sec:equivalence} tests equivalence separately instead of reading the nulls as equivalence. All four comparisons that do reach significance have a spread above their own minimum detectable effect (0.0461 against 0.0368, 0.0406 against 0.0350, 0.0796 against 0.0614 and 0.0699 against 0.0638), and no other comparison does.
 
 The second is about the evaluators, and it qualifies how Section~\ref{sec:verdict} should be read. AlignScore has the lowest minimum detectable effect in all eight cells, 0.012 to 0.037, against 0.021 to 0.061 for NLI-max and 0.024 to 0.064 for claim-min. Some of that is a variance property: the standard deviation of the paired per-query difference is 0.12 to 0.30 under AlignScore and 0.20 to 0.48 under NLI-max, on identical answers. So part of why the verdict changes with the evaluator is that the evaluators differ in resolving power at fixed $n$, and not only in how they respond to a known error. Appendix~\ref{app:standardised} separates the two by dividing each spread by its own paired standard deviation. AlignScore's standardised effect remains the larger in five of eight cells, so the variance difference does not account for all of it, although it reverses on Mistral-7B.
-
-\begin{table}[t]
-\centering\small
-\begin{tabular}{llrrr}
-\toprule
-\textbf{Generator} & \textbf{Evaluator} & $n$ & spread & MDE \\
-\midrule
-\multicolumn{5}{l}{\emph{Natural Questions}} \\
-Claude & NLI-max & 784 & 0.011 & 0.021 \\
- & Claim-min & 784 & 0.022 & 0.038 \\
- & AlignScore & 784 & 0.011 & 0.012 \\
-Qwen & NLI-max & 790 & 0.006 & 0.025 \\
- & Claim-min & 790 & 0.008 & 0.032 \\
- & AlignScore & 790 & 0.007 & 0.016 \\
-GPT-4o-mini & NLI-max & 628 & 0.013 & 0.022 \\
- & Claim-min & 628 & 0.015 & 0.024 \\
- & AlignScore & 628 & 0.008 & 0.015 \\
-Mistral-7B & NLI-max & 692 & 0.017 & 0.032 \\
- & Claim-min & 692 & 0.016 & 0.039 \\
- & AlignScore & 692 & 0.003 & 0.018 \\
-\midrule
-\multicolumn{5}{l}{\emph{HotpotQA}} \\
-Claude & NLI-max & 517 & 0.023 & 0.046 \\
- & Claim-min & 517 & 0.035 & 0.050 \\
- & AlignScore & 517 & 0.016 & 0.025 \\
-Qwen & NLI-max & 499 & 0.012 & 0.060 \\
- & Claim-min & 499 & 0.018 & 0.049 \\
- & AlignScore & 499 & \textbf{0.041} & 0.035 \\
-GPT-4o-mini & NLI-max & 510 & 0.027 & 0.041 \\
- & Claim-min & 510 & 0.038 & 0.040 \\
- & AlignScore & 510 & \textbf{0.046} & 0.037 \\
-Mistral-7B & NLI-max & 423 & \textbf{0.080} & 0.061 \\
- & Claim-min & 423 & \textbf{0.070} & 0.064 \\
- & AlignScore & 423 & 0.031 & 0.037 \\
-\bottomrule
-\end{tabular}
-\caption{Minimum detectable effect at 80\% power, two-sided paired test at $\alpha = 0.05$, against the spread observed in each cell. Bold marks the four comparisons that reach significance in Table~\ref{tab:7}; all four have a spread exceeding their own MDE, and no other comparison does. AlignScore has the lowest MDE in every cell, including the three where its standardised effect is the smallest of the three evaluators (Table~\ref{tab:standardised}).}
-\label{tab:power}
-\end{table}
-
-
 
 \subsection{Separating resolving power from response}
 \label{app:standardised}
 
 The minimum detectable effects above confound two things. AlignScore may break cells because it responds more to whatever differs between the systems, or because its per-query differences are quieter and the same difference clears significance sooner. The first is a claim about what the instrument resolves; the second is a claim about its variance. Both would produce the pattern in Table~\ref{tab:7}.
 
-Dividing each cell's spread by the standard deviation of its own paired per-query differences removes the variance term and leaves a standardised effect, comparable across evaluators that do not share a scale (Table~\ref{tab:standardised}).
+Dividing each cell's spread by the standard deviation of its own paired per-query differences removes the variance term and leaves a standardised effect, comparable across evaluators that do not share a scale. It is the Std.\ column of Table~\ref{tab:7}.
 
-\begin{table}[t]
-\centering\small
-\begin{tabular}{lrrr}
-\toprule
-\textbf{Generator} & NLI-max & Claim-min & Align \\
-\midrule
-\multicolumn{4}{l}{\emph{Natural Questions}} \\
-Claude & 0.051 & 0.057 & \textbf{0.094} \\
-Qwen & 0.022 & 0.024 & \textbf{0.045} \\
-GPT-4o-mini & \textbf{0.066} & 0.071 & 0.062 \\
-Mistral-7B & \textbf{0.056} & 0.042 & 0.017 \\
-\midrule
-\multicolumn{4}{l}{\emph{HotpotQA}} \\
-Claude & 0.062 & 0.085 & \textbf{0.082} \\
-Qwen & 0.026 & 0.046 & \textbf{0.145} \\
-GPT-4o-mini & 0.081 & 0.116 & \textbf{0.155} \\
-Mistral-7B & \textbf{0.177} & 0.149 & 0.114 \\
-\bottomrule
-\end{tabular}
-\caption{Spread in units of each evaluator's own paired per-query standard deviation, which removes the variance difference Table~\ref{tab:power} reports. Bold marks the larger of NLI-max and AlignScore, the comparison at issue: AlignScore is larger in five of eight cells. The exceptions are NQ/GPT-4o-mini (0.062 against 0.066) and both Mistral-7B cells, where the entailment aggregate is clearly the more responsive of the two (0.056 against 0.017 on NQ, 0.177 against 0.114 on HotpotQA). Claim-min is shown for completeness and is in fact the largest of the three in two cells, HotpotQA/Claude and NQ/GPT-4o-mini.}
-\label{tab:standardised}
-\end{table}
-
-AlignScore's standardised effect exceeds the entailment aggregate's in five of eight cells, by factors of 1.3 to 5.6. So the difference between these evaluators is not only that one is quieter. It is not a fixed property of the evaluator either: on Mistral-7B the entailment aggregate has the larger standardised effect in both datasets, and the largest single value in the table is its 0.177 on HotpotQA/Mistral-7B. In the other five cells, on the same answers, AlignScore resolves a larger difference between the retrieval systems relative to its own noise. Since the variance has been divided out, that is a statement about what it measures.
+AlignScore's standardised effect exceeds the entailment aggregate's in five of eight cells, by factors of 1.3 to 5.6. So the difference between these evaluators is not only that one is quieter. It is not a fixed property of the evaluator either: on Mistral-7B the entailment aggregate has the larger standardised effect in both datasets, and the largest single value in the column is its 0.177 on HotpotQA/Mistral-7B. Claim-min, shown for completeness, is the largest of the three in two cells, HotpotQA/Claude (0.085) and NQ/GPT-4o-mini (0.071). In the other five cells, on the same answers, AlignScore resolves a larger difference between the retrieval systems relative to its own noise. Since the variance has been divided out, that is a statement about what it measures.
 
 Two qualifications. First, the exceptions: besides the two Mistral-7B cells, NQ/GPT-4o-mini reverses the ordering with the two nearly indistinguishable (0.062 against 0.066), in the cell with the tersest generator on the dataset with the narrower retrieval spread. Second, this analysis separates variance from response without identifying what AlignScore is responding to. It is consistent with AlignScore tracking a property of the retrieved context that the entailment aggregate discards when it takes a maximum over chunks, and we do not test that.
 
@@ -954,7 +891,38 @@ Cases are the first 200 eligible answers in dataset order rather than a random 2
 
 Detection by quartile of position under the entailment aggregate, pooled over the four embedding systems: on Natural Questions 3.2, 3.1, 7.9 and 6.7\% for Claude, 40.4, 33.1, 30.7 and 36.2\% for Qwen, 63.5, 55.4, 44.0 and 63.5\% for GPT-4o-mini and 39.6, 31.9, 34.9 and 31.2\% for Mistral-7B; on HotpotQA 12.8, 13.7, 18.4 and 10.9\%, then 55.0, 58.3, 44.4 and 61.0\%, then 68.8, 71.2, 65.1 and 78.8\%, then 52.9, 47.3, 58.1 and 60.0\%. A Spearman test of per-case detection against position reaches $\alpha = 0.05$ in one of the eight cells (NQ/Qwen, $\rho = -0.076$, $p = 0.048$), which does not survive correction over the eight tests ($p \approx 0.39$) and corresponds to almost no relationship in any case. The quartile figures fluctuate without a direction.
 
-We therefore treat the prefix as exchangeable with the eligible set for the detection rates reported, which is what the intervals require. This checks position only. It does not rule out some other ordering effect in the datasets that happens not to show up as a monotone trend in detection.
+This checks position only. It does not rule out some other ordering effect in the datasets that happens not to show up as a monotone trend in detection, so we also ran the probe on a random sample.
+
+\paragraph{A seeded random 200.} For every system, dataset and generator we built all eligible cases and kept a random 200 of them (\texttt{random.Random(42)}), then scored that sample with the four scorers of Table~\ref{tab:choose}. The measures were fixed before any score was read. The random sample shares 4,512 of its 6,179 cases with the first-200 sample and adds 1,667. HotpotQA/Mistral-7B adds none, since it is a census under both schemes, and neither does HotpotQA/GPT-4o-mini on all-mpnet. On the shared cases NLI-max, claim-min and AlignScore reproduce the first-200 scores exactly. MiniCheck differs by at most 0.004, which changes no detection outcome at 0.5 in any of the 4,512 shared cases.
+
+Table~\ref{tab:prefixrand} sets the two samples side by side. Across the forty dataset, generator and scorer combinations (the four scorers plus MiniCheck's per-sentence aggregate), detection at 0.5 moves by at most 2.4 points, with a median of 0.4. The random rate falls inside the first-200 Wilson interval in 39 of the 40. The exception is NQ/Claude under per-sentence MiniCheck, 98.9\% against 96.9\%, which is a saturated rate. Every ordering statement the paper reads off the probe comes out the same on both samples. AlignScore has the largest mean drop in all eight cells, and claim-min detects more than NLI-max in all eight. Claude is the least and GPT-4o-mini the most detected in 8 of the 10 dataset-scorer pairs, and the two exceptions are the same on both samples: per-sentence MiniCheck, where every generator sits between 94 and 99\%.
+
+\begin{table*}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{llrrrrrrrrr}
+\toprule
+ & & & \multicolumn{2}{c}{NLI-max} & \multicolumn{2}{c}{Claim-min} & \multicolumn{2}{c}{AlignScore} & \multicolumn{2}{c}{MiniCheck} \\
+\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}
+Dataset & Generator & Added & First & Random & First & Random & First & Random & First & Random \\
+\midrule
+NQ & Claude & 460 & 5.1 & 6.3 & 25.1 & 26.2 & 24.1 & 22.1 & 82.7 & 81.0 \\
+ & Qwen & 339 & 35.1 & 37.2 & 48.1 & 49.2 & 51.8 & 52.0 & 95.9 & 94.9 \\
+ & Mistral-7B & 196 & 34.3 & 34.0 & 48.2 & 48.6 & 51.8 & 49.8 & 96.4 & 96.4 \\
+ & GPT-4o-mini & 81 & 56.6 & 56.6 & 61.0 & 61.4 & 75.4 & 75.1 & 97.5 & 97.9 \\
+\midrule
+HotpotQA & Claude & 371 & 13.9 & 15.1 & 34.3 & 32.6 & 48.9 & 51.3 & 80.6 & 81.7 \\
+ & Qwen & 134 & 54.8 & 55.4 & 66.8 & 66.1 & 74.5 & 75.2 & 91.0 & 91.3 \\
+ & Mistral-7B & 0 & 52.5 & 52.5 & 59.6 & 59.6 & 71.5 & 71.5 & 90.5 & 90.5 \\
+ & GPT-4o-mini & 86 & 70.5 & 70.8 & 70.6 & 70.9 & 89.4 & 88.9 & 94.8 & 94.8 \\
+\bottomrule
+\end{tabular}
+\caption{Falsification detection at the 0.5 gate (\%) on the first 200 eligible answers and on a seeded random 200, per dataset and generator, pooled over the four embedding systems. \emph{Added} is the number of cases the random sample contains and the first-200 sample does not; the rest are shared and score identically, up to 0.004 for MiniCheck. MiniCheck is the whole-answer aggregate. HotpotQA/Mistral-7B is a census under both schemes.}
+\label{tab:prefixrand}
+\end{table*}
+
+We therefore treat the first-200 sample as exchangeable with the eligible set for the detection rates reported, and keep it as the published sample, since every other table is built on it.
 
 
 \section{The markdown normalisation defect}
