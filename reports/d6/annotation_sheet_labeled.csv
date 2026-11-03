@@ -1,0 +1,364 @@
+item,question,reference,answer,label,note
+D6-001,"What legend that lends its name to a modern medical term, inspired the plot of the horror film Ghostkeeper?",Wendigo,The Windigo legend lends its name to a modern medical term and inspired the plot of the horror film Ghostkeeper.,CORRECT,Windigo is a spelling variant of Wendigo
+D6-002,The Album Against the Wind was the 11th Album of a Rock singer Robert C Seger born may 6 1945. What was the Rock singers stage name ?,Bob Seger,"Based on the provided context, the rock singer's stage name is **Bob Seger**.
+
+The context states that Robert Clark Seger (born May 6, 1945) performed and recorded as ""Bob Seger and the Last Heard"" and ""Bob Seger System"" throughout the 1960s, and later became known as Bob Seger with the Silver Bullet Band.",CORRECT,
+D6-003,"The song ""Judgment Night"" was a collaboration between Onyx and the heavy metal band formed in which city?","Brooklyn, New York","Based on the provided context, I cannot answer this question. 
+
+While Chunk 3 states that ""Judgment Night"" was a collaboration between Biohazard and Onyx, it does not identify Biohazard as a heavy metal band or specify which city they were formed in. The context does not provide information about where Biohazard was formed.",REFUSAL,declines; names only the bridge entity (Biohazard)
+D6-004,who played guitar on my guitar gently weeps,George Harrison,"Based on the provided context, **George Harrison** wrote and played guitar on ""While My Guitar Gently Weeps."" Additionally, **Eric Clapton** overdubbed a lead guitar part on the recording, although he was not formally credited for his contribution.",CORRECT,"also credits Clapton's lead overdub; extra detail, does not contradict ref"
+D6-005,Which 9th longest-running musical in Broadway history was the 30th Disney animated feature film?,Beauty and the Beast,"I cannot answer based on the provided context.
+
+The context states that ""Beauty and the Beast"" is the 9th longest-running musical in Broadway history, but it does not specify that it is the 30th Disney animated feature film. While the context mentions that ""Peter Pan"" is the 14th Disney animated feature film, there is no information provided about which film is the 30th Disney animated feature film.",REFUSAL,mentions Beauty and the Beast (ref) in its reasoning but declines to commit
+D6-006,Stacey Totman is the former head coach of the college golf team that competes in what conference?,Big 12,"Stacey Totman is the former head coach of the Texas Tech Red Raiders women's golf team, which competes in the Big 12 Conference.",CORRECT,
+D6-007,what nfl player has the most nfl rings,Tom Brady,"Tom Brady, five as starting quarterback with New England Patriots; he has the most rings of any active player (as of the end of the 2017-18 season), he is the only player to win five playing for one team, and he has more than any other quarterback in Super Bowl history.",CORRECT,qualifies it as most rings of any active player; still names Tom Brady
+D6-008,when was catch me if you can made,2002,"I cannot answer based on the provided context. While the context mentions ""Catch Me If You Can"" and references its soundtrack being released on December 10, 2002, it does not explicitly state when the film itself was made or released.",REFUSAL,mentions 2002 only as the soundtrack date; declines for the film
+D6-009,Alvaro Mexia had a diplomatic mission with which tribe of indigenous people?,Apalachees,Alvaro Mexia had a diplomatic mission with the Ais native population.,INCORRECT,"answers Ais, ref Apalachees; ref may be wrong - Mexia's mission is usually described as to the Ais"
+D6-010,For what type of work is the production company for The Year Without a Santa Claus best known?,"seasonal television specials, particularly its work in stop motion animation","Based on the provided context, the production company for The Year Without a Santa Claus, Rankin/Bass Productions, is best known for stop motion animated television specials.",CORRECT,conveys stop-motion TV specials; omits 'seasonal'
+D6-011,who wrote the song be thankful for what you got,William DeVaughn,"William DeVaughn wrote the song ""Be Thankful for What You Got.""",CORRECT,
+D6-012,Can Stenocereus and Pachypodium both include tree like plants?,yes,"Yes, based on the provided context, both Stenocereus and Pachypodium include tree-like plants. Stenocereus is a genus of columnar or tree-like cacti, while Pachypodium is a genus of succulent spine-bearing trees and shrubs.",CORRECT,
+D6-013,what does hp mean in war and order,hit points or health points,"I cannot answer based on the provided context as it does not contain any information about ""war and order"". The provided context only discusses the concept of HP (Health Points) in the context of gaming, particularly role-playing and video games.",REFUSAL,declines for War and Order; mentions HP = Health Points (ref) only as what the context covers
+D6-014,Are both Duke Energy and Affiliated Managers Group based in Massachusetts?,no,I cannot answer based on the provided context.,REFUSAL,
+D6-015,when does dragon ball super episode 130 comes out,"March 18, 2018",I cannot answer based on the provided context. The given chunks do not contain information about Dragon Ball Super episode release dates.,REFUSAL,
+D6-016,The youngest daughter of Lady Mary-Gaye Curzon stars with Douglas Smith and Lucien Laviscount  in what 2017 film?,The Bye Bye Man,"The youngest daughter of Lady Mary-Gaye Curzon, Cressida Bonas, stars with Douglas Smith and Lucien Laviscount in the film ""The Bye Bye Man.""",CORRECT,
+D6-017,Peter Curtis and Scott Draper are both what?,former tennis player,Peter Curtis and Scott Draper are both former tennis players.,CORRECT,
+D6-018,"Which band has more members, Test Icicles or X Ambassadors?",X Ambassadors,"Based on the provided context, X Ambassadors has more members than Test Icicles. X Ambassadors currently consists of Sam Harris, Casey Harris, Noah Feldshuh, and Adam Levin, while Test Icicles originally consisted of Rory Attwell and Sam Mehran, with Devonte Hynes joining later. However, the context does not provide information about the number of members in Test Icicles at the time of their disbandment.",CORRECT,commits to X Ambassadors; adds a caveat that context lacks Test Icicles' final lineup (not a decline)
+D6-019,Temagami-Lorrain Mine and Burwash Mine were both mines created during the early 1900s; which one yielded a 16-ton bulk sample of gold ore in 1935?,Burwash Mine,I cannot answer based on the provided context.,REFUSAL,
+D6-020,Scott Sandelin grew up in a town in what Minnesota county?,Saint Louis County,"Scott Sandelin grew up in Hibbing, Minnesota, which is in St. Louis County. However, since this specific county is not mentioned in the provided context, I cannot answer based on the provided context.",CORRECT,"decline-then-answer; states Hibbing, St. Louis County, then says it cannot answer from context; labelled by what it asserts; borderline (alt: REFUSAL)"
+D6-021,how many types of cheese are produced in france,from 350 to 450 distinct types,"Based on the provided context, traditionally there are **350 to 450 distinct types of French cheese** grouped into eight categories called 'les huit familles de fromage'. 
+
+However, the context also notes that there can be many varieties within each type of cheese, leading some to claim closer to **1,000 different types of French cheese**.",CORRECT,"extra claim (~1,000 counting varieties) does not contradict ref"
+D6-022,who was the first to say i'm going to disney world,Phil Simms,"The context does not provide information about who first said ""I'm going to Disney World."" The phrase is associated with a series of television commercials by The Walt Disney Company, but the original speaker is not specified in the provided context.",REFUSAL,
+D6-023,"Who was born first, Aleksandr Ivanovsky or Arthur Lubin?",Aleksandr Ivanovsky,I cannot answer based on the provided context.,REFUSAL,
+D6-024,what are the parts of a domain name called,top-level domain,"Based on the provided context, the parts of a domain name are technically called **labels**. 
+
+According to Chunk 1: ""A domain name consists of one or more parts, technically called labels, that are conventionally concatenated, and delimited by dots, such as example.com.""",INCORRECT,right but not the ref: 'labels' is a defensible answer; ref names only one part (top-level domain)
+D6-025,The author of Sexual Politics attended which British University?,Oxford,"The author of Sexual Politics, Kate Millett, attended Oxford University.",CORRECT,
+D6-026,what was the alliance between great britian russia and france known as,The Triple Entente,"The alliance between Great Britain, Russia, and France was known as the Triple Entente.",CORRECT,
+D6-027,What is the focus of the movie in which Nolan North played the role of Superboy?,focus on young superheroes,"The movie in which Nolan North played the role of Superboy is ""Young Justice,"" where he voiced Superboy. However, the context provided does not give specific details about the plot or focus of this particular movie beyond stating that Nolan North voiced Superboy in it.",REFUSAL,declines the focus; names only the bridge entity (Young Justice)
+D6-028,who stole the mona lisa from the louvre in 1911,Vincenzo Peruggia,Vincenzo Peruggia stole the Mona Lisa from the Louvre in 1911.,CORRECT,
+D6-029,how old was sasuke when his clan died,seven,Sasuke was seven years old when his clan died.,CORRECT,
+D6-030,who starred in the movie natural born killers,Woody Harrelson,"The movie Natural Born Killers starred Woody Harrelson, Juliette Lewis, Robert Downey Jr., Tom Sizemore, and Tommy Lee Jones.",CORRECT,
+D6-031,where do you get a cashiers check from,a bank,I cannot answer based on the provided context.,REFUSAL,
+D6-032,Repertoire of Plácido Domingo appeared in an opera written by whom which was based on a play by William Shakespeare?,Giuseppe Verdi,"Based on the provided context, Plácido Domingo appeared in **Macbeth**, which is an opera written by **Giuseppe Verdi** with a libretto by Francesco Maria Piave and additions by Andrea Maffei, based on William Shakespeare's play of the same name.
+
+This is mentioned in Chunk 2, which states that in 2015, Domingo made his debut as Macbeth at the Berliner Staatsoper, and Chunk 5 provides information about the opera Macbeth being composed by Giuseppe Verdi based on Shakespeare's play.",CORRECT,
+D6-033,where are the organ mountains in new mexico,"10 miles (16 km) east of the city of Las Cruces, in Doña Ana County","The Organ Mountains are in southern New Mexico, specifically in Doña Ana County, near the city of Las Cruces. They are located 10 miles (16 km) east of Las Cruces.",CORRECT,
+D6-034,who was the first chief minister of west bengal,Prafulla Chandra Ghosh of the Indian National Congress,The first chief minister of West Bengal was Prafulla Chandra Ghosh.,CORRECT,
+D6-035,The movies Queen of Blood and Battle Beyond the Sun both contained scenes from what 1959 Soviet feature?,Nebo Zovyot,"The movies Queen of Blood and Battle Beyond the Sun both contained scenes from the 1959 Soviet feature ""Nebo Zovyot"". This is because ""Battle Beyond the Sun"" is the English-dubbed and re-edited U.S. version of ""Nebo Zovyot"", as mentioned in Chunk 3 of the provided context. Additionally, ""Queen of Blood"" reused special effects footage from ""Nebo Zovyot"", as stated in Chunk 1.",CORRECT,
+D6-036,who's playing in the world series and when is it,Houston Astros,"The 2017 World Series was played between the National League (NL) champion Los Angeles Dodgers and the American League (AL) champion Houston Astros. The series took place from October 24 to November 1, 2017.",CORRECT,"names both 2017 teams incl. Houston Astros, plus dates"
+D6-037,what is the ultimate objective of financial management,Profit maximization,"The ultimate objective of financial management is profit maximization, which occurs when marginal cost is equal to marginal revenue. However, wealth maximization, meaning the maximization of shareholders' wealth, is considered an advanced goal compared to profit maximization. Survival of the company is also an important consideration in financial decisions.",CORRECT,states profit maximization; mentions wealth maximization as an 'advanced goal' without contradicting
+D6-038,when did it become law to stand for the national anthem,"June 22, 1942","Based on the provided context, the law requiring people to stand for the national anthem became official in 1932, although there were no specific behaviors prescribed at that time. The law was revised in 1942 and 1976 to specify actions during the anthem, such as standing at attention and placing hands over the heart.",INCORRECT,"headline answer 1932 vs ref 1942; does mention a 1942 revision that specified standing (ref year, no date); borderline (alt: CORRECT)"
+D6-039,The American Sweetgum is the hostplant of what kind of bug?,moth,"I cannot answer based on the provided context.
+
+While the context provides information about American Sweetgum (Liquidambar styraciflua) in Chunk 1, and mentions various bugs in Chunks 2-4, there is no information connecting any of these bugs to the American Sweetgum as a host plant. Chunk 5 mentions a plant pathogen (Datronia scutellata) that affects sweetgum, but this is a fungus causing wood rot, not a bug.",REFUSAL,
+D6-040,what are the two extracellular fluid compartments in the body,"interstitial fluid in the ""interstitial compartment""","The two extracellular fluid compartments in the body, according to the provided context, are the interstitial compartment and the intravascular compartment.",CORRECT,names interstitial and intravascular compartments
+D6-041,who did the dominican republic gain its independence from,Haiti,The Dominican Republic gained its independence from Haiti.,CORRECT,
+D6-042,What was position of the man who served Prince Andrew from 1990-2001? ,Private Secretary and Treasurer,"The man who served Prince Andrew from 1990-2001 was Captain Robert Neil Blair CVO RN, who held the positions of Private Secretary and Treasurer to The Duke of York.",CORRECT,
+D6-043,who plays jimmy's mom in 8 mile,Kim Basinger,Kim Basinger plays Jimmy's mom in 8 Mile.,CORRECT,
+D6-044,"Who is older, Ferdi Taygan or Mahesh Bhupathi?",Ferdi Taygan,I cannot answer based on the provided context as there is no information about the age of Ferdi Taygan in the context.,REFUSAL,
+D6-045,What movie is the the Spinning turtle attraction in the worlds 21st largest theme park based off of?,Finding Nemo,"I cannot answer based on the provided context.
+
+While the context identifies Crush's Coaster as a spinning turtle attraction based on ""Finding Nemo,"" it does not provide information about which theme park is the world's 21st largest, so I cannot determine if Crush's Coaster is located in that park.",REFUSAL,mentions Finding Nemo (ref) in its reasoning but declines to commit
+D6-046,What is the name of the company that wholly owns the Value Alliance airline whose head office is within Terminal 2 of Narita International Airport?,All Nippon,"Based on the provided context:
+
+1. From Chunk 1: Vanilla Air is a member of the Value Alliance airline alliance.
+
+2. From Chunk 3: Vanilla Air's head office is within Terminal 2 of Narita International Airport, and it is wholly owned by All Nippon Airways.
+
+Therefore, the answer is **All Nippon Airways**.",CORRECT,
+D6-047,who sang i'm gonna run away from you,Tami Lynn,"Tami Lynn sang ""I'm Gonna Run Away From You"".",CORRECT,
+D6-048,In which city are the headquarters of the American research and scientific development company where Ravi Sethi worked as computer scientist located?,Murray Hill,"Based on the provided context:
+
+Ravi Sethi worked at Bell Labs (mentioned in Chunk 1). According to Chunk 2, Nokia Bell Labs (formerly Bell Labs) is an American research and scientific development company with headquarters located in **Murray Hill, New Jersey**.",CORRECT,
+D6-049,who has the talismans in sailor moon s,Haruka and Michiru,"Based on the provided context, the three Talismans in Sailor Moon S are held by:
+
+1. **Haruka (Sailor Uranus)** - holds the Space Sword
+2. **Michiru (Sailor Neptune)** - holds the Deep Aqua Mirror
+3. **Sailor Pluto** - holds the Garnet Orb
+
+The context explains that Eudial discovered that Haruka and Michiru held two of the Talismans within their own hearts, and when their pure hearts were taken, they transformed into the mystical Space Sword and Deep Aqua Mirror respectively. Sailor Pluto's Garnet Orb is identified as the third and final Talisman.",CORRECT,"adds Sailor Pluto as third holder; extra detail, does not contradict ref"
+D6-050,"Which playwright lived a longer life, Edward Albee or J. M. Barrie?",Edward Franklin Albee III,"Based on the provided context:
+
+- Edward Albee lived from March 12, 1928 to September 16, 2016, which is 88 years.
+- J. M. Barrie lived from May 9, 1860 to June 19, 1937, which is 77 years.
+
+**Edward Albee lived a longer life than J. M. Barrie.**",CORRECT,
+D6-051,Ms. Knope Goes to Washington is the fifth season premiere of an American political comedy television sitcom starring Amy Poehler as who?,Leslie Knope,"Amy Poehler stars as Leslie Knope in ""Ms. Knope Goes to Washington,"" the fifth season premiere of the American political comedy television sitcom ""Parks and Recreation.""",CORRECT,
+D6-052,"Haruki Murakami said that writing ""Dance Dance Dance"" had been a healing act after his unexpected fame following the publication of a novel published in which year ?",1987,1988 (based on Chunk 1),INCORRECT,different value: 1988 vs ref 1987
+D6-053,"Which movie directed by James Gunn portrayed the fictional character, Ego the Living Planet?",Guardians of the Galaxy Vol. 2,"""Guardians of the Galaxy Vol. 2"" portrayed the fictional character, Ego the Living Planet, directed by James Gunn.",CORRECT,
+D6-054,Muz-TV was launched before the 24-hour music channel that was operated by what company?,Prof Media,Muz-TV was launched before the 24-hour music channel that was operated by Viacom International Media Networks (TMF).,INCORRECT,different company: Viacom (TMF) vs ref Prof Media
+D6-055,Ralph Hefferline was a psychology professor at a university that is located in what city?,New York City,"Ralph Hefferline was a psychology professor at Columbia University, which is located in New York City.",CORRECT,
+D6-056,how far into game of thrones is the tv show,outline from The Winds of Winter and A Dream of Spring,"I cannot answer based on the provided context.
+
+The context provided contains information about Game of Thrones seasons 1-8, including their air dates and production details, but it does not contain information about how far into the story the TV show has progressed relative to the source material or overall narrative arc. To answer your question, I would need information comparing the TV show's current point in the story to where it is in George R.R. Martin's books or the planned ending of the series.",REFUSAL,
+D6-057,who sings the song you'll never find another love like mine,Lou Rawls,"Based on the provided context, **Lou Rawls** sings the song ""You'll Never Find Another Love Like Mine."" The song was from his 1976 album ""All Things in Time"" and was written by Kenny Gamble and Leon Huff.",CORRECT,
+D6-058,who started the state of the union address,Woodrow Wilson,"George Washington started the State of the Union address, delivering the first regular annual message before a joint session of Congress on January 8, 1790.",INCORRECT,right but not the ref: Washington gave the first annual message (1790); ref Wilson (revived the in-person address); ambiguous question
+D6-059,Altnahinch is located in a county that has a population density of how many per square mile? ,526,"Altnahinch is located in County Antrim, which has a population density of 526 people per square mile.",CORRECT,
+D6-060,What is the name of the movie that stars Katrina Bowden and was directed by Sean Anders?,Sex Drive,"The name of the movie that stars Katrina Bowden and was directed by Sean Anders is ""Sex Drive.""",CORRECT,
+D6-061,who beat university of virginia in basketball this year,West Virginia,I cannot answer based on the provided context. The context does not contain information about any basketball games played by the University of Virginia this year.,REFUSAL,
+D6-062,when does the cannes film festival take place,usually in May,"The Cannes Film Festival takes place annually, usually in May. (Based on the provided context)",CORRECT,
+D6-063,who signed the declaration of independence for maryland,Samuel Chase,"Based on the provided context, the signer for Maryland who signed the Declaration of Independence was Samuel Chase.",CORRECT,"implies Chase was the only Maryland signer; extra detail, does not contradict ref"
+D6-064,What type of activity does Owner earnings and Warren Buffett have in common?,business,Owner earnings and Warren Buffett have in common that Owner earnings is a valuation method that was detailed by Warren Buffett in 1986.,INCORRECT,describes the link (valuation method detailed by Buffett) but never names an activity type; ref 'business'; vague question
+D6-065,"What is the name of the fight song of the university whose main campus is in Lawrence, Kansas and whose branch campuses are in the Kansas City metropolitan area?",Kansas Song,"Based on the provided context, the fight song is **Kansas Song (We're From Kansas)**.
+
+According to Chunk 1, this is a fight song of the University of Kansas. Chunk 2 confirms that the University of Kansas has its main campus in Lawrence and has branch campuses in the Kansas City metropolitan area (the Edwards Campus in Overland Park and the medical school and hospital in Kansas City).",CORRECT,
+D6-066,what is the final season of downton abbey,six,"Based on the provided context, the sixth series is the final season of Downton Abbey. According to the information given, on 26 March 2015, the sixth series was confirmed to be the final series, with the final episode airing in the UK on 25 December 2015 on ITV. The sixth series aired in autumn 2015 in the UK and Ireland, and in January 2016 in the United States.",CORRECT,
+D6-067,What building is opposite the ceremonial meeting place of the Accession Council in the United Kingdom?,Mark Masons' Hall,"Mark Masons' Hall is located opposite St James's Palace, which is the ceremonial meeting place of the Accession Council in the United Kingdom.",CORRECT,
+D6-068,"What year was a joint venture between RLJ Companies and this film studio founded in 2005, founded?",2006,I cannot answer based on the provided context. The context does not mention any film studio founded in 2005 that had a joint venture with RLJ Companies.,REFUSAL,
+D6-069,when did korea separate into north and south,1945,"Korea separated into North and South after World War II, specifically in 1945.",CORRECT,
+D6-070,are the documentaries Out of Place and The Mosuo Sisters by the same director ?,no,I cannot answer based on the provided context.,REFUSAL,
+D6-071,"Yoann Lemoine, a French video director, has created music videos for Lana Del Rey, Katy Perry, and an orchestral country pop ballad by which top pop artist?",Taylor Swift,I cannot answer based on the provided context.,REFUSAL,
+D6-072,when was i look at the world poem written,30–31 October 2000,I cannot answer based on the provided context.,REFUSAL,
+D6-073,what is the ultimate objective of financial management,Profit maximization,"The ultimate objective of financial management is wealth maximization, which means maximization of shareholders' wealth.",INCORRECT,right but not the ref: wealth maximization is a common textbook answer; ref profit maximization
+D6-074,"Chris Jones is a semi-professional footballer, who played with what goalkeeper for Derby County when he was with Yorkshire?",Scott Paul Carson,"I cannot answer based on the provided context.
+
+While the context states that Chris Jones played for Leeds United (a Yorkshire club) and mentions he played with several teammates including Scott Carson, it does not specify that Scott Carson was a goalkeeper or that Chris Jones played with him at Derby County. Additionally, the context does not confirm that Chris Jones played for Derby County.",REFUSAL,mentions Scott Carson (ref) in its reasoning but declines to commit
+D6-075,who wrote the original little red riding hood story,Charles Perrault,"Based on the provided context, **Charles Perrault** wrote the earliest known printed version of Little Red Riding Hood, known as ""Le Petit Chaperon Rouge."" It was included in his 1697 collection titled ""Tales and Stories of the Past with Morals. Tales of Mother Goose"" (Histoires et contes du temps passé, avec des moralités. Contes de ma mère l'Oye).
+
+The context indicates that this version may have had its origins in 17th-century French folklore, but Perrault's is the earliest known printed version.",CORRECT,
+D6-076,who performed the halftime show at super bowl 51,Lady Gaga,The halftime show at Super Bowl LI was headlined by Lady Gaga.,CORRECT,
+D6-077,"Which of the city at the south of Shelly Beach, New South Wales is a local government area in the Hunter region of New South Wales, Australia?",City of Newcastle,"Based on the provided context, the city at the south of Shelly Beach, New South Wales that is a local government area in the Hunter region of New South Wales, Australia is not explicitly mentioned. However, from Chunk 5, we know that Bucketty is a locality in the City of Cessnock local government area, which is in the Lower Hunter Region. Therefore, it can be inferred that the city at the south of Shelly Beach, New South Wales could be Cessnock, but the context does not provide enough information to confirm this.",REFUSAL,"decline-then-answer; says it is not stated, then 'could be Cessnock' but cannot confirm; hedged guess, not the ref; borderline (alt: INCORRECT)"
+D6-078,What is the name of this Fortune 500 American company that operates a chain of retail home improvement stores that sponsored House Rules?,Lowe's,"Lowe's Companies, Inc.",CORRECT,
+D6-079,What Dances with the Wolves star had a role in Powwow Highway?,"Wesley ""Wes"" Studi",Wes Studi had a role in Powwow Highway.,CORRECT,
+D6-080,What was the largest passenger capacity of the plane type used for BOAC Flight 911 ?,219,I cannot answer based on the provided context.,REFUSAL,
+D6-081,who is considered as architect of india constitution,"B. R. Ambedkar, the chairman of the Drafting Committee",B.R. Ambedkar is widely considered to be the chief architect of the Indian Constitution.,CORRECT,
+D6-082,"Which English musician is known for both the songs ""See Yourself"" and ""Withing You Without You""?",George Harrison,"Based on the provided context, **George Harrison** is the English musician known for both ""See Yourself"" and ""Within You Without You"".
+
+According to Chunk 1, ""See Yourself"" is a song by English musician George Harrison released on his 1976 album ""Thirty Three & 1/3"". According to Chunk 2, ""Within You Without You"" is a song written by George Harrison and released on the Beatles' 1967 album ""Sgt. Pepper's Lonely Hearts Club Band"".",CORRECT,
+D6-083,what new deal program limited production in industry,NIRA,"Based on the provided context, the program that addressed production in industry was the **National Recovery Administration (NRA)**, which was part of the National Industrial Recovery Act (NIRA).
+
+However, the context does not specifically state that the NRA ""limited"" production. Rather, it indicates that the NRA sought to:
+- Raise prices through anti-deflationary measures
+- Reduce harmful competition
+- Maintain employment and production through industry codes
+
+The context mentions that ""By March 1934, industrial production was 45% higher than in March 1933,"" which suggests production increased rather than was limited.
+
+If you're asking about a program that specifically limited production, I cannot answer that based on the provided context.",REFUSAL,"decline-then-answer; names NRA/NIRA as the program that addressed production, then disputes that it 'limited' production and declines the question as asked; borderline (alt: CORRECT)"
+D6-084,largest state in the us by land mass,Alaska,Alaska is the largest state in the US by land mass.,CORRECT,
+D6-085,Who was one of the stars who played the two oldest children in a TV series which had a 2010 movie based on it?,Michael Seater,I cannot answer based on the provided context.,REFUSAL,
+D6-086,"Which band was formed first, Lit or Adorable?",Adorable,"Based on the provided context:
+
+- Adorable was formed in 1990
+- Lit was formed in 1995
+
+Therefore, **Adorable was formed first**.",CORRECT,
+D6-087,who was the president of pakistan during 1971 war,President Yahya Khan,The president of Pakistan during the 1971 war was Yahya Khan.,CORRECT,
+D6-088,Luke Null is an actor who was on the program that premiered its 43rd season on which date?,"September 30, 2017","The provided context does not contain enough information to determine the exact date when the 43rd season of ""Saturday Night Live"" premiered. However, it is known that the season premiered during the 2017–2018 television season, according to Chunk 2.",REFUSAL,"decline-then-answer; declines the exact date, offers only '2017-2018 television season' (consistent with ref, not the date); borderline (alt: INCORRECT)"
+D6-089,who was the first black person to register to vote,Thomas Mundy Peterson,I cannot answer based on the provided context.,REFUSAL,
+D6-090,What party does the House of Commons representative for Congleton belong to?,British Conservative Party,The House of Commons representative for Congleton belongs to the Conservative Party.,CORRECT,
+D6-091,who wrote the book my country my life,"L. K. Advani, an Indian politician who served as the Deputy Prime Minister of India from 2002 to 2004, and was the Leader of the Opposition in the 15th Lok Sabha","Based on the provided context, **L.K. Advani** wrote the book ""My Country My Life."" 
+
+The context states that ""My Country My Life is an autobiographical book by L.K. Advani, an Indian politician who served as the Deputy Prime Minister of India from 2002 to 2004."" The book was released on March 19, 2008.",CORRECT,
+D6-092,who do the characters represent in 8 mile,loosely on Eminem,"In the context provided, the characters represent various roles in the story of the film ""8 Mile."" Here's a brief summary:
+
+1. Eminem as Jimmy ""B-Rabbit"" Smith Jr. - The main character, a white rapper trying to launch a career in a genre dominated by African Americans.
+2. Kim Basinger as Stephanie - Jimmy's mother.
+3. Brittany Murphy as Alex Latourno - Jimmy's love interest.
+4. Mekhi Phifer as Future - Jimmy's closest friend and the rap battle host.
+5. Michael Shannon as Greg Buehl - Stephanie's boyfriend.
+6. Eugene Byrd as Wink - Not specified in the context.
+7. Evan Jones as Cheddar Bob - Jimmy's friend.
+8. Omar Benson Miller as Sol - Jimmy's friend and Iz's brother.
+9. De'Angelo Wilson as DJ Iz - Jimmy's friend and Sol's brother.
+10. Taryn Manning as Janeane - Jimmy's ex-girlfriend.
+11. Proof as Lil' Tic - A character",INCORRECT,lists cast and roles; never says the characters are loosely based on Eminem; answer is truncated
+D6-093,Vince Phillips held a junior welterweight title by an organization recognized by what larger Hall of Fame?,International Boxing Hall of Fame,"Vincent Phillips held the IBF junior welterweight title, which is recognized by the International Boxing Hall of Fame.",CORRECT,
+D6-094,What city did the characters from Gargoyles the Movie: The Heroes Awaken wake up in after being in an enchantedly petrified state for a thousand years?,modern-day New York City,The characters from Gargoyles the Movie: The Heroes Awaken woke up in modern-day New York City after being in an enchanted petrified state for a thousand years.,CORRECT,
+D6-095,What edition of tennis' US Open was the 2017 US Open when Petra Kvitova was a quarterfinalist?,137th,I cannot answer based on the provided context.,REFUSAL,
+D6-096,which is the fastest train in india and what is its speed,12951/52 Mumbai Rajdhani Express,"The fastest train in India, according to the provided context, is the 12002 New Delhi - Bhopal Habibganj Shatabdi Express with a maximum speed of 150 km / h. However, it's important to note that the context does not specify the average speed for this train.",INCORRECT,different train: Bhopal Shatabdi vs ref Mumbai Rajdhani
+D6-097,when does a limit of a function not exist,if some inputs very close to p are taken to outputs that stay a fixed distance apart,A limit of a function does not exist if some inputs very close to a point p are taken to outputs that stay a fixed distance apart.,CORRECT,
+D6-098,which is the default file extension for an audio file in windows media player,Windows Media Video (WMV),I cannot answer based on the provided context.,REFUSAL,ref looks wrong: WMV is a video format
+D6-099,who was the first woman to win who wants to be a millionaire,Judith Cynthia Aline Keppel,"Based on the provided context, **Judith Keppel** was the first woman to win Who Wants to Be a Millionaire. According to the context, she was ""the first one-million-pound winner on the television game show Who Wants to Be a Millionaire? in the United Kingdom"" and is described as ""the only woman in the United Kingdom to have won it and also the first person to win a million pounds or more on a British television game show.""",CORRECT,
+D6-100,who captained the first european ship to sail around the tip of africa,Bartolomeu Dias,"Based on the provided context, **Bartolomeu Dias**, a Portuguese explorer, captained the first modern rounding of the Cape of Good Hope in 1488. The context states: ""the first modern rounding of the cape in 1488 by Portuguese explorer Bartolomeu Dias was a milestone in the attempts by the Portuguese to establish direct trade relations with the Far East.""
+
+Dias originally called the cape ""Cabo das Tormentas"" (Cape of Storms), which was the original name before it became known as the ""Cape of Good Hope.""",CORRECT,
+D6-101,who played the mother in the black stallion,Teri Garr,Teri Garr played the mother in The Black Stallion. (From Chunk 1),CORRECT,
+D6-102,"When did the Disney sitcom in which Genevieve Knight ""G"" Hannelius starred as Avery Jennings end?","October 16, 2015","I cannot answer based on the provided context.
+
+The context states that Genevieve Knight ""G"" Hannelius starred as Avery Jennings in the Disney Channel sitcom ""Dog with a Blog,"" but it does not provide information about when that series ended.",REFUSAL,declines; names only the bridge entity (Dog with a Blog)
+D6-103,"In what London botanical garden can you find the fungus described by Elise Maud Wakefield as ""Lepiota""?",Kew Gardens,"Based on the provided context, the fungus described by Elsie Maud Wakefield as ""Lepiota"" (now known as Saproamanita nauseosa) can be found in **Kew Gardens**.
+
+According to Chunk 1, the type specimen was found growing on soil in the ""Nepenthes"" greenhouse at Kew Gardens. Chunk 2 confirms that Kew Gardens is a botanical garden in southwest London.",CORRECT,
+D6-104,how many times have real madrid won the european cup.in paris,twelve,Real Madrid has won the European Cup 12 times.,CORRECT,
+D6-105,when did fortnite battle royal come out on xbox,September 2017,Fortnite Battle Royale was released for Xbox One in September 2017.,CORRECT,
+D6-106,What type of music were vocalists Billie Joe Armstrong and Frank Iero involved with?,punk rock,"Based on the provided context:
+
+**Billie Joe Armstrong** is best known as the lead vocalist and guitarist of the punk rock band Green Day. He is also involved with other punk rock projects including Pinhead Gunpowder, Foxboro Hot Tubs, and The Network.
+
+**Frank Iero** was the rhythm guitarist and backup vocalist of the rock band My Chemical Romance and post-hardcore band Leathermouth. He also has a solo punk rock project titled Frank Iero and the Patience.
+
+Both vocalists were involved with **punk rock** and **rock** music.",CORRECT,
+D6-107,when is the new dumping ground coming out 2017,15 December 2017,"I cannot answer based on the provided context. The context does not contain information about a new season or episode of ""The Dumping Ground"" coming out in 2017.",REFUSAL,
+D6-108,Are Guildford Cathedral and St Paul's Cathedral both located in England?,yes,"Yes, both Guildford Cathedral and St Paul's Cathedral are located in England.",CORRECT,
+D6-109,What is the name of the number-one single featuring the winner of Celebrity Apprentice 3?,Every Rose Has Its Thorn,I cannot answer based on the provided context.,REFUSAL,
+D6-110,who sang the song you got a friend in me,Randy Newman,"Randy Newman, according to the provided context.",CORRECT,
+D6-111,Alfie Allen played Theon Greyjoy on which show?,Game of Thrones,"Alfie Allen played Theon Greyjoy on the HBO series ""Game of Thrones.""",CORRECT,
+D6-112,when does season 3 of the riveras start,"March 11, 2018","Based on the provided context, the start date for Season 3 of The Riveras is not given. However, it is mentioned that the fourth season was announced to premiere in 2019, so it can be inferred that Season 3 likely premiered sometime in 2018, but the exact date is not specified.",REFUSAL,"decline-then-answer; start date not given, infers 'likely sometime in 2018'; not the ref date; borderline (alt: INCORRECT)"
+D6-113,what gun does the california highway patrol use,Smith & Wesson M&P in .40 S&W,"The California Highway Patrol uses the Smith & Wesson Model 4006 TSW in .40 S&W, and as of August 2017, they have begun replacing it with the Smith & Wesson M&P in .40 S&W. Each patrol vehicle is also equipped with a Remington 870 Police Magnum 12-gauge shotgun and a Sig Sauer M400 rifle in 5.56 mm.",CORRECT,says the 4006 TSW is being replaced by the M&P .40 from Aug 2017; conveys ref; borderline (alt: INCORRECT)
+D6-114,what do the films mean in high castle,The Grasshopper Lies Heavy is a series of newsreel films depicting multiple alternative realities,I cannot answer based on the provided context.,REFUSAL,
+D6-115,"Which ""Mirrors"" actress made her film debut in the 2005 comedy film ""Hitch""?",Paula Maxine Patton,"Paula Patton made her film debut in the 2005 comedy film ""Hitch"".",CORRECT,
+D6-116,actor who played caesar in dawn of the planet of the apes,Andy Serkis,Andy Serkis,CORRECT,
+D6-117,"The ""civic rally cross"" was sold alongside what other model sold exclusively in Japan at Honda Verno dealerships? ",Honda Ballade,I cannot answer based on the provided context.,REFUSAL,
+D6-118,Which of the following stars Jeff Bridges as a computer programmer: Tron or The Million Dollar Duck?,Tron,Tron,CORRECT,
+D6-119,Which number-one single is Michael Steele responsible for?,"""Walk Like an Egyptian""","I cannot answer based on the provided context.
+
+The context does not contain information about Michael Steele or any number-one singles he may be responsible for. While the context mentions several number-one singles (such as ""Every Rose Has Its Thorn"" by Poison and ""Waterloo"" by Stonewall Jackson), it does not attribute any of them to someone named Michael Steele.",REFUSAL,
+D6-120,"A medieval fortress in Dirleton, East Lothian, Scotland borders on the south side of what coastal area?",Yellowcraig,"Based on the provided context, I cannot definitively answer the question as the text does not specify the coastal area that Dirleton Castle borders on the south side.",REFUSAL,
+D6-121,What is the name of the father of Childericus?,Merovech,I cannot answer based on the provided context. The context does not contain information about the father of Childericus.,REFUSAL,
+D6-122,who has trained the most melbourne cup winners,Bart Cummings,"Based on the provided context, **Bart Cummings** has trained the most Melbourne Cup winners with **12 victories** (1965, 1966, 1967, 1974, 1975, 1977, 1979, 1990, 1991, 1996, 1999, 2008).",CORRECT,
+D6-123,when was the last time nebraska voted democrat,1964,"The last time Nebraska voted for a Democrat as the winner of the state was in 2008, when Barack Obama received 41.60% of the vote. However, it's important to note that since 2000, Nebraska has split its electoral votes, and in 2008, only five of its electoral votes went to Obama.",INCORRECT,"different value: 2008 vs ref 1964; details also off (in 2008 Obama won one NE elector, not five, and did not carry the state)"
+D6-124,who invented the first home video security system,Marie Van Brittan Brown,"Based on the provided context, **Marie Van Brittan Brown** invented the first home security system. She created it along with her husband **Albert Brown**. The patent (number 3,482,037) was granted in 1969, though the invention was completed in 1966.
+
+The system included four peepholes and a camera that could slide up and down to view each one. Images appeared on a monitor, and residents could unlatch the door by remote control. Brown was inspired to create this invention because of the long time it would take for police to arrive after being called by residents.",CORRECT,
+D6-125,who is doing 2018 super bowl half time show,Justin Timberlake,Justin Timberlake is the headliner for the Super Bowl LII halftime show in 2018.,CORRECT,
+D6-126,prior to 1948 north and south vietnam were a part of,France,I cannot answer based on the provided context.,REFUSAL,
+D6-127,what state does rick and morty take place in,Washington,"According to the provided context, Rick and Morty takes place in Washington state. Specifically, the context states: ""According to Justin Roiland, the family lives outside of Seattle in the U.S. state of Washington.""",CORRECT,
+D6-128,where did the battle of bonhomme richard take place,near Flamborough Head,"Based on the provided context, the Battle of Bonhomme Richard took place near **Flamborough Head** on **23 September 1779**. The context refers to it as the ""Battle of Flamborough Head"" and states that ""On 23 September 1779, the squadron encountered the Baltic Fleet of 41 sail under convoy of the HMS Serapis and HM hired armed vessel Countess of Scarborough near Flamborough Head.""",CORRECT,
+D6-129,who are the permanent member of un security council,"China (formerly the Republic of China), Russia (formerly the Soviet Union), France, the United Kingdom, and the United States","The permanent members of the United Nations Security Council are China, Russia, France, the United Kingdom, and the United States.",CORRECT,
+D6-130,what is the enrollment at university of miami,"16,801 students","The enrollment at the University of Miami is 16,801 students.",CORRECT,
+D6-131,what is the payout for the texas bowl,US$3 million per team,"Based on the provided context, the payout for the Texas Bowl is **US $3 million per team** (as of 2015).",CORRECT,
+D6-132,who won the national championship in volleyball 2017,Ohio State,I cannot answer based on the provided context.,REFUSAL,
+D6-133,who played in last train from gun hill,Kirk Douglas,"Based on the provided context, the cast of ""Last Train from Gun Hill"" includes:
+
+- Kirk Douglas as Matt Morgan
+- Anthony Quinn as Craig Belden
+- Carolyn Jones as Linda
+- Earl Holliman as Rick Belden
+- Brian G. Hutton as Lee Smithers
+- Brad Dexter as Beero
+- Ziva Rodann as Catherine Morgan
+- Val Avery as Steve, Horseshoe Bartender
+- Bing Russell as Skag
+- Walter Sande as Sheriff Bartlett",CORRECT,
+D6-134,where does new crust come from in sea floor spreading,volcanic activity,"In sea floor spreading, new crust comes from basaltic magma that rises up the fractures at mid-ocean ridges and cools on the ocean floor to form new seabed. (From Chunk 1)",CORRECT,conveys ref by paraphrase (rising basaltic magma at ridges = volcanic activity)
+D6-135,how old was sasuke when his clan died,seven,The provided context does not contain enough information to determine Sasuke's age when his clan died.,REFUSAL,
+D6-136,who played susanna in legends of the fall,Julia Ormond,Julia Ormond played Susannah Fincannon-Ludlow in Legends of the Fall.,CORRECT,
+D6-137,Emmett Brown rides in a sports car that features what type of doors?,gull-wing doors,"Based on the provided context, Emmett Brown rides in a DeLorean DMC-12, which features **gull-wing doors**.
+
+This information is found in Chunk 4, which states that ""The DeLorean DMC-12...features gull-wing doors and an innovative fiberglass body structure with a steel backbone chassis, along with external brushed stainless steel body panels.""",CORRECT,
+D6-138,Ernest Foot was the best friend of the fighter pilot who had how many victories?,44,Albert Ball had 44 victories. Ernest Foot was the best friend of Albert Ball.,CORRECT,
+D6-139,Candy Coburn has shared the stage with an American country music group with who playing guitar?,Charles Kelley,"Based on the provided context, I cannot answer this question with certainty.
+
+The context states that Candy Coburn has shared the stage with many notable artists including Brooks and Dunn, Blake Shelton, Miranda Lambert, and others. However, the context does not provide information about which of these artists are part of an American country music group, nor does it specify who plays guitar in any group that Candy Coburn has performed with.
+
+To answer your question accurately, I would need additional information about the specific group and its members.",REFUSAL,
+D6-140,"What year did the series on CBS, starring the actor who known for his role in ""Rebel Without a Cause,"" air?",1952,"I cannot answer based on the provided context. The context does not mention any series on CBS that stars an actor known for his role in ""Rebel Without a Cause.""",REFUSAL,
+D6-141,Alvaro Mexia had a diplomatic mission with which tribe of indigenous people?,Apalachees,"Based on the provided context, Alvaro Mexia had a diplomatic mission with the **Ais native population**. According to Chunk 1, he was given a diplomatic mission to the native populations living south of St. Augustine and in the Cape Canaveral area, which resulted in a ""Period of Friendship"" between the Spanish and the Ais native population.",INCORRECT,"answers Ais, ref Apalachees; ref may be wrong (same question as D6-009)"
+D6-142,where is the capital city of alabama located,Montgomery,I cannot answer based on the provided context.,REFUSAL,
+D6-143,who played guitar on my guitar gently weeps,George Harrison,"Eric Clapton played guitar on ""While My Guitar Gently Weeps.""",INCORRECT,"right but not the ref: Clapton did play the lead part, but ref is George Harrison"
+D6-144,What other political position did the person who introduced the DISCLOSE Act hold?,United States Senator,"Based on the provided context, the person who introduced the DISCLOSE Act was Chris Van Hollen (D-Maryland). The context does not provide information about any other political positions he held.",REFUSAL,declines; names only the bridge entity (Chris Van Hollen)
+D6-145,what dna changes produce the delta f508 mutation,deletion of three nucleotides spanning positions 507 and 508 of the CFTR gene on chromosome 7,"The Delta F508 mutation is produced by a deletion of the C-G pair from position 507 along with the first two T-A pairs from position 508 in the CFTR gene. This results in the DNA sequence A-T-T ( paired with T-A-A ) at position 507, which is transcribed into the mRNA codon A-U-U. The net effect is equivalent to a deletion of the sequence resulting in the codon for phenylalanine at position 508.",CORRECT,3-nucleotide deletion spanning 507/508 in CFTR; omits chromosome 7
+D6-146,Scott Sandelin grew up in a town in what Minnesota county?,Saint Louis County,"Based on the provided context, Scott Sandelin grew up in Hibbing, Minnesota. However, the context does not specify which county Hibbing is located in, so I cannot answer what Minnesota county Hibbing is in based solely on the provided information.",REFUSAL,declines the county; names only the town (Hibbing)
+D6-147,When was the Western Germanic language spoken from which the small settlement situated on the river Leda opposite Leer derives its name?,between the 8th and 16th centuries,"The small settlement situated on the river Leda opposite Leer derives its name from Old Frisian, as per the provided context. This language was spoken between the 8th and 16th centuries.",CORRECT,
+D6-148,"Approximately how many locations is BJ's Wholesale Club operating in, as of early 2008?",650 locations,I cannot answer based on the provided context.,REFUSAL,
+D6-149,two main types of research methods used in psychology,Correlational research,"Two main types of research methods used in psychology are qualitative and quantitative research. Qualitative psychological research involves findings that are not arrived at by statistical or other quantitative procedures, while quantitative psychological research results from mathematical modeling and statistical estimation or inference.",INCORRECT,right but not the ref: qualitative/quantitative is plausible; ref correlational research; ambiguous question
+D6-150,"Whose native growing land is more south, Beech or Daviesia?",Daviesia,"Daviesia's native growing land is more south compared to Beech. Daviesia is native to Australia, with a center of diversity in western Australia, which can be considered more southern than the native range of Beech, which is in temperate regions of Europe, Asia, and North America.",CORRECT,
+D6-151,"Which documentary was created first, The Agronomist or American Scary?",The Agronomist,"Based on the provided context, **American Scary** was created first.
+
+- The Agronomist is a 2003 documentary
+- American Scary is a 2006 documentary
+
+Therefore, The Agronomist (2003) was created before American Scary (2006).",INCORRECT,"self-contradictory: bold answer says American Scary, but its dates and final sentence say The Agronomist (ref); borderline (alt: CORRECT)"
+D6-152,"In which genus number of species are more, Lavatera or Oplismenus?",Oplismenus,I cannot answer based on the provided context. The context does not provide information about the number of species in the genus Oplismenus.,REFUSAL,
+D6-153,how many cracker barrels in the united states,more than 600,"By 2011, Cracker Barrel had opened more than 600 restaurants in 42 states.",CORRECT,
+D6-154,"What season was the character introduced that becomes the main antagonist in the  following season, from the animated television series created by Bryan Konietzko and Michael Dante DiMartino as a sequel to """", which aired from 2005 to 2008? ",third,Season Two (Book Two: Earth),INCORRECT,different value: Season Two vs ref third
+D6-155,when did the song the joker come out,October 1973,"Based on the provided context, ""The Joker"" by the Steve Miller Band was released in **October 1973**. It was from their 1973 album also titled ""The Joker.""",CORRECT,
+D6-156,"Which band has more members, The Futureheads or Marcy Playground?",The Futureheads,"Based on the provided context:
+
+- **The Futureheads** have 4 members: Ross Millard, Barry Hyde, David ""Jaff"" Craig, and Dave Hyde.
+
+- **Marcy Playground** have 3 members: John Wozniak, Dylan Keefe, and Shlomi Lavie.
+
+Therefore, **The Futureheads have more members** with 4 members compared to Marcy Playground's 3 members.",CORRECT,
+D6-157,when did under the cork tree come out,"May 3, 2005","Based on the provided context, ""From Under the Cork Tree"" by Fall Out Boy was released on **May 3, 2005**.",CORRECT,
+D6-158,where is natural gas found in the us,Texas,"Based on the provided context, natural gas is found in the following locations in the US:
+
+1. **Pennsylvania and West Virginia** - Marcellus natural gas field
+2. **Texas** - Multiple fields including Newark East Barnett Shale, Haynesville Shale, Eagle Ford Formation, Carthage, and Sprayberry
+3. **Louisiana and Texas** - Haynesville Shale
+4. **Arkansas** - Fayetteville Shale
+5. **New Mexico and Colorado** - San Juan Basin
+6. **Wyoming** - Pinedale Gas Field
+7. **Colorado** - Wattenberg Gas Field
+
+The context also notes that natural gas is produced from various types of fields, including shale gas fields, coalbed methane wells, and ""dry gas"" fields, and that most oil fields also produce some natural gas.",CORRECT,lists many states incl. Texas
+D6-159," Which 1970's film was released first, Charley and the Angel or The Boatniks?","The Boatniks is a 1970 American comedy film starring Robert Morse, Stefanie Powers, Don Ameche and Phil Silvers.",I cannot answer based on the provided context.,REFUSAL,ref is a full sentence; implied answer The Boatniks
+D6-160,"Marcus Wayne Garland spent nine seasons with an American professional baseball team that is based in Baltimore, Maryland, and was one of the AMerican League's original eight charter franchises when the league was established in what year?",1901,"I cannot answer based on the provided context. The context does not mention the year when the Baltimore Orioles, one of the American League's original eight charter franchises, was established.",REFUSAL,
+D6-161,who was the head of the spanish inquisition,Dominican Tomás de Torquemada,"Based on the provided context, the head of the Spanish Inquisition was the **Grand Inquisitor** (Latin: Inquisitor Generalis).
+
+The most famous Grand Inquisitor was **Tomás de Torquemada**, a Spanish Dominican who spearheaded the Spanish Inquisition and served as Grand Inquisitor from 1483 to 1498.",CORRECT,
+D6-162,what kind of fish live in the salton sea,tilapia,"In the provided context, the following fish species are mentioned as living in the Salton Sea or its rivers and canals: threadfin shad, carp, red shiner, channel catfish, white catfish, largemouth bass, mosquitofish, sailfin molly, desert pupfish, and tilapia. However, it's important to note that due to the high salinity levels and pollution, very few fish species can tolerate living in the Salton Sea. The introduced tilapia are the main fish that can tolerate the high salinity levels and pollution.",CORRECT,
+D6-163,element named after fictional planet from which superman came,Kryptonite,I cannot answer based on the provided context.,REFUSAL,"ref looks wrong: kryptonite is a fictional mineral, not an element"
+D6-164,what does hp mean in war and order,hit points or health points,I cannot answer based on the provided context.,REFUSAL,
+D6-165,What was the release date and price for the release of Mac OS X that has the software for creating WWF files?,"April 29, 2005 for US$129.95","The software for creating WWF files is available for Mac OS X 10.4, which was released to the public on April 29, 2005 for US$129.95.",CORRECT,
+D6-166,what is a real world application of an atwood machine,An elevator with a counterbalance,"Based on the provided context, several real-world applications of an Atwood machine are:
+
+1. **Elevators with counterbalance** - An elevator with a counterbalance approximates an ideal Atwood machine and relieves the driving motor from the load of holding the elevator cab, as it only needs to overcome the weight difference and inertia of the two masses.
+
+2. **Funicular railways** - Two connected railway cars on inclined tracks use the same counterbalancing principle.
+
+3. **Elevators on the Eiffel Tower** - These counterbalance each other.
+
+4. **Ski lifts** - Gondolas move on a closed (continuous) pulley system up and down the mountain, similar to counter-weighted elevators but with a constraining force provided by the cable.
+
+5. **Boat lifts** - These are another type of counter-weighted elevator system that approximates an Atwood machine.",CORRECT,
+D6-167,"Who wrote The Devils, and was an eninent English theater, opera and film director?",Peter Hall,"The question contains a mix-up in the names. Based on the provided context:
+
+- The play ""The Devils"" was written by John Whiting.
+- Sir Peter Hall was an eminent English theatre, opera and film director.
+
+Therefore, the correct answer to the specific question asked is: John Whiting wrote ""The Devils,"" but Sir Peter Hall was the eminent English theatre, opera and film director mentioned.",CORRECT,"flags a mix-up in the question: John Whiting wrote The Devils, Peter Hall (ref) is the director; borderline (alt: INCORRECT)"
+D6-168,when is the next episode of flash airing,"May 8, 2018",I cannot answer based on the provided context.,REFUSAL,
+D6-169,In what country was Cudjoe's leader born?,Ghana,"I cannot answer based on the provided context. The context only mentions that Cudjoe was a Maroon leader in Jamaica, but it does not provide any information about his birthplace or the birthplace of any other individuals.",REFUSAL,
+D6-170,Immanuel Lutheran School is affiliated with the denomination that has how many members?,2.1 million,"Immanuel Lutheran School is affiliated with the Lutheran Church–Missouri Synod, which has 2.1 million members.",CORRECT,
+D6-171,How many animals does the wall running between the West Gate Lodge and Cardiff Castle depict?,15,"The wall running between the West Gate Lodge and Cardiff Castle is the Animal Wall, which depicts 15 animals.",CORRECT,
+D6-172,What theory was advanced by the author of Progress in Optics?,theory of direct scattering and inverse scattering,I cannot answer based on the provided context.,REFUSAL,
+D6-173,where was part of the classic surfing movie endless summer filmed,Australia,"Part of the classic surfing movie The Endless Summer was filmed in various locations around the world, including Australia, New Zealand, Tahiti, Hawaii, Senegal, Ghana, Nigeria, and South Africa. Additionally, some scenes were filmed in California, as the surfers traveled to different coastal areas in search of new surf spots.",CORRECT,
+D6-174,what would the free trade agreement of the americas (ftaa) do,"eliminate or reduce the trade barriers among all countries in the Americas, excluding Cuba","The Free Trade Area of the Americas (FTAA) was a proposed agreement to eliminate or reduce the trade barriers among all countries in the Americas, excluding Cuba.",CORRECT,
+D6-175,who captained the first european ship to sail around the tip of africa,Bartolomeu Dias,Bartolomeu Dias captained the first European ship to sail around the tip of Africa.,CORRECT,
+D6-176,who won last year's ncaa women's basketball,South Carolina,South Carolina Gamecocks (based on the provided context),CORRECT,
+D6-177,Are Distortion Mirrors and OK Go both considered rock bands?,yes,"Yes, based on the provided context, both Distortion Mirrors and OK Go are considered rock bands.",CORRECT,
+D6-178,"Which album came out first, ""Paper Trail"" or ""If Tomorrow Comes...""?",Paper Trail,I cannot answer based on the provided context.,REFUSAL,
+D6-179,Which author dedicated a 1985 romance novel to the author who did in 2009 and wrote under the pen name Gwyneth Moore?,Eva Ibbotson,"Eva Ibbotson, based on the provided context.",CORRECT,
+D6-180,who plays steve's wife on my three sons,Beverly Garland,"Steve's wife on My Three Sons is played by Beverly Garland, who portrays Barbara Harper.",CORRECT,
+D6-181,Both Bishop Carroll Catholic High School and Kapaun Mt. Carmel Catholic High School are located in which city in Kansas?,Wichita,"Wichita, Kansas",CORRECT,
+D6-182,what order do the captain america movies go in,Captain America: The First Avenger,"Based on the information provided, the order of the Captain America movies is:
+
+1. Captain America: The First Avenger (July 22, 2011)
+2. The Avengers (May 4, 2012)
+3. Captain America: The Winter Soldier (April 4, 2014)
+4. Captain America: Civil War (May 6, 2016)",CORRECT,"first entry matches ref; list wrongly includes The Avengers, which does not contradict ref"
+D6-183,Are Skeptical Inquirer and The Progressive Populist both tabloid-style magazines?,no,"No, Skeptical Inquirer and The Progressive Populist are not both tabloid-style magazines. The Progressive Populist is described as a tabloid newspaper format magazine, whereas Skeptical Inquirer is described as a bimonthly American magazine.",CORRECT,
+D6-184,who performed the halftime show at super bowl 51,Lady Gaga,Lady Gaga performed the halftime show at Super Bowl LI.,CORRECT,
+D6-185,which is larger Asante Traditional Buildings or Gulangyu?,Gulangyu,I cannot answer based on the provided context.,REFUSAL,
+D6-186,where is the arctic circle located on a world map,most northerly of the five major circles of latitude as shown on maps of Earth,"The Arctic Circle is located on a world map at a latitude of 66° 33' 47.0'' north of the Equator. It marks the northernmost point at which the noon sun is just visible on the December solstice and the southernmost point at which the midnight sun is just visible on the June solstice. The region north of this circle is known as the Arctic, and the zone just to the south is called the Northern Temperate Zone.",CORRECT,"gives the latitude (66 33' 47"" N) rather than the ref's 'most northerly of the five major circles'; same line, different description; borderline (alt: INCORRECT)"
+D6-187,How many restaurants comprise the quick service restaurant chain that Ron Joyce helped found?,"4,613",I cannot answer based on the provided context.,REFUSAL,
+D6-188,The Ingerophrynus gollum is named after a character in a book that sold how many copies?,150 million copies,I cannot answer based on the provided context.,REFUSAL,
+D6-189,where in the bible are the 12 disciples,Mark 3:13–19,"Based on the provided context, the four listings of the twelve apostles (also referred to as disciples) in the New Testament are found in:
+
+1. **Mark 3:13-19**
+2. **Matthew 10:1-4**
+3. **Luke 6:12-16**
+4. **Acts 1:13**
+
+The context also notes that the **Gospel of John** refers to ""the Twelve"" (John 6:67-71) but does not provide a formal list of their names.",CORRECT,
+D6-190,"What group did Carlene LeFevre and Rich LeFevre form in Brooklyn, New York City?","the ""First Family of Competitive Eating""","I cannot answer based on the provided context.
+
+The context states that Carlene LeFevre and Rich LeFevre are said to form the ""First Family of Competitive Eating,"" but it does not mention them forming any group in Brooklyn, New York City. The context only indicates they are from Henderson, Nevada.",REFUSAL,mentions 'First Family of Competitive Eating' (ref) but declines because the Brooklyn premise is unsupported
+D6-191,when is the last time the vikings were in the nfc championship,1976,The last time the Vikings were in the NFC Championship Game was in 2017.,INCORRECT,"different value: 2017 vs ref 1976; ref looks stale - 1976 was their last NFC title, they reached later NFC Championship games"
+D6-192,"Which musician is older, Philip Labonte or Alexi Laiho?",Philip Steven Labonte,"Based on the provided context:
+
+- Philip Steven Labonte was born April 15, 1975
+- Alexi Laiho was born April 8, 1979
+
+Philip Labonte is older than Alexi Laiho.",CORRECT,
+D6-193,origin of rudolph the red nosed reindeer song,songwriter Johnny Marks based on the 1939 story Rudolph the Red-Nosed Reindeer,"The song ""Rudolph the Red-Nosed Reindeer"" was adapted by songwriter Johnny Marks from a story created by his brother-in-law, Robert L. May, in 1939 for Montgomery Ward.",CORRECT,
+D6-194,when was the lupus foundation of america founded,1977,The Lupus Foundation of America was founded in 1977.,CORRECT,
+D6-195,where does a wrinkle in time take place,Connecticut,A Wrinkle in Time takes place in and around an unnamed village in Connecticut.,CORRECT,
+D6-196,"Which American singer and songwriter has a mezzo-soprano vocal range, Tim Armstrong or Tori Amos?",Tori Amos,Tori Amos,CORRECT,
+D6-197,What rank was higher than Karl Hermann Frank's rank until April 1942?,Reichsführer-SS,"The rank higher than Karl Hermann Frank's rank of ""Obergruppenführer"" until April 1942 was ""Reichsführer-SS.""",CORRECT,
+D6-198,wal-mart is a prime example of which type organization,multinational retail corporation,Wal-Mart is a prime example of a retail organization.,INCORRECT,"only 'retail organization'; omits 'multinational', likely the point of the ref; borderline (alt: CORRECT)"
+D6-199,Both Sorbaria and Goldenrod are a genus of more than 50 flowering plants?,no,I cannot answer based on the provided context.,REFUSAL,
+D6-200,Who was the president of the Sinn Fein political party during the Hume-Adams Dialogue?,"Gerard ""Gerry"" Adams",Gerry Adams was the president of the Sinn Féin political party during the Hume-Adams Dialogue.,CORRECT,

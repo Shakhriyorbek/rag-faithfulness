@@ -78,9 +78,9 @@ are still the only configured models never run.
 | Pipeline code | ✅ All of §8 built in `src/`; notebook is a reference artifact only |
 | Server access | ✅ Granted by Berend. **Fedora is now the only machine that can deploy** — the Windows laptop's key was revoked on both hosts 2026-08-28 |
 | Experiments | ✅ **All run.** 24,000-answer main grid + jina control + QASPER + qwen_verbose + C1/C2 + ablation + ESA + re-ranking. Nothing paid remains. See `reports/2026-09-16_all_results.md` and `reports/2026-10-07_reviews_and_verbosity_control.md` |
-| Correctness | ✅ **LLM judge over all 32 matched cells.** 24 cells 2026-08-30 ($29.27); the mistral arm 2026-10-16 (8,000 rows, **$13.74**, 0 errors, 0 ungradable — see B29). Containment is retired as the correctness signal — always run analyses with `--correct-source judge`. The judge covers the matched grid **only**: jina, QASPER and the C1/C2/ablation conditions are still containment-graded, so their accuracy figures are not comparable with the grid's |
+| Correctness | ✅ **LLM judge over all 32 matched cells.** 24 cells 2026-08-30 ($29.27); the mistral arm 2026-10-16 (8,000 rows, **$13.74**, 0 errors, 0 ungradable — see B29). Containment is retired as the correctness signal — always run analyses with `--correct-source judge`. **Checked against a blind human annotator 2026-11-03 (D6, B38): 98.5% agreement, kappa 0.97; 99.0% on correct-vs-not.** The judge covers the matched grid **only**: jina, QASPER and the C1/C2/ablation conditions are still containment-graded, so their accuracy figures are not comparable with the grid's |
 | Paper v6 | ✅ `paper/acl/main.tex` → `main.pdf` (anonymous, for ARR) and `main-preprint.pdf` (named, for Berend). `paper/build_v6.js` + its docx are **superseded — do not edit them**, an edit there will not reach the manuscript |
-| Format | ✅ **ACL** (`paper/acl/`, `./build.sh` via tectonic). **2026-11-02: main and main-preprint 37 pages, the two compact variants 38; 0 undefined refs, 0 overfull boxes, 0 rendered ??.** Five secondary sections sit in the appendix in both builds (B34); the full-build body ends at the Conclusion on p.17. The ARR 8-page body limit is NOT enforced — a hard-limit venue needs further cuts |
+| Format | ✅ **ACL** (`paper/acl/`, `./build.sh` via tectonic). **2026-11-03: main and main-preprint 39 pages, the two compact variants 40; 0 undefined refs, 0 overfull boxes, 0 rendered ??.** Five secondary sections sit in the appendix in both builds (B34); the full-build body ends at the Conclusion on p.17. The ARR 8-page body limit is NOT enforced — a hard-limit venue needs further cuts |
 | Venue | ⚠️ **The ARR 12 October 2026 deadline has passed and was not used** — the goal became a complete draft for Berend instead. Next ARR cycle or a direct venue submission is an open decision. The old plan (one ARR cycle feeding NAACL 2027 and COLING 2027, primary chosen at commitment) is in `reports/2026-09-05_berend_report.md` §2.3 and still describes the mechanism |
 
 **Backup:** 450 MB / 636 files at `~/rag-backup/checkpoints` on Fedora — the only
@@ -1663,6 +1663,32 @@ while D4 ran).** No number changed.
   correct-vs-not, refusal-vs-not), confusion, per generator/dataset, every
   disagreement, and `--second` for inter-annotator agreement. The sheet
   script refuses to overwrite an existing sheet.
+
+**B38 — third review, D6: the judge against a blind human annotator
+(2026-11-03, $0).** The author labelled all 200 items blind (confirmed: never
+saw `d6_key`) into `reports/d6/annotation_sheet_labeled.csv` (the blank
+`annotation_sheet.csv` is kept as the template for a second annotator).
+`RAG_CHECKPOINT_DIR=~/rag-backup/checkpoints/n1000_v3 python3
+scripts/d6_human_agreement.py --sheet reports/d6/annotation_sheet_labeled.csv`;
+output saved in `reports/d6/agreement.txt`. New App. `app:human` /
+`tab:human` (Appendix K), a sentence in §3.1 Definitions naming the judge
+(**the paper had never named it**: Claude Opus 5, effort low, default
+reasoning on, no temperature), and three Limitations items.
+- **Pre-specified**: 3-label 98.5% [95.7–99.5], kappa 0.972; correct-vs-not
+  99.0% [96.4–99.7], kappa 0.979; refusal-vs-not 99.0%, kappa 0.976. Human
+  121 C / 18 I / 61 R vs judge 121 / 20 / 59; same correct rate 60.5%.
+  Per generator 98/98/98/100%, NQ 99%, HotpotQA 98%. The 3 disagreements
+  (D6-077, -083, -167) were all marked borderline by the annotator with the
+  judge's label as the alternative; two are decline-then-answer.
+- **Post hoc, labelled as such** (script section "POST HOC"): the string
+  refusal rule vs human on refusal 96.5% [93.0–98.3], **kappa 0.9147 → 0.91**
+  (not 0.92); rule finds 54, misses 7 of 61 human refusals (4 part-answer then
+  decline, 2 "not given" then guess, 1 "I cannot definitively answer" not in
+  the phrase list), 0 false flags. Notes: 8 of 18 human-INCORRECT (7 distinct
+  questions) look defensible against a wrong/stale/ambiguous reference.
+- Sample contains **none** of the 220 rule-refusal/judge-correct rows (~1.5
+  expected). Limits stated: one annotator, the author; INCORRECT is thin.
+- PDFs 39 / 39 / 40 / 40 pages, clean; 230 tests pass.
 
 ### Code moves and reporting changes of 2026-09-01
 

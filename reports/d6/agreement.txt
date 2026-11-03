@@ -1,0 +1,27 @@
+labelled 200 of 200 items
+  three labels                 n=200  agree  98.5% [95.7%-99.5%]  kappa +0.972
+  correct vs not               n=200  agree  99.0% [96.4%-99.7%]  kappa +0.979
+  refusal vs not               n=200  agree  99.0% [96.4%-99.7%]  kappa +0.976
+
+  confusion (rows human, columns judge)
+                 CORRECT  INCORRECT    REFUSAL
+  CORRECT            120          1          0
+  INCORRECT            0         18          0
+  REFUSAL              1          1         59
+  human correct rate 60.5%, judge 60.5%
+
+  generator claude             n= 50  agree  98.0% [89.5%-99.6%]  kappa +0.956
+  generator gpt4omini          n= 50  agree 100.0% [92.9%-100.0%]  kappa +1.000
+  generator mistral            n= 50  agree  98.0% [89.5%-99.6%]  kappa +0.967
+  generator qwen               n= 50  agree  98.0% [89.5%-99.6%]  kappa +0.958
+  dataset HotpotQA             n=100  agree  98.0% [93.0%-99.4%]  kappa +0.964
+  dataset NQ                   n=100  agree  99.0% [94.6%-99.8%]  kappa +0.979
+
+  disagreements
+    D6-077 HotpotQA/mistral/hotpot_174: human REFUSAL, judge INCORRECT
+    D6-083 NQ/claude/nq_308: human REFUSAL, judge CORRECT
+    D6-167 HotpotQA/qwen/hotpot_394: human CORRECT, judge INCORRECT
+
+  POST HOC: string refusal rule (is_abstention) vs human
+  rule vs human, refusal       n=200  agree  96.5% [93.0%-98.3%]  kappa +0.915
+  refusals: rule 54, human 61, judge 59; human refusals the rule misses 7, rule refusals the human calls attempts 0; rule refusals the judge does not call refusals 0
