@@ -44,6 +44,8 @@ systems whose faithfulness verdict can then be shown to flip with the metric.
    comparisons in 3 of 8 cells survive Holm (2 under permutation, 1 under
    Friedman), with no detectable system x evaluator interaction (B28). Since
    2026-11-02 tab:7 carries MDE and the standardised effect beside each spread.
+   **With MiniCheck as a fourth evaluator (B39): 7 of 32 in 4 of 8 cells**, the
+   four published all survive, every NQ cell still null.
 4. Population (refusal pooling flips sign by generator) and the equivalence
    margin, reported as a curve and anchored on one fabricated fact
    (NLI-max 0.049–0.095 on Claude); on RAGTruth natural errors are harder only
@@ -80,7 +82,7 @@ are still the only configured models never run.
 | Experiments | ✅ **All run.** 24,000-answer main grid + jina control + QASPER + qwen_verbose + C1/C2 + ablation + ESA + re-ranking. Nothing paid remains. See `reports/2026-09-16_all_results.md` and `reports/2026-10-07_reviews_and_verbosity_control.md` |
 | Correctness | ✅ **LLM judge over all 32 matched cells.** 24 cells 2026-08-30 ($29.27); the mistral arm 2026-10-16 (8,000 rows, **$13.74**, 0 errors, 0 ungradable — see B29). Containment is retired as the correctness signal — always run analyses with `--correct-source judge`. **Checked against a blind human annotator 2026-11-03 (D6, B38): 98.5% agreement, kappa 0.97; 99.0% on correct-vs-not.** The judge covers the matched grid **only**: jina, QASPER and the C1/C2/ablation conditions are still containment-graded, so their accuracy figures are not comparable with the grid's |
 | Paper v6 | ✅ `paper/acl/main.tex` → `main.pdf` (anonymous, for ARR) and `main-preprint.pdf` (named, for Berend). `paper/build_v6.js` + its docx are **superseded — do not edit them**, an edit there will not reach the manuscript |
-| Format | ✅ **ACL** (`paper/acl/`, `./build.sh` via tectonic). **2026-11-03: main and main-preprint 39 pages, the two compact variants 40; 0 undefined refs, 0 overfull boxes, 0 rendered ??.** Five secondary sections sit in the appendix in both builds (B34); the full-build body ends at the Conclusion on p.17. The ARR 8-page body limit is NOT enforced — a hard-limit venue needs further cuts |
+| Format | ✅ **ACL** (`paper/acl/`, `./build.sh` via tectonic). **2026-11-03: all four builds 41 pages; 0 undefined refs, 0 overfull boxes, 0 rendered ??.** Five secondary sections sit in the appendix in both builds (B34); the full-build body ends at the Conclusion on p.17. The ARR 8-page body limit is NOT enforced — a hard-limit venue needs further cuts |
 | Venue | ⚠️ **The ARR 12 October 2026 deadline has passed and was not used** — the goal became a complete draft for Berend instead. Next ARR cycle or a direct venue submission is an open decision. The old plan (one ARR cycle feeding NAACL 2027 and COLING 2027, primary chosen at commitment) is in `reports/2026-09-05_berend_report.md` §2.3 and still describes the mechanism |
 
 **Backup:** 450 MB / 636 files at `~/rag-backup/checkpoints` on Fedora — the only
@@ -1689,6 +1691,39 @@ reasoning on, no temperature), and three Limitations items.
 - Sample contains **none** of the 220 rule-refusal/judge-correct rows (~1.5
   expected). Limits stated: one annotator, the author; INCORRECT is thin.
 - PDFs 39 / 39 / 40 / 40 pages, clean; 230 tests pass.
+
+**B39 — MiniCheck as a fourth evaluator of the system comparison (2026-11-03,
+$0, gpu1).** The reviewer's score criterion was the evaluator result "beyond
+NLI-derived scorers"; MiniCheck had run on the probe and RAGTruth only.
+`src/minicheck_faithfulness.py` → `minicheck_scores_{gen}_{model}_{ds}` (32
+matched cells, all 32,000 answers incl. refusals, `minicheck` +
+`minicheck_sent`, probe-identical inputs; `--validate 3` reproduced the
+probe's stored scores with **max diff 0.0**). `results.FAITH_SOURCES` gains
+both keys (in no default `--metrics`). Ran 08:46–15:47 UTC from snapshot
+`outputs/mcgrid/`, **gated on a free GPU** (the author's LoRA job held 26.8 GB
+first); NQ cells 9–37 min, HotpotQA 3–13 min. Analysis fixed beforehand in
+`scripts/mc_grid_table.py`; it reproduced every published value first.
+Output `reports/mcgrid/results.txt`, checkpoint `mc_grid_table`. New App.
+`app:mcgrid` / `tab:mcgrid` (40 values checked, 0 mismatches), tab:choose's
+two "not run" cells filled, sentences in setup, abstract, intro, §7, the
+interaction and power appendices, beyond-nli, Conclusion.
+- **Rule: 24 stays the design family; 32 is the extension.** Over 32: **7
+  survive in 4 of 8 cells**; the published four survive (p_holm 0.0090,
+  0.0145, 0.0308, 0.0468); MiniCheck adds HotpotQA/Claude 0.0405 (**null under
+  the other three**), HotpotQA/GPT <0.0001, HotpotQA/Mistral 0.0031. Every NQ
+  cell null under all four. Within-8 sensitivity: the same 3.
+- Omnibus over 32: Friedman 3 (MC Hotpot/GPT, MC Hotpot/Mistral, NLI
+  Hotpot/Mistral), permutation 3 (same two MC + Align Hotpot/GPT).
+- **MiniCheck MDE 0.011–0.034, lowest of four in 6 of 8** (NQ/Claude by
+  0.00015; AlignScore lower on NQ/Qwen, NQ/Mistral), above spread in 5 of 8;
+  Std. largest of four in 5 of 8. "AlignScore lowest MDE in every cell" is now
+  scoped to the three main-text evaluators.
+- **Interaction with four evaluators: p 0.46–1.00 in 7 cells, 0.041 on
+  HotpotQA/Mistral** — first cell below 0.05; Holm over 8 gives 0.33, so
+  "no detectable interaction after correction" stands. Stated, not hidden.
+- Refusals score below attempts under MiniCheck for all 4 generators (0.44–0.71).
+- Sentence-min (no family): uncorrected p < 0.05 in 6 of 8.
+- PDFs 41 pages (all four), clean; 235 tests pass.
 
 ### Code moves and reporting changes of 2026-09-01
 

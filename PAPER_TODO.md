@@ -23,95 +23,99 @@ below — page length first.
 
 ---
 
-## Next session starts here — rewritten 2026-10-16
+## Next session starts here — rewritten 2026-11-03
 
-**The fourth generator is in and the paper is updated for it.** Mistral-7B ran
-2026-10-15 (CLAUDE.md B28) and closed the review's one weakness that writing
-could not fix. Latest reports: `reports/2026-10-07_reviews_and_verbosity_control.md`,
-then the B28 block in CLAUDE.md.
+**The third review is answered in full.** Review text:
+`reports/2026-10-25_third_review.txt`. What answered it is in CLAUDE.md
+B33-B38; the commits are listed below.
 
 | | |
 |---|---|
-| Paper | `paper/acl/main-preprint.pdf` — **send this one to Berend** |
-| Build | 4 variants, **0 undefined refs, 0 overfull boxes, 0 rendered ??**; 230 tests pass |
-| Headline | **4 comparisons in 3 of 8 cells, Holm over 24** (was 2 of 6 over 18) |
-| Grid | **32,000 answers**, 8,055 refusals (25.2%) |
-| Generators | four: Claude Haiku 4.5, GPT-4o-mini, Qwen2.5-7B, Mistral-7B |
-| Experiments | all run; nothing paid remains |
+| Paper | `paper/acl/main-preprint.pdf` — **send this one to Berend.** The third-review version (new title, MiniCheck, RAGTruth, random sample, human check) is not recorded as sent |
+| Title | *What a Faithfulness Score Can See: Injected Errors, Answer Length and Resolving Power in Retrieval-Augmented Generation* |
+| Build | 4 variants, all **41 pages**; body ends at the Conclusion on **p.18** (full) / **p.14** (compact); 0 undefined refs, 0 overfull boxes, 0 rendered ??; **235 tests pass** |
+| Probe | NLI-max detection 5.1% (Claude) to 70.5%; MiniCheck 80.6-97.5%; the generator dependence shrinks and does not vanish |
+| Verdict | **4 of 24 comparisons in 3 of 8 cells** after Holm (2 permutation, 1 Friedman), no detectable system x evaluator interaction (p 0.31-0.96); with MiniCheck as a fourth evaluator **7 of 32 in 4 of 8** |
+| Grid | 32,000 answers, 4 generators, 8,055 refusals (25.2%) |
+| Last commits | `2557784` (D4, tab:7/tab:choose, D6 prep), `5f36809` (D6). gpu1's git is at `2722ec9`, not pushed |
 
-### What is actually left, in priority order
+### Done for the third review
 
-1. ~~Berend's sentence-level simplification pass~~ — **done 2026-10-16.**
-   Measured, not eyeballed: sentences of 45+ words went **28 to 0**, 40+ went
-   **49 to 11** (the rest are dense table captions). 61 edits, no number moved;
-   the rule was to split clauses and never drop a hedge, a population label or a
-   scope qualifier. The scan is reproducible — see B30.
-2. ~~Review items C4, C9, C10~~ — **done 2026-10-16.** C4 reframes the spread
-   as a deliberately extreme sensitivity check (the old practitioner
-   justification was simply wrong) and drops a sentence that contradicted the
-   omnibus appendix; C9 puts claim-min's thresholdability cost into the
-   recommendation and states its aggregation as a design choice; C10 reconciles
-   constructed-vs-natural where the margin is anchored, and names the direction
-   of the error — permissive, never strict. The review text is in
-   `Review of When the Evaluator.txt`; **every C item is now closed.**
-3. ~~Verify `dasigi-etal-2021`~~ — **done 2026-10-16** against ACL Anthology
-   2021.naacl-main.365. Title, six authors in order, booktitle, pages, publisher
-   and DOI all match; `month = jun` added. All 31 entries have now had the B3
-   check.
-4. **Decide the venue.** ⚠️ **The only item above that is still open, and it is
-   yours rather than a task.** A hard 8-page limit is served by
-   `main-8page.tex`, which already exists as the compact build of the same
-   source (30 pages, body ~14).
+| Item | Where |
+|---|---|
+| Tier A wording (NDCG 0.786/0.766, per-dataset assertion spans, changelog notes) | B33 |
+| Tier B reframe: title, "measurement study", five sections to the appendix | B34 |
+| Tier C references: Yu, Knollmeyer, Filice, RAG-Zeval, all verified | B33 |
+| D1 premise granularity in all 8 cells | B33 |
+| D2 entailment minus contradiction (`app:ec`) | B33 |
+| D3 Bespoke-MiniCheck-7B on the probe (`app:minicheck`) | B35 |
+| D4 seeded random 200 vs first 200 (`tab:prefixrand`): max 2.4 points, every ordering holds | the D4 entry before B37 |
+| D5 RAGTruth natural hallucinations (`app:ragtruth`) | B36 |
+| D6 judge vs blind human annotator (`app:human`): 98.5%, kappa 0.97 | B38 |
+| "Table 7 mixes quantities": `tab:choose` rebuilt; appendix power tables merged into `tab:7` | B37 |
 
-### ~~One layout decision left behind by B30~~ — decided 2026-10-18
+### ~~Running now: MiniCheck on the system comparison~~ — done 2026-11-03
 
-`tab:2` now carries all four generators, as a six-row `table*` at
-`\footnotesize` with four column blocks. The row-per-generator-evaluator
-alternative was tried first and reverted: it overflowed the column by 20.6pt
-and cost three pages, against one page for the wide form. Both falsification
-tables are ordered by assertions per answer, most first, so the bolded extremes
-are the outer blocks. All 72 rendered values re-checked against the
-checkpoints, 0 mismatches.
+Ran 08:46–15:47 UTC on gpu1 (gated until the author's LoRA job freed the GPU),
+validation exact, analysed with the pre-specified `scripts/mc_grid_table.py`,
+written up as `app:mcgrid`. Over the extended family of 32, **7 comparisons
+survive in 4 of 8 cells**; the published four all survive and every NQ cell is
+still null. One interaction cell reaches p = 0.041 uncorrected (0.33 after
+Holm over 8), and the paper says so. Details: CLAUDE.md B39,
+`reports/mcgrid/results.txt`.
 
-### ~~Two appendix tables are still three-generator~~ — closed 2026-10-18
+### What is left, in priority order
 
-Both now carry four generators, ordered by assertions per answer like the two
-falsification tables. Every previously published value was reproduced from
-`~/rag-backup/checkpoints/n1000_v3` before a new row was added — all 30 values
-of `tab:3` and all 90 of `tab:9` matched to the last digit, and so did the whole
-24-comparison Holm family behind `tab:7` (the four survivors at 0.0072, 0.0115,
-0.0242 and 0.0378). After the edit, 180 rendered values re-checked against the
-reference: 0 mismatches.
-1. **`tab:3`** (`app:assertions`) — Mistral-7B at 1, 2, 3, 4, 5+ assertions
-   responds by +0.385, +0.135, +0.077, +0.031, +0.082 under NLI-max and
-   +0.385, +0.246, +0.080, +0.075, +0.139 under claim-min, on n = 422, 201, 97,
-   50, 30.
-2. **`tab:9`** (`app:tost`) — NQ/Mistral 0/6, 0/6, 4/6, 6/6, 6/6 under NLI-max;
-   HotpotQA/Mistral is the only cell in the table where $\pm$0.10 still leaves
-   a pair non-equivalent, under NLI-max and claim-min both.
+1. **Decide the venue (the author's decision, with Berend).** The ARR
+   12 October 2026 deadline passed unused. The options are the next ARR cycle or
+   a direct submission.
+2. **If ARR: cut the body to 8 pages.** This is the largest job left. The
+   compact build's body ends on p.14 (p.18 in the full build), about six pages over. Over-length is a
+   desk reject. Choosing what moves to the appendix and what leaves the paper
+   needs the author.
+3. **Send Berend `main-preprint.pdf`.**
+4. **Code and data release.** A submission needs an anonymised repository. The
+   reviewer scored Datasets 2 because answers and scores are "on request", so
+   releasing the 32,000 answers with their scores is worth deciding.
+5. **The author's own voice** in the drafted sections (still open from item 22
+   of CLAUDE.md).
 
-Five prose figures were stale behind them and are fixed: the abstract's
-three-generator single-assertion list, the median answer lengths (55, 25, 20,
-15 words), the single-assertion word means (23.9, 19.5, 17.2, 16.1), the
-"third generator" paragraph, and the single-assertion identity count
-(2,472 → 3,249, max 2.33e-05; the three-generator 2,472 at 1.66e-05 was
-confirmed first). **The `tab:9` body sentence was wrong independently of
-Mistral** — see error 9 in CLAUDE.md B30.
-5. ~~Mistral's jina cells have no NLI~~ — **done 2026-10-16**. The control now
-   covers four generators and five systems: 8 comparisons in 5 of 8 cells,
-   against 4 in 3 of 8 for the matched four.
-   ~~Still open and paid: the LLM judge was never run on Mistral~~ — **done
-   2026-10-16**: 8,000 rows, $13.74, 0 errors, 0 ungradable. Every
-   correctness-conditioned result is now a four-generator result over 32 judged
-   cells, and `faith_gap` over that family gives 8 significant, all negative
-   (was 5 of 24). See CLAUDE.md B29. **Nothing paid remains open.**
-6. Optional: quantify the constructed-vs-natural error gap (50-100 hand-annotated
-   natural errors). This is the caveat Sinha supplies and we cannot size.
-7. Optional, free: context-ablation rows were never scored for faithfulness;
-   re-ranking is still one lambda on one system.
+Optional:
+
+6. **Length varied downward.** The reviewer noted it was only ever increased.
+   A concise-prompt arm on Qwen, the inverse of `qwen_verbose`, costs $0.
+7. **A second annotator for D6.** The blank `reports/d6/annotation_sheet.csv`
+   is the template; `d6_human_agreement.py --second` reads it.
+8. ARES / RAGVUE are not run. They need trained judges and a labelled set, and
+   the paper says they are untested.
+9. From the old list: the context-ablation rows were never scored for
+   faithfulness, and re-ranking is one lambda on one system. The
+   constructed-vs-natural gap is now measured on RAGTruth (D5), but the margin
+   error is still not sized, because RAGTruth has no paired drop.
+
+Housekeeping:
+
+10. Push to gpu1 when wanted (`git push gpu1 main`, then `git pull` there).
+11. The B31 warning still stands: some analysis files
+    (`conditional_faithfulness_*`, `faith_gap_significance_*`,
+    `necessity_sufficiency_*`, `query_frame.pkl`) differ between gpu1 and the
+    backup, and which side is behind the paper is unverified. Check before any
+    full `rsync`.
 
 ### Do not regress
 
+- **gpu1 is shared with the author's other GPU work** (a LoRA training job of
+  26.8 GB was running on 2026-11-03). Check `nvidia-smi` before any GPU job,
+  never start one beside it, and gate long runs on free memory as
+  `outputs/mcgrid/run_mcgrid.sh` does.
+- **An added evaluator never replaces the design family.** The paper's family
+  is the 24 comparisons of its three evaluators. A fourth is reported as an
+  extension beside it, with the rule fixed before the scores exist
+  (`scripts/mc_grid_table.py`).
+- **Import `config` before anything that imports `huggingface_hub`.** `config`
+  sets `HF_HOME` to `~/rag_faithfulness/hf_cache`; a script that imports
+  `minicheck.py` first falls back to `~/.cache/huggingface`. That is the likely
+  source of the 18 GB duplicate model cache deleted on 2026-11-03.
 - **Prompt parity.** `build_prompt`'s default is byte-identical across all four
   generators, pinned by `tests/test_prompt_styles.py`. The two open-weight arms
   differ only in weights; `qwen_verbose` shares qwen's weights and is a control,

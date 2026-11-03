@@ -1,0 +1,139 @@
+Third review of the paper, received 2026-10-25 (automated ARR-style review).
+Answered by CLAUDE.md B33-B38: Tier A wording, Tier B reframe (B34), Tier C
+references, and experiments D1-D6. Kept verbatim below.
+
+Desk Rejection Assessment:
+Paper Length
+
+Pass ✅.
+Topic Compatibility
+
+Pass ✅. The paper studies faithfulness evaluation in retrieval-augmented generation and question answering, which falls under Resources and Evaluation, Question Answering and Generation.
+Minimum Quality
+
+Pass ✅. The paper is complete, with experiments, results, discussion, limitations and appendices, and no structural gaps. Its design and statistics are largely careful, though its scope and framing have problems that I describe below.
+Prompt Injection and Hidden Manipulation Detection
+
+Pass ✅. I found no hidden or manipulative text.
+Expected Review Outcome:
+Paper Summary
+
+The paper asks what RAG faithfulness scorers actually measure when they are used to compare systems. It fixes a grid of 32,000 answers: four embedding models, two QA datasets (NQ and HotpotQA) and four generators. Every answer is scored by three evaluators: an NLI-max aggregate (DeBERTa-v3), a claim-level minimum aggregate (claim-min), and AlignScore.
+
+The authors inject a known error by replacing one grounded numeric value, or one entity, with a value absent from the context. They report the following:
+
+    At a fixed 0.5 threshold, NLI-max detects 5.1% of edits on the most verbose generator (Claude) and 56.6% on the tersest (GPT-4o-mini). Assertion count explains most of this, an opening attribution clause explains part of the rest, and a prompt-only verbosity manipulation on Qwen reproduces the effect.
+    Whether the four retrieval systems differ in faithfulness depends on the evaluator in three of eight cells. The authors attribute this to resolving power rather than to disagreement about rankings.
+    Pooling refusals can manufacture a retrieval-faithfulness relationship whose sign depends on generator boilerplate.
+    Equivalence (TOST) conclusions depend on the margin chosen.
+
+Further analyses cover floor, ceiling and context-order conditions, re-ranking, and a QASPER boundary case. The authors recommend naming the evaluator, anchoring thresholds and margins on falsified answers, and adding deterministic value checks.
+Summary Of Strengths
+
+    Controlled minimal pair. The probe applies the same edit, with the same evaluator and the same retrieved chunks, to answers from the actual systems under comparison. This is a cleaner design than agreement with human labels, and it exposes a generator-dependent sensitivity. Table 1 shows it clearly: NLI-max detection is 5.1% for Claude and 56.6% for GPT-4o-mini on NQ.
+    Causal follow-ups. The authors try to explain the effect rather than only report it:
+        the verbatim-copying explanation is ruled out (Section 5.3);
+        the assertion-count analysis (Table 10) and the single-assertion identity check give a mechanism;
+        the prompt-only verbosity manipulation (Table 3) and the clause-removal experiment test it directly.
+    Honest reporting. The paper is unusually open about its own weaknesses:
+        it states the hypotheses that failed;
+        it reports the Holm family-choice sensitivity and the permutation and Friedman tests that cut the headline count from four to two to one (Appendix I);
+        it reports minimum detectable effects (Table 14), refusal-rule sensitivity (Table 17), and the markdown normalisation bug caught by the single-assertion identity.
+    Practical lessons. The refusal-pooling sign flip (Table 4), the floor-anchored gate, and the equivalence-margin sweep (Table 12) are transferable and useful to practitioners.
+    Reproducibility. Code and scripts are promised, and the probe is cheap to re-run.
+
+Summary Of Weaknesses
+
+    The headline claim is thin and fragile.
+        The abstract and conclusion state that the verdict depends on the evaluator, but the paper itself shows this is not robust.
+        Only 4 of 24 comparisons survive Holm correction. That drops to 2 under a permutation test that pays for selecting the extremes, and to 1 under Friedman.
+        The count changes to 6 or 7 under other multiplicity families (Section 7).
+        Appendix I finds no detectable evaluator-by-system interaction in any cell (p from 0.31 to 0.96).
+        The authors therefore concede the evaluators are not shown to rank systems differently. Yet the title and abstract foreground "the evaluator decides the result". The finding amounts to a power difference, partly a variance artefact, and the framing overstates it.
+    Little statistical power, so the nulls are uninformative.
+        The MDE exceeds the observed spread in 20 of 24 cells (Table 14), which the authors admit.
+        Evaluator comparisons are therefore mostly comparisons of noise levels.
+        The matched four systems, with a 4.4-point NQ spread, were chosen so that nothing should differ. Showing that evaluators differ in resolving power on a design that cannot discriminate is of limited value.
+    Confounded evaluator comparison.
+        The three evaluators receive different premises: separate chunks plus a truncated concatenation for NLI, and the concatenated context for AlignScore.
+        Two of the three share the DeBERTa NLI model, so the scorer population is effectively 2.
+        The premise-granularity control is relegated to Limitations and covers only three generators.
+        No LLM-as-judge evaluator is run. ARES and RAGVUE are explicitly not tested (Section 2.1), so the generality claim "any scalar aggregate" is argued rather than shown.
+        The NLI scorer is deliberately out-of-the-box, using entailment probability only, which is a weak and known-suboptimal configuration (Steen et al., 2023).
+    Construct validity of the probe.
+        It uses only numeric and entity substitutions with values absent from context, on the first 200 eligible answers in dataset order.
+        Eligibility filters differ widely across generators, from a near-census to 2/5 of the eligible set.
+        The edits are artificial. The authors cite Sinha (2025) to say detection rates are upper bounds on natural errors, but never test natural hallucinations.
+        A deterministic containment check catches 100% by construction, so the recommendation to add it is circular.
+        Numeric and entity edits behave differently (Table 2), and the ordering of generators holds in only 3 of 6 rows with entities.
+    The generator-sensitivity explanation is only partly established.
+        Four generators, two of them 7B, confound length with model identity.
+        Assertion count explains "most but not all" of the gap.
+        Claude's residual is attributed in part to an attribution clause, but on NQ about half of the Mistral gap remains unexplained.
+        Verbosity manipulation was done on one model and one prompt line, and it also changes refusals and the floor (Table 3 discussion).
+        Length is only varied upward.
+    Scope creep and weak integration.
+        Sections 9 to 11 (floor and ceiling, re-ranking, QASPER) run on a single generator or a failed-retrieval regime. They do not bear on the central thesis, and the re-ranking results are null at a single λ.
+        The paper is very long and dense, with many sub-claims and qualifiers, and its main message is hard to extract.
+        The Discussion's recommendations (Sections 12, 12.1, 12.2) partly repeat results and rest on unevenly supported evidence.
+        Table 7 mixes quantities that are not comparable.
+    Correctness and refusal analysis depend on an unvalidated judge. The LLM judge is never checked against human annotation. Section 6.2's sign-reversal result depends on it, and its intervals are wide (±0.064 to ±0.129).
+    Thin related-work positioning. The paper omits RAG evaluation surveys and recent faithfulness-prediction and trained-evaluator work; see below.
+    Presentation.
+        Many numbers are repeated and some are inconsistent. NDCG for all-mpnet on NQ is 0.786 in Section 4 but 0.766 in Table 8, and the assertion range is "1.25 to 3.08" in Section 5.4 but "1.17 to 2.77" in Limitations.
+        The paper contains notes on an "earlier version", which is unusual in a submission.
+        Appendix tables are cited heavily from the main text, so the main text is not self-contained.
+
+Potentially Missing Related Work
+
+    Yu et al., "Evaluation of Retrieval-Augmented Generation: A Survey", 2024. It gives the landscape of RAG faithfulness metrics and should be cited in the Introduction and Related Work to situate the choice of the three evaluators.
+    Filice et al., "Generate but Verify: Answering with Faithfulness in RAG-based Question Answering", 2025. It couples answer generation with a faithfulness signal and thresholded precision/recall, which bears directly on the gating and threshold claims. It should be discussed in Section 2 and Section 12.1.
+    Li et al., "RAG-Zeval: Enhancing RAG Responses Evaluator through End-to-End Reasoning and Ranking-Based Reinforcement Learning", 2025. It is an RL-trained LLM evaluator and a natural fourth instrument for the probe. It should be discussed in Section 2.1 as an untested paradigm.
+    Knollmeyer et al., "Evaluating Retrieval Augmented Generation: A Comprehensive Review of Evaluation Dimensions, Question Types, and Application", 2026. It frames faithfulness among other RAG evaluation dimensions and should be cited in Related Work.
+
+ARES (Saad-Falcon et al., 2024) is already cited, but only discussed rather than run. It is the obvious baseline to add.
+Comments Suggestions And Typos
+
+    Reframe and shorten. Present the paper as a measurement study of sensitivity to injected errors and of resolving power, not as "the evaluator decides the result". Move Sections 9 to 11 and most of the Discussion to the appendix.
+    Add an LLM-judge evaluator. A claim-decomposed LLM judge or ARES would test the "any scalar aggregate" claim. A better-configured NLI scorer using the contradiction probability would help too.
+    Add natural errors. Use a small set of natural hallucinations, for example from RAGTruth, to test whether detection rates are really upper bounds.
+    Use random sampling. Replace the prefix-of-eligible selection and run all four generators on a common, randomly drawn eligible subset.
+    Add a bigger or more diverse system set so that the resolving-power claim is tested where differences actually exist.
+    Validate the judge on a human-annotated sample.
+    Fix inconsistencies. NDCG 0.786 vs 0.766, assertion ranges, and the "three of eight" vs "four of twenty-four" phrasing should be harmonised.
+    Decision criteria. I would raise my score if the evaluator-dependence result were demonstrated beyond NLI-derived scorers and with robust inference. I would lower it if the premise-granularity control did not hold across all generators.
+
+Confidence
+
+4: Quite sure after careful checking.
+Soundness
+
+3: Acceptable. The statistics are careful and heavily hedged, but the headline claim is weakly supported and the evaluator set is narrow.
+Excitement
+
+3: Interesting. The probe design and the refusal and verbosity lessons are useful, but the central finding is narrower than advertised.
+Overall Assessment
+📊See how you rank ↑
+
+3: Findings. It is a careful, honest measurement study with a useful probe, but it is long and unfocused, and its headline finding is fragile (4 comparisons, then 2, then 1) and confined to NLI-style scorers.
+Best Paper Justification
+
+N/A
+Limitations And Societal Impact
+
+The Limitations section is extensive and candid. It covers grid size, grader bias, prefix sampling, constructed vs natural errors, and the premise confound. Two further points deserve mention. First, the downstream risk: gates in high-stakes settings such as invoices and dosages may pass most falsified values, and the paper mentions this. Second, English-only data and a narrow generator population limit generalisation. Nothing further is required.
+Ethical concerns
+
+None.
+Needs Ethics Review
+
+No
+Reproducibility
+
+4: Mostly reproducible. Code and scripts are promised, and the pipeline and rules are described in detail. The proprietary APIs and the LLM judge add some variance.
+Datasets
+
+2: Documentary. No new dataset is released as a resource, and the answers and scores are only available on request.
+Software
+
+3: Potentially useful. The probe and pipeline code is promised, along with scripts that regenerate each table.

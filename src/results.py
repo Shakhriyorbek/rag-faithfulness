@@ -276,6 +276,12 @@ FAITH_SOURCES = {
     'nli':   ('nli_scores',   'nli_max'),
     'align': ('align_scores', 'align_score'),
     'claim': ('claim_scores', 'claim_min'),
+    # Bespoke-MiniCheck-7B over the grid (src/minicheck_faithfulness.py),
+    # two aggregates from one file: the whole answer as one claim, and the
+    # minimum over sentences. Not in compare_evaluators' default --metrics,
+    # so the published three-evaluator tables are unchanged by their presence.
+    'minicheck': ('minicheck_scores', 'minicheck'),
+    'minicheck_sent': ('minicheck_scores', 'minicheck_sent'),
 }
 
 
