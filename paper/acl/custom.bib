@@ -731,3 +731,211 @@
     doi = "10.18653/v1/2025.emnlp-main.1267",
     pages = "24925--24943",
 }
+
+% ── Added 2026-11-09 for the agentic review (cspaper): methods and resources
+% the paper names without citing, plus four related works. Each was verified
+% that day at a primary source, as noted per entry:
+%   Crossref API: jarvelin (TOIS 20(4):422-446), friedman (JASA 32(200):
+%     675-701), angelopoulos (Science 382(6671):669-674), malin (IEEE JSTSP
+%     19(7):1362-1375), ru (NeurIPS 37, pp. 21999-22027, DOI 10.52202/079017-0692,
+%     all 18 authors).
+%   zbMATH 0402.62058: holm (Scand. J. Stat. 6, 65-70; no Crossref DOI exists).
+%   ACL Anthology .bib, copied verbatim: rajpurkar (D16-1264), chen-m3
+%     (2024.findings-acl.137), reimers (D19-1410).
+%   arXiv API (title, authors, first-version date): mistral 2310.06825 (all 18
+%     authors; documents v0.1, we ran v0.3 of the same family), qwen 2412.15115
+%     (44 listed; first ten kept), multilingual-e5 2402.05672, koobs 2603.16213,
+%     kumar 2608.00585, mpnet 2004.09297. MPNet's NeurIPS 2020 venue confirmed
+%     by Semantic Scholar (DBLP key conf/nips/Song0QLL20) and the NeurIPS
+%     abstract page in search results; page numbers left out because the
+%     proceedings server refused connections and they could not be checked.
+%   Vendor pages, fetched or found: anthropic haiku (2025-10-15) and opus 5
+%     (2026-07-24) fetched with their datePublished; the two OpenAI pages block
+%     automated fetches and were confirmed by search on openai.com (2024-07-18,
+%     2024-01-25).
+%   yu-latentaudit: the NeurIPS 2026 AI4GOOD workshop listing (neurips.cc
+%     virtual/2026/165386), whose abstract contains the RAGTruth figures and
+%     the "whole-answer pooling can dilute localized errors" sentence; the
+%     arXiv version 2604.05358 has a different title and contains neither.
+@article{holm-1979,
+  author    = {Sture Holm},
+  title     = {A Simple Sequentially Rejective Multiple Test Procedure},
+  journal   = {Scandinavian Journal of Statistics},
+  volume    = {6},
+  pages     = {65--70},
+  year      = {1979}
+}
+@article{jarvelin-kekalainen-2002,
+  author    = {Kalervo J{\"a}rvelin and Jaana Kek{\"a}l{\"a}inen},
+  title     = {Cumulated Gain-Based Evaluation of {IR} Techniques},
+  journal   = {ACM Transactions on Information Systems},
+  volume    = {20},
+  number    = {4},
+  pages     = {422--446},
+  year      = {2002},
+  doi       = {10.1145/582415.582418}
+}
+@article{friedman-1937,
+  author    = {Milton Friedman},
+  title     = {The Use of Ranks to Avoid the Assumption of Normality Implicit in the Analysis of Variance},
+  journal   = {Journal of the American Statistical Association},
+  volume    = {32},
+  number    = {200},
+  pages     = {675--701},
+  year      = {1937},
+  doi       = {10.1080/01621459.1937.10503522}
+}
+@inproceedings{rajpurkar-etal-2016-squad,
+    title = "{SQ}u{AD}: 100,000+ Questions for Machine Comprehension of Text",
+    author = "Rajpurkar, Pranav  and
+      Zhang, Jian  and
+      Lopyrev, Konstantin  and
+      Liang, Percy",
+    editor = "Su, Jian  and
+      Duh, Kevin  and
+      Carreras, Xavier",
+    booktitle = "Proceedings of the 2016 Conference on Empirical Methods in Natural Language Processing",
+    month = nov,
+    year = "2016",
+    address = "Austin, Texas",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/D16-1264/",
+    doi = "10.18653/v1/D16-1264",
+    pages = "2383--2392"
+}
+@article{angelopoulos-etal-2023,
+  author    = {Anastasios N. Angelopoulos and Stephen Bates and Clara Fannjiang and Michael I. Jordan and Tijana Zrnic},
+  title     = {Prediction-Powered Inference},
+  journal   = {Science},
+  volume    = {382},
+  number    = {6671},
+  pages     = {669--674},
+  year      = {2023},
+  doi       = {10.1126/science.adi6000}
+}
+@article{jiang-etal-2023-mistral,
+  author    = {Albert Q. Jiang and Alexandre Sablayrolles and Arthur Mensch and Chris Bamford and Devendra Singh Chaplot and Diego de las Casas and Florian Bressand and Gianna Lengyel and Guillaume Lample and Lucile Saulnier and L{\'e}lio Renard Lavaud and Marie-Anne Lachaux and Pierre Stock and Teven Le Scao and Thibaut Lavril and Thomas Wang and Timoth{\'e}e Lacroix and William El Sayed},
+  title     = {Mistral 7{B}},
+  journal   = {arXiv preprint arXiv:2310.06825},
+  year      = {2023}
+}
+@article{yang-etal-2024-qwen25,
+  author    = {An Yang and Baosong Yang and Beichen Zhang and Binyuan Hui and Bo Zheng and Bowen Yu and Chengyuan Li and Dayiheng Liu and Fei Huang and Haoran Wei and others},
+  title     = {{Qwen2.5} Technical Report},
+  journal   = {arXiv preprint arXiv:2412.15115},
+  year      = {2024}
+}
+@inproceedings{chen-etal-2024-m3,
+    title = "{M}3-Embedding: Multi-Linguality, Multi-Functionality, Multi-Granularity Text Embeddings Through Self-Knowledge Distillation",
+    author = "Chen, Jianlyu  and
+      Xiao, Shitao  and
+      Zhang, Peitian  and
+      Luo, Kun  and
+      Lian, Defu  and
+      Liu, Zheng",
+    editor = "Ku, Lun-Wei  and
+      Martins, Andre  and
+      Srikumar, Vivek",
+    booktitle = "Findings of the {A}ssociation for {C}omputational {L}inguistics: {ACL} 2024",
+    month = aug,
+    year = "2024",
+    address = "Bangkok, Thailand",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2024.findings-acl.137/",
+    doi = "10.18653/v1/2024.findings-acl.137",
+    pages = "2318--2335"
+}
+@article{wang-etal-2024-multilingual-e5,
+  author    = {Liang Wang and Nan Yang and Xiaolong Huang and Linjun Yang and Rangan Majumder and Furu Wei},
+  title     = {Multilingual {E5} Text Embeddings: A Technical Report},
+  journal   = {arXiv preprint arXiv:2402.05672},
+  year      = {2024}
+}
+@inproceedings{reimers-gurevych-2019-sentence,
+    title = "Sentence-{BERT}: Sentence Embeddings using {S}iamese {BERT}-Networks",
+    author = "Reimers, Nils  and
+      Gurevych, Iryna",
+    editor = "Inui, Kentaro  and
+      Jiang, Jing  and
+      Ng, Vincent  and
+      Wan, Xiaojun",
+    booktitle = "Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing ({EMNLP}-{IJCNLP})",
+    month = nov,
+    year = "2019",
+    address = "Hong Kong, China",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/D19-1410/",
+    doi = "10.18653/v1/D19-1410",
+    pages = "3982--3992"
+}
+@inproceedings{song-etal-2020-mpnet,
+  author    = {Kaitao Song and Xu Tan and Tao Qin and Jianfeng Lu and Tie-Yan Liu},
+  title     = {{MPNet}: Masked and Permuted Pre-training for Language Understanding},
+  booktitle = {Advances in Neural Information Processing Systems 33 (NeurIPS 2020)},
+  year      = {2020}
+}
+@misc{anthropic-2025-haiku,
+  author    = {{Anthropic}},
+  title     = {Introducing {Claude Haiku 4.5}},
+  year      = {2025},
+  month     = oct,
+  url       = {https://www.anthropic.com/news/claude-haiku-4-5}
+}
+@misc{anthropic-2026-opus5,
+  author    = {{Anthropic}},
+  title     = {Introducing {Claude Opus 5}},
+  year      = {2026},
+  month     = jul,
+  url       = {https://www.anthropic.com/news/claude-opus-5}
+}
+@misc{openai-2024-gpt4omini,
+  author    = {{OpenAI}},
+  title     = {{GPT-4o} mini: Advancing Cost-Efficient Intelligence},
+  year      = {2024},
+  month     = jul,
+  url       = {https://openai.com/index/gpt-4o-mini-advancing-cost-efficient-intelligence/}
+}
+@misc{openai-2024-embeddings,
+  author    = {{OpenAI}},
+  title     = {New Embedding Models and {API} Updates},
+  year      = {2024},
+  month     = jan,
+  url       = {https://openai.com/index/new-embedding-models-and-api-updates/}
+}
+@inproceedings{ru-etal-2024-ragchecker,
+  author    = {Dongyu Ru and Lin Qiu and Xiangkun Hu and Tianhang Zhang and Peng Shi and Shuaichen Chang and Cheng Jiayang and Cunxiang Wang and Shichao Sun and Huanyu Li and Zizhao Zhang and Binjie Wang and Jiarong Jiang and Tong He and Zhiguo Wang and Pengfei Liu and Yue Zhang and Zheng Zhang},
+  title     = {{RAGChecker}: A Fine-grained Framework for Diagnosing Retrieval-Augmented Generation},
+  booktitle = {Advances in Neural Information Processing Systems 37 (NeurIPS 2024), Datasets and Benchmarks Track},
+  pages     = {21999--22027},
+  year      = {2024},
+  doi       = {10.52202/079017-0692}
+}
+@article{malin-etal-2025,
+  author    = {Ben Malin and Tatiana Kalganova and Nikolaos Boulgouris},
+  title     = {A Review of Faithfulness Metrics for Hallucination Assessment in Large Language Models},
+  journal   = {IEEE Journal of Selected Topics in Signal Processing},
+  volume    = {19},
+  number    = {7},
+  pages     = {1362--1375},
+  year      = {2025},
+  doi       = {10.1109/JSTSP.2025.3579203}
+}
+@article{koobs-koning-2026,
+  author    = {Stan Koobs and Nick W. Koning},
+  title     = {Equivalence Testing with Data-Dependent and Post-Hoc Equivalence Margins},
+  journal   = {arXiv preprint arXiv:2603.16213},
+  year      = {2026}
+}
+@article{kumar-2026,
+  author    = {Randhir Kumar},
+  title     = {Verification Without Sufficiency: Per-Chunk Filtering Fails on Multi-Hop {RAG}, and Decomposition Repairs It},
+  journal   = {arXiv preprint arXiv:2608.00585},
+  year      = {2026}
+}
+@inproceedings{yu-etal-2026-latentaudit,
+  author    = {Zhe Yu and Wenpeng Xing and Meng Han},
+  title     = {{LatentAudit}: Resource-Efficient White-Box Auditing for Trustworthy {RAG} in High-Stakes Domains},
+  booktitle = {NeurIPS 2026 Workshop on Trustworthy AI for Good (AI4GOOD)},
+  year      = {2026},
+  url       = {https://openreview.net/forum?id=DE32sYGAg9}
+}

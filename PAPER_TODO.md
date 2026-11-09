@@ -33,7 +33,8 @@ B33-B38; the commits are listed below.
 |---|---|
 | Paper | `paper/acl/main-preprint.pdf` — **send this one to Berend.** The third-review version (new title, MiniCheck, RAGTruth, random sample, human check) is not recorded as sent |
 | Title | *What a Faithfulness Score Can See: Injected Errors, Answer Length and Resolving Power in Retrieval-Augmented Generation* |
-| Build | 4 variants, all **41 pages**; body ends at the Conclusion on **p.18** (full) / **p.14** (compact); 0 undefined refs, 0 overfull boxes, 0 rendered ??; **235 tests pass** |
+| Build | 4 variants, all **41 pages** (2026-11-09; compact named build: body to p.14, Limitations to p.17, appendix from p.21); 0 undefined refs, 0 overfull boxes, 0 rendered ??; **235 tests pass**. `./build-review.sh` makes the 35-page `main-review.pdf` for AI review services (CLAUDE.md B40) |
+| Agentic review | cspaper comments of 2026-11-09 answered in text, 20 references added and verified (74 in all). Not done, optional: cite GTE-large/Instructor-XL where Limitations names them; swap jina to its ECIR 2025 version |
 | Probe | NLI-max detection 5.1% (Claude) to 70.5%; MiniCheck 80.6-97.5%; the generator dependence shrinks and does not vanish |
 | Verdict | **4 of 24 comparisons in 3 of 8 cells** after Holm (2 permutation, 1 Friedman), no detectable system x evaluator interaction (p 0.31-0.96); with MiniCheck as a fourth evaluator **7 of 32 in 4 of 8** |
 | Grid | 32,000 answers, 4 generators, 8,055 refusals (25.2%) |

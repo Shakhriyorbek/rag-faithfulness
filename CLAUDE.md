@@ -76,13 +76,13 @@ are still the only configured models never run.
 | Area | Status |
 |------|--------|
 | Paper draft | ✅ Complete and current. **Source is `paper/acl/main.tex`**; the docx builder is superseded. Two PDFs: `main-preprint.pdf` (named, **this is the one to send Berend**) and `main.pdf` (anonymous + line-numbered). Two automated review passes done — **3.5 Borderline Conference, soundness 4** |
-| References verified | ✅ **54 entries** (2026-11-02), all cited. Every entry has had the B3 check against a primary source (Anthology/arXiv/Crossref/publisher); the last four (Yu, Knollmeyer, Filice, RAG-Zeval) were added and verified in B33 Tier C. See §6/§6b for the corrections that must not be reintroduced |
+| References verified | ✅ **74 entries** (2026-11-09: +20 for the agentic review, B40), all cited. Every entry has had the B3 check against a primary source (Anthology/arXiv/Crossref/publisher); the last four (Yu, Knollmeyer, Filice, RAG-Zeval) were added and verified in B33 Tier C. See §6/§6b for the corrections that must not be reintroduced |
 | Pipeline code | ✅ All of §8 built in `src/`; notebook is a reference artifact only |
 | Server access | ✅ Granted by Berend. **Fedora is now the only machine that can deploy** — the Windows laptop's key was revoked on both hosts 2026-08-28 |
 | Experiments | ✅ **All run.** 24,000-answer main grid + jina control + QASPER + qwen_verbose + C1/C2 + ablation + ESA + re-ranking. Nothing paid remains. See `reports/2026-09-16_all_results.md` and `reports/2026-10-07_reviews_and_verbosity_control.md` |
 | Correctness | ✅ **LLM judge over all 32 matched cells.** 24 cells 2026-08-30 ($29.27); the mistral arm 2026-10-16 (8,000 rows, **$13.74**, 0 errors, 0 ungradable — see B29). Containment is retired as the correctness signal — always run analyses with `--correct-source judge`. **Checked against a blind human annotator 2026-11-03 (D6, B38): 98.5% agreement, kappa 0.97; 99.0% on correct-vs-not.** The judge covers the matched grid **only**: jina, QASPER and the C1/C2/ablation conditions are still containment-graded, so their accuracy figures are not comparable with the grid's |
 | Paper v6 | ✅ `paper/acl/main.tex` → `main.pdf` (anonymous, for ARR) and `main-preprint.pdf` (named, for Berend). `paper/build_v6.js` + its docx are **superseded — do not edit them**, an edit there will not reach the manuscript |
-| Format | ✅ **ACL** (`paper/acl/`, `./build.sh` via tectonic). **2026-11-03: all four builds 41 pages; 0 undefined refs, 0 overfull boxes, 0 rendered ??.** Five secondary sections sit in the appendix in both builds (B34); the full-build body ends at the Conclusion on p.17. The ARR 8-page body limit is NOT enforced — a hard-limit venue needs further cuts |
+| Format | ✅ **ACL** (`paper/acl/`, `./build.sh` via tectonic). **2026-11-09: all four builds 41 pages; 0 undefined refs, 0 overfull boxes, 0 rendered ??.** Compact named build: body pp.1-14, Limitations pp.15-17, references pp.17-20, appendix pp.21-41. `./build-review.sh` makes a 35-page `main-review.pdf` for AI review services (B40). Five secondary sections sit in the appendix in both builds (B34); the full-build body ends at the Conclusion on p.17. The ARR 8-page body limit is NOT enforced — a hard-limit venue needs further cuts |
 | Venue | ⚠️ **The ARR 12 October 2026 deadline has passed and was not used** — the goal became a complete draft for Berend instead. Next ARR cycle or a direct venue submission is an open decision. The old plan (one ARR cycle feeding NAACL 2027 and COLING 2027, primary chosen at commitment) is in `reports/2026-09-05_berend_report.md` §2.3 and still describes the mechanism |
 
 **Backup:** 450 MB / 636 files at `~/rag-backup/checkpoints` on Fedora — the only
@@ -1724,6 +1724,53 @@ interaction and power appendices, beyond-nli, Conclusion.
 - Refusals score below attempts under MiniCheck for all 4 generators (0.44–0.71).
 - Sentence-min (no family): uncorrected p < 0.05 in 6 of 8.
 - PDFs 41 pages (all four), clean; 235 tests pass.
+
+**B40 — intro motivation, a 35-page review copy, and the agentic review's
+citation pass (2026-11-06..09, $0, no number changed).**
+- **Intro motivation is the author's own** (the threshold that would not
+  transfer, cost to companies and to researchers): a second paragraph after
+  the invoice example. The author then reworded it; their wording stands.
+- **`build-review.sh` → `main-review.pdf`, 35 pages**, for review services
+  that cap uploads (cspaper). `\REVIEWCOPY=1` drops nine appendix sections:
+  the six `\appendixinput` ones (R–W) and O, P, Q between the
+  `REVIEWCOPY-OMIT` markers in paper.tex. Their labels are copied from a full
+  build's .aux, so references keep full-paper letters; an unnumbered note
+  lists them with O's and P's results. Off in every build.sh variant.
+  ⚠️ Re-run it after any edit and check it is still <= 35 pages; the 20 new
+  references alone pushed it from 35 to 37.
+- **The agentic review's citation flags were real**: Holm, NDCG, Friedman,
+  SQuAD normalisation, prediction-powered inference, all four generators, all
+  four embedders and the judge (Claude Opus 5) were named without a citation.
+  All added, each verified at a primary source (provenance block at the end
+  of `custom.bib`; vendor pages for Claude/GPT-4o-mini/text-embedding-3-small).
+  Intro's NLI-max sentence now cites SummaC.
+- **Related work added**: RAGChecker (NeurIPS 2024 D&B), Malin et al. (IEEE
+  JSTSP 2025), Koobs & Koning 2026 (post-hoc-valid margin curves, in §8 with
+  the admission that our TOST sweep is descriptive), Kumar 2026 (per-chunk
+  entailment weak on multi-hop, in Setup's premise paragraph), LatentAudit
+  (cited as the NeurIPS 2026 AI4GOOD workshop version: only that version
+  carries the RAGTruth/dilution sentence; arXiv 2604.05358 has neither).
+  **Not cited**: "RADAM" (He et al. 2026) could not be found anywhere; the
+  tool's entropy/demographic/energy suggestions are unrelated.
+- **Review comments answered in text**: §5.1 gains threshold-free separation
+  (probe AUROC NLI .749/.671, claim .740/.660 vs Align .903/.888, MC
+  .947–.968; RAGTruth at 0.5: Align detects 36.7 vs 32.9% AND rejects 7.8 vs
+  18.6% of clean answers). ⚠️ Scope it to AlignScore: at 0.5 on RAGTruth
+  NLI-max is slightly MORE precise than claim-min and MC-sent (they flag far
+  more clean answers). Discussion gains an evaluator-by-job paragraph
+  (consistent with `sec:choosing`: no single pick), and an untested-remedy
+  sentence for claim-min's collapse. Limitations names base models and scopes
+  findings to instruction-tuned chat models. Setup says why QASPER is a
+  boundary condition; the entity caption says why its n differs.
+- **Page trim for Berend (same day): 42 -> 41 in all four builds, no result
+  removed.** Limitations lost ~340 words of repetition (construction of the
+  premises, the 759 count, prefix counts, the embedder list and jina, the
+  QASPER label: each still stated in Setup, §5.1 or the control section;
+  every limitation keeps a sentence; Sinha's figures and "unrefereed" stay,
+  because §8 points to Limitations for them). `tab:choose` is now defined at
+  the top of `sections/choosing.tex`: as the last float it was landing alone
+  on the final page. Below 41 needs content cuts (see PAPER_TODO). Backups of
+  the pre-trim files were kept only in the session scratchpad.
 
 ### Code moves and reporting changes of 2026-09-01
 
